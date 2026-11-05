@@ -1,0 +1,37 @@
+:root {
+  --color-background: #f4f6f8;
+  --color-surface: #ffffff;
+  --color-text: #172b3a;
+  --color-text-muted: #495b6a;
+  --color-primary: #125681;
+  --color-border: #c2cbd2;
+  --color-error: #a41925;
+  --color-error-surface: #fff0f1;
+  --color-success: #176239;
+  --color-focus: #0069b4;
+  --font-family-body:
+    system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-title: clamp(2rem, 5vw, 3rem);
+  --line-height-body: 1.6;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --size-content: 42rem;
+  --size-control-min: 2.75rem;
+  --border-width: 1px;
+  --radius-sm: 0.25rem;
+  --radius-lg: 0.75rem;
+  --shadow-sm: 0 0.25rem 1rem rgb(23 43 58 / 6%);
+  --focus-width: 3px;
+  --focus-offset: 3px;
+  /* Documented reference values; repeat literals in @media, never var(). */
+  --breakpoint-sm: 30rem;
+  --breakpoint-md: 48rem;
+  --breakpoint-lg: 64rem;
+}
