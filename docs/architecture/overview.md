@@ -6,9 +6,11 @@ Base técnica de Acciones UD, repositorio exclusivamente frontend. La referencia
 la **Especificación técnica de arquitectura frontend Acciones UD**, v1.0 del
 2 de noviembre de 2026, recibida como adjunto. Sus ejemplos de endpoints, DTO,
 eventos, sesión y flujos financieros son propuestas, no implementaciones aprobadas.
-Esta entrega aplica sólo infraestructura. La raíz original se conserva; no hay
-backend ni aplicación anidada, rutas funcionales, servicios ficticios o mocks activos
-en la aplicación. MSW existe únicamente en pruebas.
+La raíz original se conserva; no hay backend ni aplicación anidada. La ruta `/`
+compone la landing institucional desde `features/landing`, con datos estáticos de
+presentación y controles locales. No hay servicios ficticios, sesiones simuladas
+ni mocks HTTP activos. MSW existe únicamente en pruebas. Ver
+[alcance de la landing](../development/landing.md).
 
 ## Responsabilidades y dependencias
 

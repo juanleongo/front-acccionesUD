@@ -2,21 +2,31 @@
 import { render, screen } from '@testing-library/react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { QueryClient } from '@tanstack/react-query';
-import { expect, it } from 'vitest';
+import { expect, it, vi } from 'vitest';
 import HomePage from './page';
 import { Providers } from './providers';
 
-it('renders the technical landing page', () => {
+it('renders the institutional landing with clearly identified preview data', () => {
+  vi.stubGlobal('matchMedia', () => ({ matches: true }));
   render(
     <Providers>
       <HomePage />
     </Providers>,
   );
   expect(
-    screen.getByRole('heading', { name: 'Acciones UD', level: 1 }),
+    screen.getByRole('heading', {
+      name: /De tener curiosidad por la bolsa/,
+      level: 1,
+    }),
   ).toBeVisible();
   expect(
-    screen.getByText('La infraestructura inicial está preparada.'),
+    screen.getByText(
+      /Datos de demostración. Cotizaciones y estados ilustrativos/,
+    ),
+  ).toBeVisible();
+  expect(screen.getByRole('table')).toBeVisible();
+  expect(
+    screen.getByRole('heading', { name: '¿Por qué operar con Acciones UD?' }),
   ).toBeVisible();
 });
 

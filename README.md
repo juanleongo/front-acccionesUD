@@ -1,9 +1,12 @@
 # Acciones UD — Frontend
 
-Infraestructura inicial de la plataforma. Aplicación Next.js independiente de
-FastAPI, preparada para desarrollo modular colaborativo. La única ruta es `/`,
-una verificación de arranque. No incluye autenticación, módulos financieros,
-integraciones reales ni servicios de negocio simulados.
+Frontend de Acciones UD. Aplicación Next.js independiente de FastAPI, preparada
+para desarrollo modular colaborativo. La ruta `/` presenta la landing institucional
+con temas claro y oscuro, navegación adaptable y explorador con datos de muestra.
+No incluye autenticación, operaciones financieras ni integraciones reales.
+
+La implementación y los puntos de conexión futuros están documentados en
+[la guía de la landing](docs/development/landing.md).
 
 ## Requisitos y stack fijado
 
@@ -91,9 +94,9 @@ contracts/                  # OpenAPI real pendiente e instrucciones
 docs/architecture/          # Responsabilidades, seguridad y ADR FE-01 a FE-09
 docs/development/           # Guía de equipo y despliegue
 scripts/                    # Verificador AST/grafo y generación OpenAPI
-src/app/                    # Layout, proveedor global y página mínima
-src/features/               # Sólo README; sin módulos funcionales
-src/components/             # Sólo README; UI reutilizable futura
+src/app/                    # Layout, proveedor global y composición de la landing
+src/features/landing/       # Secciones, controles locales y datos de presentación
+src/components/ui/          # Iconos SVG reutilizables, sin dependencias externas
 src/lib/api/                # Puerto, adaptadores Fetch, errores y políticas Query
 src/lib/config/             # Esquema y acceso perezoso a entorno servidor
 src/lib/realtime/           # Contratos técnicos; sin conexiones
@@ -109,3 +112,12 @@ de contratos aprobados; ver [contracts](contracts/README.md) y
 [decisiones y dependencias](docs/architecture/decisions.md).
 
 Resultados ejecutados y limitación local de Firefox: [registro de verificación](docs/development/verification.md).
+
+## Dashboard principal
+
+La vista `/dashboard` reproduce el panel de control en ambos temas con datos de
+muestra. Está preparada como destino de login/registro; la autenticación y las
+operaciones siguen pendientes. Consulta [su guía](docs/development/dashboard.md).
+
+Si el puerto 3000 está ocupado, las pruebas admiten `PLAYWRIGHT_PORT` (por ejemplo,
+`$env:PLAYWRIGHT_PORT='3100'; npm run test:e2e` en PowerShell).
