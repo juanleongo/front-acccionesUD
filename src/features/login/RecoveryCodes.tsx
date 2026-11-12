@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, type ReactNode } from 'react';
+import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import styles from './login.module.css';
 
@@ -33,10 +34,12 @@ export function usePendingCodes() {
 export function RecoveryCodesDisplay({
   codes,
   onDismiss,
-  dismissText = 'Ya guardé mis códigos',
+  dismissHref,
+  dismissText = 'Ya guardé los códigos',
 }: {
   codes: string[];
   onDismiss?: () => void;
+  dismissHref?: string;
   dismissText?: string;
 }) {
   const [copied, setCopied] = useState(false);
@@ -122,7 +125,11 @@ ${codes.map((c, i) => `[ ${String(i + 1).padStart(2, '0')} ]  ${c}`).join('\n')}
         >
           ⬇ Descargar respaldo (.txt)
         </button>
-        {onDismiss && (
+        {dismissHref ? (
+          <Link href={dismissHref} className={styles.recoveryBtnPrimary}>
+            {dismissText}
+          </Link>
+        ) : onDismiss ? (
           <button
             type="button"
             onClick={onDismiss}
@@ -130,7 +137,7 @@ ${codes.map((c, i) => `[ ${String(i + 1).padStart(2, '0')} ]  ${c}`).join('\n')}
           >
             {dismissText}
           </button>
-        )}
+        ) : null}
       </div>
     </section>
   );

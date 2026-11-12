@@ -42,11 +42,13 @@ for (const firstAccess of [true, false]) {
       });
       await page.goto('/');
       await page
+        .getByRole('banner')
         .getByRole('link', { name: 'Iniciar sesión' })
-        .filter({ visible: true })
         .click();
       await page.getByLabel('Correo electrónico').fill('ana@example.com');
-      await page.getByLabel('Contraseña').fill('ExamplePassword');
+      await page
+        .getByLabel('Contraseña', { exact: true })
+        .fill('ExamplePassword');
       await page.getByRole('button', { name: 'Iniciar sesión' }).click();
       if (firstAccess) {
         await expect(page.getByText('SETUPKEY', { exact: true })).toBeVisible();

@@ -70,7 +70,7 @@ test('dashboard consulta el catálogo, reloj, estado diario y calendario', async
   });
   await page.goto('/dashboard');
   await expect(
-    page.getByRole('heading', { name: 'Reloj bursátil' }),
+    page.getByRole('heading', { name: /Reloj bursátil/ }),
   ).toBeVisible();
   await expect(page.getByText('Sin negociación')).toBeVisible();
   await expect(

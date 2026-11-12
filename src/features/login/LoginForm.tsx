@@ -241,6 +241,11 @@ export function LoginForm({
           {codes ? (
             <RecoveryCodesDisplay
               codes={codes}
+              dismissHref={
+                isAdminLogin || emailValue === 'admin@example.com'
+                  ? '/admin'
+                  : '/dashboard'
+              }
               onDismiss={() =>
                 router.replace(
                   isAdminLogin || emailValue === 'admin@example.com'
@@ -289,53 +294,45 @@ export function LoginForm({
                   </>
                 ) : (
                   <>
-                    <label>
-                      Correo electrónico
+                    <label htmlFor="login-email">Correo electrónico</label>
+                    <input
+                      id="login-email"
+                      type="email"
+                      name="email"
+                      value={emailValue}
+                      onChange={(e) => setEmailValue(e.target.value)}
+                      placeholder="correo@ejemplo.com"
+                      autoComplete="username"
+                      required
+                    />
+                    <label htmlFor="login-password">Contraseña</label>
+                    <div className={styles.passwordWrapper}>
                       <input
-                        type="email"
-                        name="email"
-                        value={emailValue}
-                        onChange={(e) => setEmailValue(e.target.value)}
-                        placeholder="correo@ejemplo.com"
-                        autoComplete="username"
+                        id="login-password"
+                        type={showPassword ? 'text' : 'password'}
+                        name="password"
+                        value={passwordValue}
+                        onChange={(e) => setPasswordValue(e.target.value)}
+                        placeholder="Tu contraseña"
+                        autoComplete="current-password"
+                        maxLength={128}
                         required
                       />
-                    </label>
-                    <label>
-                      Contraseña
-                      <div className={styles.passwordWrapper}>
-                        <input
-                          type={showPassword ? 'text' : 'password'}
-                          name="password"
-                          value={passwordValue}
-                          onChange={(e) => setPasswordValue(e.target.value)}
-                          placeholder="Tu contraseña"
-                          autoComplete="current-password"
-                          maxLength={128}
-                          required
+                      <button
+                        type="button"
+                        className={styles.passwordToggle}
+                        onClick={() => setShowPassword((prev) => !prev)}
+                        aria-label={
+                          showPassword ? 'Ocultar clave' : 'Mostrar clave'
+                        }
+                        title={showPassword ? 'Ocultar clave' : 'Mostrar clave'}
+                      >
+                        <Icon
+                          name={showPassword ? 'eyeOff' : 'eye'}
+                          size={18}
                         />
-                        <button
-                          type="button"
-                          className={styles.passwordToggle}
-                          onClick={() => setShowPassword((prev) => !prev)}
-                          aria-label={
-                            showPassword
-                              ? 'Ocultar contraseña'
-                              : 'Mostrar contraseña'
-                          }
-                          title={
-                            showPassword
-                              ? 'Ocultar contraseña'
-                              : 'Mostrar contraseña'
-                          }
-                        >
-                          <Icon
-                            name={showPassword ? 'eyeOff' : 'eye'}
-                            size={18}
-                          />
-                        </button>
-                      </div>
-                    </label>
+                      </button>
+                    </div>
                   </>
                 )}
                 <button type="submit">

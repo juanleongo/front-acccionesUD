@@ -444,15 +444,27 @@ export function RegistrationForm({ kind }: { kind: RegistrationKind }) {
                   <div className={`${styles.field} ${styles.fullWidth}`}>
                     <label
                       className={styles.fieldLabel}
-                      htmlFor="interests_picker"
+                      htmlFor="interests_input"
                     >
-                      Intereses bursátiles (opcional)
+                      Intereses (opcional)
                     </label>
                     <div className={styles.fieldControl}>
+                      <textarea
+                        id="interests_input"
+                        name="interests"
+                        rows={2}
+                        placeholder="Escribe tus intereses bursátiles o elígelos de la lista (ej. Tecnología, Banca, Petróleo)"
+                        aria-describedby="interests-help"
+                      />
+                    </div>
+                    <div
+                      className={styles.fieldControl}
+                      style={{ marginTop: '0.5rem' }}
+                    >
                       <select
                         id="interests_picker"
+                        aria-label="Catálogo rápido de intereses"
                         value={pickerValue}
-                        aria-describedby="interests-help"
                         onChange={(event) => {
                           const chosen = event.target.value;
                           setPickerValue('');
@@ -460,8 +472,8 @@ export function RegistrationForm({ kind }: { kind: RegistrationKind }) {
                         }}
                       >
                         <option value="">
-                          Selecciona tus mercados de interés (Oro, Petróleo,
-                          Tecnología, Banca, etc.)
+                          + Agregar sector rápido (Oro, Petróleo, Tecnología,
+                          Banca...)
                         </option>
                         {marketInterestsCatalog.map((item) => (
                           <option
@@ -475,8 +487,8 @@ export function RegistrationForm({ kind }: { kind: RegistrationKind }) {
                       </select>
                     </div>
                     <small id="interests-help" className={styles.fieldHelp}>
-                      Elige uno o varios sectores del mercado estadounidense en
-                      la lista desplegable.
+                      Escribe tus sectores de interés o agrégalos rápidamente
+                      con el selector desplegable.
                     </small>
                   </div>
                 </div>

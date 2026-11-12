@@ -936,6 +936,9 @@ export function Dashboard({
                     </button>
                   </section>
                 </div>
+                <div style={{ marginTop: '2rem' }}>
+                  <Markets />
+                </div>
               </div>
             </>
           )}

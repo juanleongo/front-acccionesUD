@@ -88,7 +88,7 @@ for (const broker of [false, true]) {
       ] as const) {
         await page.locator('[name="' + key + '"]').fill(expected[key]);
       }
-      await page.getByLabel('País').selectOption('CO');
+      await page.locator('select[name="country"]').selectOption('CO');
       if (broker) {
         await page.getByLabel('Nombre de la firma').fill('Firma Uno');
         await page.getByLabel('Número de licencia profesional').fill('LIC-24');
