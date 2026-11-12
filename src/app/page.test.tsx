@@ -15,7 +15,7 @@ it('links the landing to live markets', () => {
   expect(
     screen.getByRole('link', { name: 'Explorar mercados' }),
   ).toHaveAttribute('href', '/markets');
-  expect(screen.queryByRole('table')).toBeNull();
+  expect(screen.getByRole('table')).toBeDefined();
 });
 it('keeps the provider client stable across re-renders and isolated between mounts', () => {
   const clients: QueryClient[] = [];

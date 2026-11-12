@@ -1,12 +1,12 @@
-import Link from 'next/link';
-import { Markets } from '@/features/markets';
-export const metadata = { title: 'Mercados | Acciones UD' };
+import type { Metadata } from 'next';
+import { Dashboard } from '@/features/dashboard';
+
+export const metadata: Metadata = {
+  title: 'Mercados en Vivo | Acciones UD',
+  description:
+    'Explorador bursátil en tiempo real de mercados de EE. UU. (NYSE, NASDAQ y AMEX).',
+};
+
 export default function MarketsPage() {
-  return (
-    <main style={{ maxWidth: '65rem', margin: 'auto', padding: '1.5rem' }}>
-      <Link href="/dashboard">← Dashboard</Link>
-      <h1>Explorador de mercados</h1>
-      <Markets />
-    </main>
-  );
+  return <Dashboard initialSection="markets" />;
 }

@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
 :root {
   color-scheme: dark;
   --color-background: #0c0e13;
@@ -44,7 +46,9 @@
   --color-error-surface: #fff0f1;
   --color-success: #34d399;
   --color-focus: #8592ff;
-  --font-family-body: Arial, Helvetica, system-ui, sans-serif;
+  --font-family-body:
+    'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont,
+    'Segoe UI', Roboto, sans-serif;
   --font-size-sm: 0.875rem;
   --font-size-base: 1rem;
   --font-size-title: clamp(2rem, 5vw, 3rem);

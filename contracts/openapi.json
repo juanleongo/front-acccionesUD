@@ -1,0 +1,7560 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Acciones UD API",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/v1/auth/register": {
+      "post": {
+        "tags": [
+          "authentication"
+        ],
+        "summary": "Register Investor",
+        "operationId": "register_investor_api_v1_auth_register_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterInvestorIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistrationOut"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/register/broker": {
+      "post": {
+        "tags": [
+          "authentication"
+        ],
+        "summary": "Register Broker",
+        "operationId": "register_broker_api_v1_auth_register_broker_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterBrokerIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistrationOut"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": [
+          "authentication"
+        ],
+        "summary": "Login",
+        "operationId": "login_api_v1_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/mfa/verify": {
+      "post": {
+        "tags": [
+          "authentication"
+        ],
+        "summary": "Verify Mfa",
+        "operationId": "verify_mfa_api_v1_auth_mfa_verify_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MfaVerifyIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MfaVerifyOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/users/administrators": {
+      "post": {
+        "tags": [
+          "identity administration"
+        ],
+        "summary": "Create Administrator",
+        "operationId": "create_administrator_api_v1_admin_users_administrators_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterBaseIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistrationOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/users/{user_id}/broker-activation": {
+      "post": {
+        "tags": [
+          "identity administration"
+        ],
+        "summary": "Activate Broker",
+        "operationId": "activate_broker_api_v1_admin_users__user_id__broker_activation_post",
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrokerActivationOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/users/{user_id}/premium": {
+      "put": {
+        "tags": [
+          "identity administration"
+        ],
+        "summary": "Premium",
+        "operationId": "premium_api_v1_admin_users__user_id__premium_put",
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "User Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PremiumIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PremiumOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/users/{user_id}/roles": {
+      "get": {
+        "tags": [
+          "identity administration"
+        ],
+        "summary": "Assignments",
+        "operationId": "assignments_api_v1_admin_users__user_id__roles_get",
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RoleAssignmentOut"
+                  },
+                  "title": "Response Assignments Api V1 Admin Users  User Id  Roles Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "identity administration"
+        ],
+        "summary": "Create Assignment",
+        "operationId": "create_assignment_api_v1_admin_users__user_id__roles_post",
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "User Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAssignmentIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleAssignmentOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/users/{user_id}/roles/{assignment_id}": {
+      "put": {
+        "tags": [
+          "identity administration"
+        ],
+        "summary": "Update Assignment",
+        "operationId": "update_assignment_api_v1_admin_users__user_id__roles__assignment_id__put",
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "User Id"
+            }
+          },
+          {
+            "name": "assignment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Assignment Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignmentIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleAssignmentOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/users/{user_id}/roles/{assignment_id}/revoke": {
+      "post": {
+        "tags": [
+          "identity administration"
+        ],
+        "summary": "Revoke Assignment",
+        "operationId": "revoke_assignment_api_v1_admin_users__user_id__roles__assignment_id__revoke_post",
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "User Id"
+            }
+          },
+          {
+            "name": "assignment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Assignment Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleAssignmentOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/roles": {
+      "get": {
+        "tags": [
+          "identity administration"
+        ],
+        "summary": "Roles",
+        "operationId": "roles_api_v1_admin_roles_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RoleOut"
+                  },
+                  "type": "array",
+                  "title": "Response Roles Api V1 Admin Roles Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/permissions": {
+      "get": {
+        "tags": [
+          "identity administration"
+        ],
+        "summary": "Permissions",
+        "operationId": "permissions_api_v1_admin_permissions_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PermissionOut"
+                  },
+                  "type": "array",
+                  "title": "Response Permissions Api V1 Admin Permissions Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/roles/{role}/permissions": {
+      "post": {
+        "tags": [
+          "identity administration"
+        ],
+        "summary": "Add Permission",
+        "operationId": "add_permission_api_v1_admin_roles__role__permissions_post",
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "role",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Role"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PermissionIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/roles/{role}/permissions/{permission_code}": {
+      "delete": {
+        "tags": [
+          "identity administration"
+        ],
+        "summary": "Remove Permission",
+        "operationId": "remove_permission_api_v1_admin_roles__role__permissions__permission_code__delete",
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "role",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Role"
+            }
+          },
+          {
+            "name": "permission_code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Permission Code"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/refresh": {
+      "post": {
+        "tags": [
+          "sessions"
+        ],
+        "summary": "Refresh",
+        "operationId": "refresh_api_v1_auth_refresh_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefreshOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "RefreshTokenCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "tags": [
+          "sessions"
+        ],
+        "summary": "Logout",
+        "operationId": "logout_api_v1_auth_logout_post",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v1/users/me/sessions": {
+      "get": {
+        "tags": [
+          "sessions"
+        ],
+        "summary": "List Sessions",
+        "operationId": "list_sessions_api_v1_users_me_sessions_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SessionOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Sessions Api V1 Users Me Sessions Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v1/users/me/sessions/{session_id}": {
+      "delete": {
+        "tags": [
+          "sessions"
+        ],
+        "summary": "Close Session",
+        "operationId": "close_session_api_v1_users_me_sessions__session_id__delete",
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/users/me/sessions/revoke-others": {
+      "post": {
+        "tags": [
+          "sessions"
+        ],
+        "summary": "Revoke Others",
+        "operationId": "revoke_others_api_v1_users_me_sessions_revoke_others_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevokedCountOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v1/users/me": {
+      "get": {
+        "tags": [
+          "account"
+        ],
+        "summary": "Me",
+        "operationId": "me_api_v1_users_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserMeOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v1/users/me/mfa/recovery-codes": {
+      "post": {
+        "tags": [
+          "account"
+        ],
+        "summary": "Regenerate Codes",
+        "operationId": "regenerate_codes_api_v1_users_me_mfa_recovery_codes_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "type": "object",
+                  "title": "Response Regenerate Codes Api V1 Users Me Mfa Recovery Codes Post"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v1/users/me/interests": {
+      "put": {
+        "tags": [
+          "account"
+        ],
+        "summary": "Interests",
+        "operationId": "interests_api_v1_users_me_interests_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InterestsIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InterestsIn"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v1/users/preferences/channels": {
+      "get": {
+        "tags": [
+          "preferences"
+        ],
+        "summary": "Channels",
+        "operationId": "channels_api_v1_users_preferences_channels_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreferencesIn"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "preferences"
+        ],
+        "summary": "Put Channels",
+        "operationId": "put_channels_api_v1_users_preferences_channels_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreferencesIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreferencesIn"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v1/users/preferences/portfolio": {
+      "get": {
+        "tags": [
+          "preferences"
+        ],
+        "summary": "Portfolio",
+        "operationId": "portfolio_api_v1_users_preferences_portfolio_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortfolioViewIn-Output"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "preferences"
+        ],
+        "summary": "Put Portfolio",
+        "operationId": "put_portfolio_api_v1_users_preferences_portfolio_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PortfolioViewIn-Input"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortfolioViewIn-Output"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v1/users/preferences/orders": {
+      "get": {
+        "tags": [
+          "preferences"
+        ],
+        "summary": "Orders",
+        "operationId": "orders_api_v1_users_preferences_orders_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderControlsIn-Output"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "preferences"
+        ],
+        "summary": "Put Orders",
+        "operationId": "put_orders_api_v1_users_preferences_orders_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrderControlsIn-Input"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderControlsIn-Output"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v1/users/me/telegram": {
+      "put": {
+        "tags": [
+          "preferences"
+        ],
+        "summary": "Telegram",
+        "operationId": "telegram_api_v1_users_me_telegram_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TelegramIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelegramIn"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v1/kyc/status": {
+      "get": {
+        "tags": [
+          "KYC"
+        ],
+        "summary": "Status",
+        "operationId": "status_api_v1_kyc_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KycStatusOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v1/kyc/account": {
+      "post": {
+        "tags": [
+          "KYC"
+        ],
+        "summary": "Submit",
+        "operationId": "submit_api_v1_kyc_account_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KycSubmissionIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KycAccountOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Bad Gateway",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v1/markets": {
+      "get": {
+        "tags": [
+          "Markets"
+        ],
+        "summary": "List Markets",
+        "operationId": "list_markets_api_v1_markets_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MarketOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Markets Api V1 Markets Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Bad Gateway",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v1/markets/calendar": {
+      "get": {
+        "tags": [
+          "Markets"
+        ],
+        "summary": "Calendar",
+        "operationId": "calendar_api_v1_markets_calendar_get",
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "start",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "First date (YYYY-MM-DD).",
+              "title": "Start"
+            },
+            "description": "First date (YYYY-MM-DD)."
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "Last date (YYYY-MM-DD), at most 366 days after start.",
+              "title": "End"
+            },
+            "description": "Last date (YYYY-MM-DD), at most 366 days after start."
+          },
+          {
+            "name": "tz",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "IANA time zone, defaults to America/New_York.",
+              "title": "Tz"
+            },
+            "description": "IANA time zone, defaults to America/New_York."
+          },
+          {
+            "name": "market",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Market"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/markets/clock": {
+      "get": {
+        "tags": [
+          "Markets"
+        ],
+        "summary": "Clock",
+        "operationId": "clock_api_v1_markets_clock_get",
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tz",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "IANA time zone, defaults to America/New_York.",
+              "title": "Tz"
+            },
+            "description": "IANA time zone, defaults to America/New_York."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClockOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/markets/{market_code}/status": {
+      "get": {
+        "tags": [
+          "Markets"
+        ],
+        "summary": "Status",
+        "operationId": "status_api_v1_markets__market_code__status_get",
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "market_code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Market Code"
+            }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "Date to inspect (YYYY-MM-DD).",
+              "title": "Date"
+            },
+            "description": "Date to inspect (YYYY-MM-DD)."
+          },
+          {
+            "name": "tz",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "IANA time zone, defaults to America/New_York.",
+              "title": "Tz"
+            },
+            "description": "IANA time zone, defaults to America/New_York."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarketStatusOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/instruments/search": {
+      "get": {
+        "tags": [
+          "Instruments"
+        ],
+        "summary": "Search",
+        "operationId": "search_api_v1_instruments_search_get",
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Symbol prefix or name fragment, trimmed 1-50 characters.",
+              "title": "Q"
+            },
+            "description": "Symbol prefix or name fragment, trimmed 1-50 characters."
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "exchange",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Exchange"
+            }
+          },
+          {
+            "name": "classification",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^(tradable|view_only)$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Classification"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/instruments/{symbol}/quote": {
+      "get": {
+        "tags": [
+          "Instruments"
+        ],
+        "summary": "Quote",
+        "operationId": "quote_api_v1_instruments__symbol__quote_get",
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Symbol"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuoteOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/instruments/{symbol}/candles": {
+      "get": {
+        "tags": [
+          "Instruments"
+        ],
+        "summary": "Candles",
+        "operationId": "candles_api_v1_instruments__symbol__candles_get",
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Symbol"
+            }
+          },
+          {
+            "name": "timeframe",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "1Min, 5Min, 15Min, 1Hour or 1Day.",
+              "title": "Timeframe"
+            },
+            "description": "1Min, 5Min, 15Min, 1Hour or 1Day."
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "ISO 8601 date or datetime.",
+              "title": "Start"
+            },
+            "description": "ISO 8601 date or datetime."
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "ISO 8601 date or datetime; a date means its end (UTC).",
+              "title": "End"
+            },
+            "description": "ISO 8601 date or datetime; a date means its end (UTC)."
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 10000,
+              "minimum": 1,
+              "default": 1000,
+              "title": "Page Size"
+            }
+          },
+          {
+            "name": "page_token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Page Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandlesOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/instruments/{symbol}/depth": {
+      "get": {
+        "tags": [
+          "Instruments"
+        ],
+        "summary": "Depth",
+        "operationId": "depth_api_v1_instruments__symbol__depth_get",
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Symbol"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DepthOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/instruments/{symbol}": {
+      "get": {
+        "tags": [
+          "Instruments"
+        ],
+        "summary": "Detail",
+        "operationId": "detail_api_v1_instruments__symbol__get",
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Symbol"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetDetailOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/markets/{market_code}/default-schedule": {
+      "put": {
+        "tags": [
+          "Markets administration"
+        ],
+        "summary": "Set Default Schedule",
+        "operationId": "set_default_schedule_api_v1_admin_markets__market_code__default_schedule_put",
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "market_code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Market Code"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DefaultScheduleIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultScheduleOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Markets administration"
+        ],
+        "summary": "Clear Default Schedule",
+        "operationId": "clear_default_schedule_api_v1_admin_markets__market_code__default_schedule_delete",
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "market_code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Market Code"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/markets/{market_code}/schedule-overrides": {
+      "get": {
+        "tags": [
+          "Markets administration"
+        ],
+        "summary": "List Overrides",
+        "operationId": "list_overrides_api_v1_admin_markets__market_code__schedule_overrides_get",
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "market_code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Market Code"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ScheduleOverrideOut"
+                  },
+                  "title": "Response List Overrides Api V1 Admin Markets  Market Code  Schedule Overrides Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Markets administration"
+        ],
+        "summary": "Create Override",
+        "operationId": "create_override_api_v1_admin_markets__market_code__schedule_overrides_post",
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "market_code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Market Code"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleOverrideIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleOverrideOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/markets/{market_code}/schedule-overrides/{override_id}": {
+      "put": {
+        "tags": [
+          "Markets administration"
+        ],
+        "summary": "Update Override",
+        "operationId": "update_override_api_v1_admin_markets__market_code__schedule_overrides__override_id__put",
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "market_code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Market Code"
+            }
+          },
+          {
+            "name": "override_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Override Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleOverrideUpdateIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleOverrideOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Markets administration"
+        ],
+        "summary": "Delete Override",
+        "operationId": "delete_override_api_v1_admin_markets__market_code__schedule_overrides__override_id__delete",
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "market_code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Market Code"
+            }
+          },
+          {
+            "name": "override_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Override Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/watchlists": {
+      "get": {
+        "tags": [
+          "Watchlists"
+        ],
+        "summary": "List Watchlists",
+        "operationId": "list_watchlists_api_v1_watchlists_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/WatchlistOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Watchlists Api V1 Watchlists Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Watchlists"
+        ],
+        "summary": "Create Watchlist",
+        "operationId": "create_watchlist_api_v1_watchlists_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WatchlistIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WatchlistOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v1/watchlists/{watchlist_id}": {
+      "get": {
+        "tags": [
+          "Watchlists"
+        ],
+        "summary": "Get Watchlist",
+        "operationId": "get_watchlist_api_v1_watchlists__watchlist_id__get",
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "watchlist_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Watchlist Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WatchlistOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/watchlists/{watchlist_id}/items": {
+      "post": {
+        "tags": [
+          "Watchlists"
+        ],
+        "summary": "Add Symbol",
+        "operationId": "add_symbol_api_v1_watchlists__watchlist_id__items_post",
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "watchlist_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Watchlist Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WatchlistSymbolIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WatchlistOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/watchlists/{watchlist_id}/items/{symbol}": {
+      "delete": {
+        "tags": [
+          "Watchlists"
+        ],
+        "summary": "Remove Symbol",
+        "operationId": "remove_symbol_api_v1_watchlists__watchlist_id__items__symbol__delete",
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "watchlist_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Watchlist Id"
+            }
+          },
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Symbol"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WatchlistOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/price-alerts": {
+      "get": {
+        "tags": [
+          "Price alerts"
+        ],
+        "summary": "List Alerts",
+        "operationId": "list_alerts_api_v1_price_alerts_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AlertOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Alerts Api V1 Price Alerts Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Price alerts"
+        ],
+        "summary": "Create Alert",
+        "operationId": "create_alert_api_v1_price_alerts_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlertIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v1/price-alerts/{alert_id}/activate": {
+      "post": {
+        "tags": [
+          "Price alerts"
+        ],
+        "summary": "Activate Alert",
+        "operationId": "activate_alert_api_v1_price_alerts__alert_id__activate_post",
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "alert_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Alert Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/price-alerts/{alert_id}/deactivate": {
+      "post": {
+        "tags": [
+          "Price alerts"
+        ],
+        "summary": "Deactivate Alert",
+        "operationId": "deactivate_alert_api_v1_price_alerts__alert_id__deactivate_post",
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "alert_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Alert Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/price-alerts/{alert_id}": {
+      "delete": {
+        "tags": [
+          "Price alerts"
+        ],
+        "summary": "Delete Alert",
+        "operationId": "delete_alert_api_v1_price_alerts__alert_id__delete",
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "alert_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Alert Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/notifications": {
+      "get": {
+        "tags": [
+          "Notifications"
+        ],
+        "summary": "List Notifications",
+        "operationId": "list_notifications_api_v1_notifications_get",
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Page Size"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NotificationOut"
+                  },
+                  "title": "Response List Notifications Api V1 Notifications Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/v1/dashboard": {
+      "get": {
+        "tags": [
+          "Dashboard"
+        ],
+        "summary": "Dashboard",
+        "operationId": "dashboard_api_v1_dashboard_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "AccessTokenCookie": []
+          }
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Health Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AgreementsIn": {
+        "properties": {
+          "customer_agreement": {
+            "type": "boolean",
+            "title": "Customer Agreement"
+          },
+          "account_agreement": {
+            "type": "boolean",
+            "title": "Account Agreement"
+          },
+          "margin_agreement": {
+            "type": "boolean",
+            "title": "Margin Agreement"
+          }
+        },
+        "type": "object",
+        "required": [
+          "customer_agreement",
+          "account_agreement",
+          "margin_agreement"
+        ],
+        "title": "AgreementsIn"
+      },
+      "AlertIn": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "comparator": {
+            "type": "string",
+            "enum": [
+              "above",
+              "below",
+              "crosses"
+            ],
+            "title": "Comparator"
+          },
+          "threshold": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 999999999.99,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Threshold"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "comparator",
+          "threshold"
+        ],
+        "title": "AlertIn"
+      },
+      "AlertOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "comparator": {
+            "type": "string",
+            "title": "Comparator"
+          },
+          "threshold": {
+            "type": "string",
+            "title": "Threshold"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "triggered_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Triggered At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "symbol",
+          "comparator",
+          "threshold",
+          "status",
+          "created_at",
+          "triggered_at"
+        ],
+        "title": "AlertOut"
+      },
+      "AssetDetailOut": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "exchange": {
+            "type": "string",
+            "title": "Exchange"
+          },
+          "asset_class": {
+            "type": "string",
+            "title": "Asset Class"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "tradable": {
+            "type": "boolean",
+            "title": "Tradable"
+          },
+          "marginable": {
+            "type": "boolean",
+            "title": "Marginable"
+          },
+          "shortable": {
+            "type": "boolean",
+            "title": "Shortable"
+          },
+          "easy_to_borrow": {
+            "type": "boolean",
+            "title": "Easy To Borrow"
+          },
+          "fractionable": {
+            "type": "boolean",
+            "title": "Fractionable"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "name",
+          "exchange",
+          "asset_class",
+          "status",
+          "tradable",
+          "marginable",
+          "shortable",
+          "easy_to_borrow",
+          "fractionable"
+        ],
+        "title": "AssetDetailOut"
+      },
+      "AssignmentIn": {
+        "properties": {
+          "valid_from": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Valid From"
+          },
+          "valid_to": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid To"
+          }
+        },
+        "type": "object",
+        "required": [
+          "valid_from"
+        ],
+        "title": "AssignmentIn"
+      },
+      "AssignmentStatus": {
+        "type": "string",
+        "enum": [
+          "ACTIVE",
+          "CANCELLED"
+        ],
+        "title": "AssignmentStatus"
+      },
+      "AuthUserOut": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "User Id"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "account_status": {
+            "type": "string",
+            "title": "Account Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_id",
+          "email",
+          "account_status"
+        ],
+        "title": "AuthUserOut"
+      },
+      "BrokerActivationOut": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "User Id"
+          },
+          "account_status": {
+            "type": "string",
+            "const": "active",
+            "title": "Account Status"
+          },
+          "role_assignment": {
+            "$ref": "#/components/schemas/RoleAssignmentOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_id",
+          "account_status",
+          "role_assignment"
+        ],
+        "title": "BrokerActivationOut"
+      },
+      "CalendarDayOut": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "open_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Open At"
+          },
+          "close_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Close At"
+          },
+          "override": {
+            "type": "boolean",
+            "title": "Override"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "kind",
+          "open_at",
+          "close_at",
+          "override"
+        ],
+        "title": "CalendarDayOut"
+      },
+      "CalendarOut": {
+        "properties": {
+          "time_zone": {
+            "type": "string",
+            "title": "Time Zone"
+          },
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/CalendarDayOut"
+            },
+            "type": "array",
+            "title": "Days"
+          }
+        },
+        "type": "object",
+        "required": [
+          "time_zone",
+          "days"
+        ],
+        "title": "CalendarOut"
+      },
+      "CandleBarOut": {
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Timestamp"
+          },
+          "open": {
+            "type": "string",
+            "title": "Open"
+          },
+          "high": {
+            "type": "string",
+            "title": "High"
+          },
+          "low": {
+            "type": "string",
+            "title": "Low"
+          },
+          "close": {
+            "type": "string",
+            "title": "Close"
+          },
+          "volume": {
+            "type": "integer",
+            "title": "Volume"
+          }
+        },
+        "type": "object",
+        "required": [
+          "timestamp",
+          "open",
+          "high",
+          "low",
+          "close",
+          "volume"
+        ],
+        "title": "CandleBarOut"
+      },
+      "CandlesOut": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "timeframe": {
+            "type": "string",
+            "title": "Timeframe"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "feed": {
+            "type": "string",
+            "title": "Feed"
+          },
+          "is_delayed": {
+            "type": "boolean",
+            "title": "Is Delayed"
+          },
+          "bars": {
+            "items": {
+              "$ref": "#/components/schemas/CandleBarOut"
+            },
+            "type": "array",
+            "title": "Bars"
+          },
+          "next_page_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Page Token"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "timeframe",
+          "currency",
+          "source",
+          "feed",
+          "is_delayed",
+          "bars",
+          "next_page_token"
+        ],
+        "title": "CandlesOut"
+      },
+      "ClockOut": {
+        "properties": {
+          "is_open": {
+            "type": "boolean",
+            "title": "Is Open"
+          },
+          "next_open": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Next Open"
+          },
+          "next_close": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Next Close"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Timestamp"
+          },
+          "time_zone": {
+            "type": "string",
+            "title": "Time Zone"
+          }
+        },
+        "type": "object",
+        "required": [
+          "is_open",
+          "next_open",
+          "next_close",
+          "timestamp",
+          "time_zone"
+        ],
+        "title": "ClockOut"
+      },
+      "CreateAssignmentIn": {
+        "properties": {
+          "valid_from": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Valid From"
+          },
+          "valid_to": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid To"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          }
+        },
+        "type": "object",
+        "required": [
+          "valid_from",
+          "role"
+        ],
+        "title": "CreateAssignmentIn"
+      },
+      "DashboardInstrumentOut": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price"
+          },
+          "quote_timestamp": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quote Timestamp"
+          },
+          "quote_unavailable": {
+            "type": "boolean",
+            "title": "Quote Unavailable"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "name",
+          "price",
+          "quote_timestamp",
+          "quote_unavailable"
+        ],
+        "title": "DashboardInstrumentOut"
+      },
+      "DashboardOut": {
+        "properties": {
+          "market_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Market Status"
+          },
+          "market_status_unavailable": {
+            "type": "boolean",
+            "title": "Market Status Unavailable"
+          },
+          "level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Level"
+          },
+          "beginner": {
+            "type": "boolean",
+            "title": "Beginner"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "instruments": {
+            "items": {
+              "$ref": "#/components/schemas/DashboardInstrumentOut"
+            },
+            "type": "array",
+            "title": "Instruments"
+          }
+        },
+        "type": "object",
+        "required": [
+          "market_status",
+          "market_status_unavailable",
+          "level",
+          "beginner",
+          "source",
+          "instruments"
+        ],
+        "title": "DashboardOut"
+      },
+      "DefaultScheduleIn": {
+        "properties": {
+          "open_time": {
+            "type": "string",
+            "format": "time",
+            "title": "Open Time"
+          },
+          "close_time": {
+            "type": "string",
+            "format": "time",
+            "title": "Close Time"
+          }
+        },
+        "type": "object",
+        "required": [
+          "open_time",
+          "close_time"
+        ],
+        "title": "DefaultScheduleIn"
+      },
+      "DefaultScheduleOut": {
+        "properties": {
+          "market": {
+            "type": "string",
+            "title": "Market"
+          },
+          "open_time": {
+            "type": "string",
+            "format": "time",
+            "title": "Open Time"
+          },
+          "close_time": {
+            "type": "string",
+            "format": "time",
+            "title": "Close Time"
+          }
+        },
+        "type": "object",
+        "required": [
+          "market",
+          "open_time",
+          "close_time"
+        ],
+        "title": "DefaultScheduleOut"
+      },
+      "DepthLevelOut": {
+        "properties": {
+          "bid_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bid Price"
+          },
+          "bid_size": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bid Size"
+          },
+          "ask_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ask Price"
+          },
+          "ask_size": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ask Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "bid_price",
+          "bid_size",
+          "ask_price",
+          "ask_size"
+        ],
+        "title": "DepthLevelOut"
+      },
+      "DepthOut": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "levels": {
+            "items": {
+              "$ref": "#/components/schemas/DepthLevelOut"
+            },
+            "type": "array",
+            "title": "Levels"
+          },
+          "full_depth_available": {
+            "type": "boolean",
+            "title": "Full Depth Available"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "feed": {
+            "type": "string",
+            "title": "Feed"
+          },
+          "as_of": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          },
+          "data_age_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Age Seconds"
+          },
+          "is_delayed": {
+            "type": "boolean",
+            "title": "Is Delayed"
+          },
+          "is_stale": {
+            "type": "boolean",
+            "title": "Is Stale"
+          },
+          "served_from_cache": {
+            "type": "boolean",
+            "title": "Served From Cache"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "levels",
+          "full_depth_available",
+          "currency",
+          "source",
+          "feed",
+          "as_of",
+          "data_age_seconds",
+          "is_delayed",
+          "is_stale",
+          "served_from_cache"
+        ],
+        "title": "DepthOut"
+      },
+      "DisclosuresIn": {
+        "properties": {
+          "is_control_person": {
+            "type": "boolean",
+            "title": "Is Control Person"
+          },
+          "is_affiliated_exchange_or_finra": {
+            "type": "boolean",
+            "title": "Is Affiliated Exchange Or Finra"
+          },
+          "is_politically_exposed": {
+            "type": "boolean",
+            "title": "Is Politically Exposed"
+          },
+          "immediate_family_exposed": {
+            "type": "boolean",
+            "title": "Immediate Family Exposed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "is_control_person",
+          "is_affiliated_exchange_or_finra",
+          "is_politically_exposed",
+          "immediate_family_exposed"
+        ],
+        "title": "DisclosuresIn"
+      },
+      "EnrollmentOut": {
+        "properties": {
+          "secret": {
+            "type": "string",
+            "title": "Secret"
+          },
+          "otpauth_uri": {
+            "type": "string",
+            "title": "Otpauth Uri"
+          }
+        },
+        "type": "object",
+        "required": [
+          "secret",
+          "otpauth_uri"
+        ],
+        "title": "EnrollmentOut"
+      },
+      "ErrorBody": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "details": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Details"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ErrorBody"
+      },
+      "FinancialRangeCode": {
+        "type": "string",
+        "enum": [
+          "RANGE_1",
+          "RANGE_2",
+          "RANGE_3",
+          "RANGE_4",
+          "RANGE_5",
+          "RANGE_6",
+          "CUSTOM"
+        ],
+        "title": "FinancialRangeCode"
+      },
+      "InstrumentOut": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "exchange": {
+            "type": "string",
+            "title": "Exchange"
+          },
+          "asset_class": {
+            "type": "string",
+            "title": "Asset Class"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "sector": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sector"
+          },
+          "classification": {
+            "type": "string",
+            "title": "Classification"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "name",
+          "exchange",
+          "asset_class",
+          "status",
+          "sector",
+          "classification"
+        ],
+        "title": "InstrumentOut"
+      },
+      "InterestsIn": {
+        "properties": {
+          "interests": {
+            "items": {
+              "type": "string",
+              "maxLength": 50,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 20,
+            "minItems": 1,
+            "title": "Interests"
+          },
+          "level": {
+            "type": "string",
+            "enum": [
+              "beginner",
+              "experienced"
+            ],
+            "title": "Level"
+          }
+        },
+        "type": "object",
+        "required": [
+          "interests",
+          "level"
+        ],
+        "title": "InterestsIn"
+      },
+      "KycAccountOut": {
+        "properties": {
+          "alpaca_account_id": {
+            "type": "string",
+            "title": "Alpaca Account Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "alpaca_account_id",
+          "status"
+        ],
+        "title": "KycAccountOut"
+      },
+      "KycContactIn": {
+        "properties": {
+          "email_address": {
+            "type": "string",
+            "title": "Email Address"
+          },
+          "phone_number": {
+            "type": "string",
+            "title": "Phone Number"
+          },
+          "street_address": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 1,
+            "title": "Street Address"
+          },
+          "city": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "City"
+          },
+          "state": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "State"
+          },
+          "postal_code": {
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 1,
+            "title": "Postal Code"
+          },
+          "country": {
+            "type": "string",
+            "title": "Country"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email_address",
+          "phone_number",
+          "street_address",
+          "city",
+          "state",
+          "postal_code",
+          "country"
+        ],
+        "title": "KycContactIn"
+      },
+      "KycIdentityIn": {
+        "properties": {
+          "given_name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Given Name"
+          },
+          "family_name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Family Name"
+          },
+          "date_of_birth": {
+            "type": "string",
+            "format": "date",
+            "title": "Date Of Birth"
+          },
+          "tax_id": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 4,
+            "title": "Tax Id"
+          },
+          "tax_id_type": {
+            "type": "string",
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Tax Id Type"
+          },
+          "country_of_citizenship": {
+            "type": "string",
+            "title": "Country Of Citizenship"
+          },
+          "country_of_tax_residence": {
+            "type": "string",
+            "title": "Country Of Tax Residence"
+          },
+          "funding_source": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "employment_income",
+                "investments",
+                "inheritance",
+                "business_income",
+                "savings",
+                "family"
+              ]
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Funding Source"
+          },
+          "annual_income_range": {
+            "$ref": "#/components/schemas/FinancialRangeCode"
+          },
+          "liquid_net_worth_range": {
+            "$ref": "#/components/schemas/FinancialRangeCode"
+          },
+          "total_net_worth_range": {
+            "$ref": "#/components/schemas/FinancialRangeCode"
+          },
+          "annual_income_custom_min": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Annual Income Custom Min"
+          },
+          "annual_income_custom_max": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Annual Income Custom Max"
+          },
+          "liquid_net_worth_custom_min": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Liquid Net Worth Custom Min"
+          },
+          "liquid_net_worth_custom_max": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Liquid Net Worth Custom Max"
+          },
+          "total_net_worth_custom_min": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Net Worth Custom Min"
+          },
+          "total_net_worth_custom_max": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Net Worth Custom Max"
+          }
+        },
+        "type": "object",
+        "required": [
+          "given_name",
+          "family_name",
+          "date_of_birth",
+          "tax_id",
+          "tax_id_type",
+          "country_of_citizenship",
+          "country_of_tax_residence",
+          "funding_source",
+          "annual_income_range",
+          "liquid_net_worth_range",
+          "total_net_worth_range"
+        ],
+        "title": "KycIdentityIn"
+      },
+      "KycStatusOut": {
+        "properties": {
+          "has_account": {
+            "type": "boolean",
+            "title": "Has Account"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "status_updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Updated At"
+          },
+          "can_trade": {
+            "type": "boolean",
+            "title": "Can Trade"
+          },
+          "stale": {
+            "type": "boolean",
+            "title": "Stale"
+          }
+        },
+        "type": "object",
+        "required": [
+          "has_account",
+          "status",
+          "status_updated_at",
+          "can_trade",
+          "stale"
+        ],
+        "title": "KycStatusOut"
+      },
+      "KycSubmissionIn": {
+        "properties": {
+          "identity": {
+            "$ref": "#/components/schemas/KycIdentityIn"
+          },
+          "contact": {
+            "$ref": "#/components/schemas/KycContactIn"
+          },
+          "employment_status": {
+            "type": "string",
+            "enum": [
+              "employed",
+              "unemployed",
+              "retired",
+              "student"
+            ],
+            "title": "Employment Status"
+          },
+          "disclosures": {
+            "$ref": "#/components/schemas/DisclosuresIn"
+          },
+          "agreements": {
+            "$ref": "#/components/schemas/AgreementsIn"
+          }
+        },
+        "type": "object",
+        "required": [
+          "identity",
+          "contact",
+          "employment_status",
+          "disclosures",
+          "agreements"
+        ],
+        "title": "KycSubmissionIn"
+      },
+      "LoginIn": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "password"
+        ],
+        "title": "LoginIn"
+      },
+      "LoginOut": {
+        "properties": {
+          "mfa_token": {
+            "type": "string",
+            "title": "Mfa Token"
+          },
+          "mfa_expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Mfa Expires At"
+          },
+          "totp_enrollment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EnrollmentOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "mfa_token",
+          "mfa_expires_at",
+          "totp_enrollment"
+        ],
+        "title": "LoginOut"
+      },
+      "MarketOut": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "name"
+        ],
+        "title": "MarketOut"
+      },
+      "MarketStatusOut": {
+        "properties": {
+          "market": {
+            "type": "string",
+            "title": "Market"
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "open": {
+            "type": "boolean",
+            "title": "Open"
+          },
+          "open_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Open At"
+          },
+          "close_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Close At"
+          },
+          "override": {
+            "type": "boolean",
+            "title": "Override"
+          }
+        },
+        "type": "object",
+        "required": [
+          "market",
+          "date",
+          "open",
+          "open_at",
+          "close_at",
+          "override"
+        ],
+        "title": "MarketStatusOut"
+      },
+      "MfaVerifyIn": {
+        "properties": {
+          "mfa_token": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Mfa Token"
+          },
+          "code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-9]{6}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code"
+          },
+          "recovery_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Z0-9]{10}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recovery Code"
+          }
+        },
+        "type": "object",
+        "required": [
+          "mfa_token"
+        ],
+        "title": "MfaVerifyIn"
+      },
+      "MfaVerifyOut": {
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/AuthUserOut"
+          },
+          "recovery_codes": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recovery Codes"
+          },
+          "recovery_codes_remaining": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recovery Codes Remaining"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user",
+          "recovery_codes",
+          "recovery_codes_remaining"
+        ],
+        "title": "MfaVerifyOut"
+      },
+      "NotificationOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "event_type": {
+            "type": "string",
+            "title": "Event Type"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Payload"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "event_type",
+          "payload",
+          "created_at"
+        ],
+        "title": "NotificationOut"
+      },
+      "OrderControlsIn-Input": {
+        "properties": {
+          "default_order_type": {
+            "type": "string",
+            "enum": [
+              "market",
+              "limit",
+              "stop",
+              "stop_limit",
+              "trailing_stop"
+            ],
+            "title": "Default Order Type"
+          },
+          "daily_order_limit": {
+            "type": "integer",
+            "maximum": 1000.0,
+            "minimum": 1.0,
+            "title": "Daily Order Limit"
+          },
+          "high_order_threshold_usd": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 999999999.99,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "High Order Threshold Usd"
+          },
+          "extra_confirmation": {
+            "type": "boolean",
+            "title": "Extra Confirmation"
+          }
+        },
+        "type": "object",
+        "required": [
+          "default_order_type",
+          "daily_order_limit",
+          "high_order_threshold_usd",
+          "extra_confirmation"
+        ],
+        "title": "OrderControlsIn"
+      },
+      "OrderControlsIn-Output": {
+        "properties": {
+          "default_order_type": {
+            "type": "string",
+            "enum": [
+              "market",
+              "limit",
+              "stop",
+              "stop_limit",
+              "trailing_stop"
+            ],
+            "title": "Default Order Type"
+          },
+          "daily_order_limit": {
+            "type": "integer",
+            "maximum": 1000.0,
+            "minimum": 1.0,
+            "title": "Daily Order Limit"
+          },
+          "high_order_threshold_usd": {
+            "type": "string",
+            "title": "High Order Threshold Usd"
+          },
+          "extra_confirmation": {
+            "type": "boolean",
+            "title": "Extra Confirmation"
+          }
+        },
+        "type": "object",
+        "required": [
+          "default_order_type",
+          "daily_order_limit",
+          "high_order_threshold_usd",
+          "extra_confirmation"
+        ],
+        "title": "OrderControlsIn"
+      },
+      "PermissionIn": {
+        "properties": {
+          "permission_code": {
+            "type": "string",
+            "title": "Permission Code"
+          }
+        },
+        "type": "object",
+        "required": [
+          "permission_code"
+        ],
+        "title": "PermissionIn"
+      },
+      "PermissionOut": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "description"
+        ],
+        "title": "PermissionOut"
+      },
+      "PortfolioViewIn-Input": {
+        "properties": {
+          "view_type": {
+            "type": "string",
+            "enum": [
+              "table",
+              "cards",
+              "chart"
+            ],
+            "title": "View Type"
+          },
+          "sort_by": {
+            "type": "string",
+            "enum": [
+              "symbol",
+              "market_value",
+              "gain_loss",
+              "allocation"
+            ],
+            "title": "Sort By"
+          },
+          "sort_direction": {
+            "type": "string",
+            "enum": [
+              "asc",
+              "desc"
+            ],
+            "title": "Sort Direction"
+          },
+          "hide_threshold": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 999999999.99,
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Hide Threshold"
+          }
+        },
+        "type": "object",
+        "required": [
+          "view_type",
+          "sort_by",
+          "sort_direction",
+          "hide_threshold"
+        ],
+        "title": "PortfolioViewIn"
+      },
+      "PortfolioViewIn-Output": {
+        "properties": {
+          "view_type": {
+            "type": "string",
+            "enum": [
+              "table",
+              "cards",
+              "chart"
+            ],
+            "title": "View Type"
+          },
+          "sort_by": {
+            "type": "string",
+            "enum": [
+              "symbol",
+              "market_value",
+              "gain_loss",
+              "allocation"
+            ],
+            "title": "Sort By"
+          },
+          "sort_direction": {
+            "type": "string",
+            "enum": [
+              "asc",
+              "desc"
+            ],
+            "title": "Sort Direction"
+          },
+          "hide_threshold": {
+            "type": "string",
+            "title": "Hide Threshold"
+          }
+        },
+        "type": "object",
+        "required": [
+          "view_type",
+          "sort_by",
+          "sort_direction",
+          "hide_threshold"
+        ],
+        "title": "PortfolioViewIn"
+      },
+      "PreferenceIn": {
+        "properties": {
+          "event_type": {
+            "type": "string",
+            "enum": [
+              "market_open",
+              "market_close",
+              "proposals",
+              "approval_requests",
+              "price_changes",
+              "execution_confirmations",
+              "daily_summary"
+            ],
+            "title": "Event Type"
+          },
+          "channel": {
+            "type": "string",
+            "enum": [
+              "in_app",
+              "email",
+              "sms",
+              "telegram"
+            ],
+            "title": "Channel"
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          }
+        },
+        "type": "object",
+        "required": [
+          "event_type",
+          "channel",
+          "enabled"
+        ],
+        "title": "PreferenceIn"
+      },
+      "PreferencesIn": {
+        "properties": {
+          "preferences": {
+            "items": {
+              "$ref": "#/components/schemas/PreferenceIn"
+            },
+            "type": "array",
+            "maxItems": 28,
+            "minItems": 1,
+            "title": "Preferences"
+          }
+        },
+        "type": "object",
+        "required": [
+          "preferences"
+        ],
+        "title": "PreferencesIn"
+      },
+      "PremiumIn": {
+        "properties": {
+          "is_premium": {
+            "type": "boolean",
+            "title": "Is Premium"
+          }
+        },
+        "type": "object",
+        "required": [
+          "is_premium"
+        ],
+        "title": "PremiumIn"
+      },
+      "PremiumOut": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "User Id"
+          },
+          "is_premium": {
+            "type": "boolean",
+            "title": "Is Premium"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_id",
+          "is_premium"
+        ],
+        "title": "PremiumOut"
+      },
+      "QuoteOut": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "last_trade_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Trade Price"
+          },
+          "bid_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bid Price"
+          },
+          "ask_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ask Price"
+          },
+          "bid_size": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bid Size"
+          },
+          "ask_size": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ask Size"
+          },
+          "daily_volume": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daily Volume"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "feed": {
+            "type": "string",
+            "title": "Feed"
+          },
+          "as_of": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          },
+          "data_age_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Age Seconds"
+          },
+          "is_delayed": {
+            "type": "boolean",
+            "title": "Is Delayed"
+          },
+          "is_stale": {
+            "type": "boolean",
+            "title": "Is Stale"
+          },
+          "served_from_cache": {
+            "type": "boolean",
+            "title": "Served From Cache"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "last_trade_price",
+          "bid_price",
+          "ask_price",
+          "bid_size",
+          "ask_size",
+          "daily_volume",
+          "updated_at",
+          "currency",
+          "source",
+          "feed",
+          "as_of",
+          "data_age_seconds",
+          "is_delayed",
+          "is_stale",
+          "served_from_cache"
+        ],
+        "title": "QuoteOut"
+      },
+      "RefreshOut": {
+        "properties": {
+          "access_expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Access Expires At"
+          },
+          "refresh_expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Refresh Expires At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "access_expires_at",
+          "refresh_expires_at"
+        ],
+        "title": "RefreshOut"
+      },
+      "RegisterBaseIn": {
+        "properties": {
+          "first_names": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "First Names"
+          },
+          "last_names": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Last Names"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "phone": {
+            "type": "string",
+            "title": "Phone"
+          },
+          "country": {
+            "type": "string",
+            "title": "Country"
+          },
+          "password": {
+            "type": "string",
+            "title": "Password"
+          },
+          "terms_accepted": {
+            "type": "boolean",
+            "title": "Terms Accepted"
+          },
+          "monthly_report": {
+            "type": "boolean",
+            "title": "Monthly Report"
+          },
+          "interests": {
+            "items": {
+              "type": "string",
+              "maxLength": 50,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Interests"
+          },
+          "investor_level": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "beginner",
+                  "experienced"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Investor Level"
+          },
+          "broker_requested": {
+            "type": "boolean",
+            "title": "Broker Requested",
+            "default": false
+          },
+          "premium_requested": {
+            "type": "boolean",
+            "title": "Premium Requested",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "first_names",
+          "last_names",
+          "email",
+          "phone",
+          "country",
+          "password",
+          "terms_accepted",
+          "monthly_report"
+        ],
+        "title": "RegisterBaseIn"
+      },
+      "RegisterBrokerIn": {
+        "properties": {
+          "first_names": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "First Names"
+          },
+          "last_names": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Last Names"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "phone": {
+            "type": "string",
+            "title": "Phone"
+          },
+          "country": {
+            "type": "string",
+            "title": "Country"
+          },
+          "password": {
+            "type": "string",
+            "title": "Password"
+          },
+          "terms_accepted": {
+            "type": "boolean",
+            "title": "Terms Accepted"
+          },
+          "monthly_report": {
+            "type": "boolean",
+            "title": "Monthly Report"
+          },
+          "interests": {
+            "items": {
+              "type": "string",
+              "maxLength": 50,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Interests"
+          },
+          "investor_level": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "beginner",
+                  "experienced"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Investor Level"
+          },
+          "broker_requested": {
+            "type": "boolean",
+            "title": "Broker Requested",
+            "default": false
+          },
+          "premium_requested": {
+            "type": "boolean",
+            "title": "Premium Requested",
+            "default": false
+          },
+          "firm_name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Firm Name"
+          },
+          "license_number": {
+            "type": "string",
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "License Number"
+          }
+        },
+        "type": "object",
+        "required": [
+          "first_names",
+          "last_names",
+          "email",
+          "phone",
+          "country",
+          "password",
+          "terms_accepted",
+          "monthly_report",
+          "firm_name",
+          "license_number"
+        ],
+        "title": "RegisterBrokerIn"
+      },
+      "RegisterInvestorIn": {
+        "properties": {
+          "first_names": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "First Names"
+          },
+          "last_names": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Last Names"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "phone": {
+            "type": "string",
+            "title": "Phone"
+          },
+          "country": {
+            "type": "string",
+            "title": "Country"
+          },
+          "password": {
+            "type": "string",
+            "title": "Password"
+          },
+          "terms_accepted": {
+            "type": "boolean",
+            "title": "Terms Accepted"
+          },
+          "monthly_report": {
+            "type": "boolean",
+            "title": "Monthly Report"
+          },
+          "interests": {
+            "items": {
+              "type": "string",
+              "maxLength": 50,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Interests"
+          },
+          "investor_level": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "beginner",
+                  "experienced"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Investor Level"
+          },
+          "broker_requested": {
+            "type": "boolean",
+            "title": "Broker Requested",
+            "default": false
+          },
+          "premium_requested": {
+            "type": "boolean",
+            "title": "Premium Requested",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "first_names",
+          "last_names",
+          "email",
+          "phone",
+          "country",
+          "password",
+          "terms_accepted",
+          "monthly_report"
+        ],
+        "title": "RegisterInvestorIn"
+      },
+      "RegistrationOut": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "User Id"
+          },
+          "account_status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "pending_broker_activation"
+            ],
+            "title": "Account Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_id",
+          "account_status"
+        ],
+        "title": "RegistrationOut"
+      },
+      "RevokedCountOut": {
+        "properties": {
+          "revoked_count": {
+            "type": "integer",
+            "title": "Revoked Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "revoked_count"
+        ],
+        "title": "RevokedCountOut"
+      },
+      "RoleAssignmentOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "valid_from": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Valid From"
+          },
+          "valid_to": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid To"
+          },
+          "effective": {
+            "type": "boolean",
+            "title": "Effective"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AssignmentStatus"
+          },
+          "cancelled_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cancelled At"
+          },
+          "cancelled_by": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cancelled By"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "role",
+          "valid_from",
+          "valid_to",
+          "effective",
+          "status"
+        ],
+        "title": "RoleAssignmentOut"
+      },
+      "RoleOut": {
+        "properties": {
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "permissions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Permissions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "role",
+          "permissions"
+        ],
+        "title": "RoleOut"
+      },
+      "ScheduleOverrideIn": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "closed": {
+            "type": "boolean",
+            "title": "Closed"
+          },
+          "open_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Open Time"
+          },
+          "close_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Close Time"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "closed"
+        ],
+        "title": "ScheduleOverrideIn"
+      },
+      "ScheduleOverrideOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "market": {
+            "type": "string",
+            "title": "Market"
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "closed": {
+            "type": "boolean",
+            "title": "Closed"
+          },
+          "open_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Open Time"
+          },
+          "close_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Close Time"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "market",
+          "date",
+          "closed",
+          "open_time",
+          "close_time"
+        ],
+        "title": "ScheduleOverrideOut"
+      },
+      "ScheduleOverrideUpdateIn": {
+        "properties": {
+          "closed": {
+            "type": "boolean",
+            "title": "Closed"
+          },
+          "open_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Open Time"
+          },
+          "close_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Close Time"
+          }
+        },
+        "type": "object",
+        "required": [
+          "closed"
+        ],
+        "title": "ScheduleOverrideUpdateIn"
+      },
+      "SearchOut": {
+        "properties": {
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/InstrumentOut"
+            },
+            "type": "array",
+            "title": "Results"
+          }
+        },
+        "type": "object",
+        "required": [
+          "page",
+          "page_size",
+          "total",
+          "results"
+        ],
+        "title": "SearchOut"
+      },
+      "SessionOut": {
+        "properties": {
+          "session_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Session Id"
+          },
+          "user_agent": {
+            "type": "string",
+            "title": "User Agent"
+          },
+          "ip_address": {
+            "type": "string",
+            "title": "Ip Address"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "last_used_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Last Used At"
+          },
+          "current": {
+            "type": "boolean",
+            "title": "Current"
+          }
+        },
+        "type": "object",
+        "required": [
+          "session_id",
+          "user_agent",
+          "ip_address",
+          "created_at",
+          "last_used_at",
+          "current"
+        ],
+        "title": "SessionOut"
+      },
+      "TelegramIn": {
+        "properties": {
+          "chat_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chat Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "chat_id"
+        ],
+        "title": "TelegramIn"
+      },
+      "UserMeOut": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "User Id"
+          },
+          "first_names": {
+            "type": "string",
+            "title": "First Names"
+          },
+          "last_names": {
+            "type": "string",
+            "title": "Last Names"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "phone": {
+            "type": "string",
+            "title": "Phone"
+          },
+          "country": {
+            "type": "string",
+            "title": "Country"
+          },
+          "account_status": {
+            "type": "string",
+            "title": "Account Status"
+          },
+          "registered_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Registered At"
+          },
+          "contracted_plan": {
+            "type": "null",
+            "title": "Contracted Plan"
+          },
+          "is_premium": {
+            "type": "boolean",
+            "title": "Is Premium"
+          },
+          "associated_broker": {
+            "type": "null",
+            "title": "Associated Broker"
+          },
+          "roles": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Roles"
+          },
+          "kyc_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kyc Status"
+          },
+          "kyc_status_unavailable": {
+            "type": "boolean",
+            "title": "Kyc Status Unavailable"
+          },
+          "interests": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Interests"
+          },
+          "investor_level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Investor Level"
+          },
+          "mfa_enrolled": {
+            "type": "boolean",
+            "title": "Mfa Enrolled"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_id",
+          "first_names",
+          "last_names",
+          "email",
+          "phone",
+          "country",
+          "account_status",
+          "registered_at",
+          "is_premium",
+          "roles",
+          "kyc_status",
+          "kyc_status_unavailable",
+          "interests",
+          "investor_level",
+          "mfa_enrolled"
+        ],
+        "title": "UserMeOut"
+      },
+      "WatchlistIn": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "WatchlistIn"
+      },
+      "WatchlistOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "symbols": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Symbols"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "symbols"
+        ],
+        "title": "WatchlistOut"
+      },
+      "WatchlistSymbolIn": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol"
+        ],
+        "title": "WatchlistSymbolIn"
+      }
+    },
+    "securitySchemes": {
+      "AccessTokenCookie": {
+        "type": "apiKey",
+        "description": "JWT access token issued in the HttpOnly access_token cookie.",
+        "in": "cookie",
+        "name": "access_token"
+      },
+      "RefreshTokenCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "refresh_token"
+      }
+    }
+  }
+}

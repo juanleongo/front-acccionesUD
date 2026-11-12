@@ -56,25 +56,47 @@ function MarketClock() {
     refetchInterval: 60000,
   });
   return (
-    <section>
-      <h3>Reloj bursátil</h3>
+    <div className={styles.clockCard}>
+      <h3>Reloj bursátil en vivo</h3>
       {clock.error ? (
         <Problem error={clock.error} retry={clock.refetch} />
       ) : clock.data ? (
         <>
-          <p>
-            <strong>{clock.data.is_open ? 'Abierto' : 'Cerrado'}</strong> ·
-            Actualizado el {formatInstant(clock.data.timestamp)}
+          <p
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.6rem',
+              margin: '0.4rem 0',
+            }}
+          >
+            <span
+              className={
+                clock.data.is_open ? styles.badgeOpen : styles.badgeClosed
+              }
+            >
+              ● {clock.data.is_open ? 'Mercado Abierto' : 'Mercado Cerrado'}
+            </span>
+            <small style={{ color: 'var(--color-text-muted)' }}>
+              Actualizado: {formatInstant(clock.data.timestamp)}
+            </small>
           </p>
-          <p>
-            Próxima apertura: {formatInstant(clock.data.next_open)} · Próximo
-            cierre: {formatInstant(clock.data.next_close)}
+          <p
+            style={{
+              margin: '0.25rem 0 0',
+              color: 'var(--color-text-muted)',
+              fontSize: '0.85rem',
+            }}
+          >
+            Próxima apertura:{' '}
+            <strong>{formatInstant(clock.data.next_open)}</strong> · Próximo
+            cierre: <strong>{formatInstant(clock.data.next_close)}</strong>
           </p>
         </>
       ) : (
         <p role="status">Consultando reloj…</p>
       )}
-    </section>
+    </div>
   );
 }
 
@@ -215,8 +237,8 @@ function MarketSchedule({ code }: { code: string }) {
               <tr>
                 <th>Fecha</th>
                 <th>Jornada</th>
-                <th>
-                  Horario de negociación
+                <th className={styles.thSchedule}>
+                  <span>Horario de negociación</span>
                   <div className={styles.axis}>
                     <span>00 h</span>
                     <span>12 h</span>

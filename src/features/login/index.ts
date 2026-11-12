@@ -2,4 +2,8 @@
 
 export { LoginForm } from './LoginForm';
 export { startLogin, type Challenge } from './challenge';
-export { RecoveryCodesProvider, DashboardRecoveryCodes } from './RecoveryCodes';
+export {
+  RecoveryCodesProvider,
+  DashboardRecoveryCodes,
+  RecoveryCodesDisplay,
+} from './RecoveryCodes';

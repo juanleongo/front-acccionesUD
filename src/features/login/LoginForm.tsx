@@ -1,15 +1,18 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, type FormEvent } from 'react';
 import { z } from 'zod';
+import { Icon } from '@/components/ui/Icon';
 import { browserHttp } from '@/lib/api/client';
 import { ApiError } from '@/lib/api';
 import styles from './login.module.css';
 
 import { startLogin, type Challenge } from './challenge';
-import { usePendingCodes } from './RecoveryCodes';
+import { RecoveryCodesDisplay, usePendingCodes } from './RecoveryCodes';
+
 const verifiedSchema = z.object({
   user: z.object({
     user_id: z.uuid(),
@@ -31,6 +34,18 @@ export function LoginForm({
   const [codes, setCodes] = useState<string[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+
+  function toggleTheme() {
+    const next =
+      document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+    document.documentElement.dataset.theme = next;
+    try {
+      localStorage.setItem('acciones_ud_theme', next);
+    } catch {
+      /* Preferencia opcional. */
+    }
+  }
 
   useEffect(() => {
     if (!challenge || busy) return;
@@ -99,133 +114,203 @@ export function LoginForm({
   }
 
   return (
-    <main className={styles.page}>
-      <Link href="/">← Volver a Acciones UD</Link>
-      <section className={styles.panel}>
-        <h1>
-          {codes
-            ? codes.length
-              ? 'Guarda tus códigos de recuperación'
-              : 'Sesión iniciada'
-            : challenge
-              ? 'Verificación en dos pasos'
-              : 'Iniciar sesión'}
-        </h1>
-        {error && <p role="alert">{error}</p>}
-        {registrationStatus && (
-          <p role="status">
-            {registrationStatus === 'active'
-              ? 'Tu cuenta de inversionista está activa.'
-              : 'Tu cuenta de comisionista está pendiente de activación por un administrador.'}
-          </p>
-        )}
-        {codes ? (
-          <>
-            {codes.length > 0 && (
-              <>
-                <p>
-                  Cada código permite un acceso. Cópialos ahora y guárdalos en
-                  un lugar seguro.
-                </p>
-                <ul>
-                  {codes.map((code) => (
-                    <li key={code}>
-                      <code>{code}</code>
-                    </li>
-                  ))}
-                </ul>
-              </>
-            )}
-            <Link href="/dashboard" replace>
-              Continuar al dashboard
+    <div className={styles.wrapper}>
+      <header className={styles.topBar}>
+        <div className={styles.topBarInner}>
+          <Link
+            href="/"
+            className={styles.brand}
+            aria-label="Acciones UD, inicio"
+          >
+            <Image
+              src="/logo-acciones-ud.png"
+              alt="Logo Acciones UD"
+              width={40}
+              height={40}
+              className={styles.brandLogo}
+              priority
+            />
+            <div className={styles.brandText}>
+              <strong>Acciones UD</strong>
+              <span>Mercados de EE. UU. · NYSE &amp; NASDAQ</span>
+            </div>
+          </Link>
+          <div className={styles.topActions}>
+            <button
+              type="button"
+              className={styles.themeButton}
+              onClick={toggleTheme}
+              aria-label="Cambiar tema de color"
+            >
+              <span className={styles.whenDark}>
+                <Icon name="sun" size={16} /> Claro
+              </span>
+              <span className={styles.whenLight}>
+                <Icon name="moon" size={16} /> Oscuro
+              </span>
+            </button>
+            <Link href="/" className={styles.back}>
+              ← Volver a Acciones UD
             </Link>
-          </>
-        ) : (
-          <form key={challenge ? 'verify' : 'login'} onSubmit={submit}>
-            <fieldset disabled={busy}>
-              {challenge ? (
-                <>
-                  {challenge.totp_enrollment && (
-                    <p>
-                      Agrega una cuenta con clave de configuración en tu
-                      aplicación autenticadora e introduce esta clave:{' '}
-                      <strong>{challenge.totp_enrollment.secret}</strong>.
-                    </p>
-                  )}
-                  <label>
+          </div>
+        </div>
+      </header>
+
+      <main className={styles.page}>
+        <section className={styles.panel}>
+          <p className={styles.badge}>
+            <span className={styles.dot} /> Acceso Seguro 2FA · Wall Street
+          </p>
+          <h1>
+            {codes
+              ? codes.length
+                ? 'Guarda tus códigos de recuperación'
+                : 'Sesión iniciada'
+              : challenge
+                ? 'Verificación en dos pasos'
+                : 'Iniciar sesión'}
+          </h1>
+          {error && (
+            <p className={styles.error} role="alert">
+              {error}
+            </p>
+          )}
+          {registrationStatus && (
+            <p className={styles.statusBanner} role="status">
+              {registrationStatus === 'active'
+                ? 'Tu cuenta de inversionista está activa.'
+                : 'Tu cuenta de comisionista está pendiente de activación por un administrador.'}
+            </p>
+          )}
+          {codes ? (
+            <RecoveryCodesDisplay
+              codes={codes}
+              onDismiss={() => router.replace('/dashboard')}
+              dismissText="Continuar al dashboard"
+            />
+          ) : (
+            <form key={challenge ? 'verify' : 'login'} onSubmit={submit}>
+              <fieldset disabled={busy}>
+                {challenge ? (
+                  <>
+                    {challenge.totp_enrollment && (
+                      <div className={styles.enrollmentBox}>
+                        <p>
+                          Agrega una cuenta con clave de configuración en tu
+                          aplicación autenticadora (Google Authenticator o
+                          Authy) e introduce esta clave:
+                        </p>
+                        <strong className={styles.secretCode}>
+                          {challenge.totp_enrollment.secret}
+                        </strong>
+                      </div>
+                    )}
+                    <label>
+                      {recovery
+                        ? 'Código de recuperación'
+                        : 'Código del autenticador'}
+                      <input
+                        key={String(recovery)}
+                        name="verification"
+                        placeholder={recovery ? 'Ej. ABC1234567' : '000000'}
+                        autoComplete="one-time-code"
+                        inputMode={recovery ? 'text' : 'numeric'}
+                        pattern={recovery ? '[a-zA-Z0-9]{10}' : '[0-9]{6}'}
+                        maxLength={recovery ? 10 : 6}
+                        required
+                      />
+                    </label>
+                  </>
+                ) : (
+                  <>
+                    <label>
+                      Correo electrónico
+                      <input
+                        type="email"
+                        name="email"
+                        placeholder="correo@ejemplo.com"
+                        autoComplete="username"
+                        required
+                      />
+                    </label>
+                    <label>
+                      Contraseña
+                      <div className={styles.passwordWrapper}>
+                        <input
+                          type={showPassword ? 'text' : 'password'}
+                          name="password"
+                          placeholder="Tu contraseña"
+                          autoComplete="current-password"
+                          maxLength={128}
+                          required
+                        />
+                        <button
+                          type="button"
+                          className={styles.passwordToggle}
+                          onClick={() => setShowPassword((prev) => !prev)}
+                          aria-label={
+                            showPassword
+                              ? 'Ocultar contraseña'
+                              : 'Mostrar contraseña'
+                          }
+                          title={
+                            showPassword
+                              ? 'Ocultar contraseña'
+                              : 'Mostrar contraseña'
+                          }
+                        >
+                          <Icon
+                            name={showPassword ? 'eyeOff' : 'eye'}
+                            size={18}
+                          />
+                        </button>
+                      </div>
+                    </label>
+                  </>
+                )}
+                <button type="submit">
+                  {busy
+                    ? 'Enviando…'
+                    : challenge
+                      ? 'Verificar'
+                      : 'Iniciar sesión'}
+                </button>
+                {challenge && !challenge.totp_enrollment && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRecovery(!recovery);
+                      setError('');
+                    }}
+                  >
                     {recovery
-                      ? 'Código de recuperación'
-                      : 'Código del autenticador'}
-                    <input
-                      key={String(recovery)}
-                      name="verification"
-                      autoComplete="one-time-code"
-                      inputMode={recovery ? 'text' : 'numeric'}
-                      pattern={recovery ? '[a-zA-Z0-9]{10}' : '[0-9]{6}'}
-                      maxLength={recovery ? 10 : 6}
-                      required
-                    />
-                  </label>
-                </>
-              ) : (
-                <>
-                  <label>
-                    Correo electrónico
-                    <input
-                      type="email"
-                      name="email"
-                      autoComplete="username"
-                      required
-                    />
-                  </label>
-                  <label>
-                    Contraseña
-                    <input
-                      type="password"
-                      name="password"
-                      autoComplete="current-password"
-                      maxLength={128}
-                      required
-                    />
-                  </label>
-                </>
+                      ? 'Usar el autenticador'
+                      : 'Usar un código de recuperación'}
+                  </button>
+                )}
+                {challenge && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setChallenge(null);
+                      setRecovery(false);
+                      setError('');
+                    }}
+                  >
+                    Volver al inicio de sesión
+                  </button>
+                )}
+              </fieldset>
+              {!challenge && (
+                <p className={styles.registerPrompt}>
+                  ¿Aún no tienes cuenta?{' '}
+                  <Link href="/registro">Abrir cuenta de práctica</Link>
+                </p>
               )}
-              <button type="submit">
-                {busy
-                  ? 'Enviando…'
-                  : challenge
-                    ? 'Verificar'
-                    : 'Iniciar sesión'}
-              </button>
-              {challenge && !challenge.totp_enrollment && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setRecovery(!recovery);
-                    setError('');
-                  }}
-                >
-                  {recovery
-                    ? 'Usar el autenticador'
-                    : 'Usar un código de recuperación'}
-                </button>
-              )}
-              {challenge && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setChallenge(null);
-                    setRecovery(false);
-                    setError('');
-                  }}
-                >
-                  Volver al inicio de sesión
-                </button>
-              )}
-            </fieldset>
-          </form>
-        )}
-      </section>
-    </main>
+            </form>
+          )}
+        </section>
+      </main>
+    </div>
   );
 }

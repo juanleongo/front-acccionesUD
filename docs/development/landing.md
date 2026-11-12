@@ -3,8 +3,8 @@
 La ruta `/` reproduce la estructura de `01_landing_institucional_dark.html` y las
 referencias visuales clara y oscura. Se adapta al stack existente: React, TypeScript,
 CSS Modules y tokens semánticos. No utiliza el CDN de Tailwind, fuentes remotas,
-scripts del mockup ni dependencias adicionales. ASX figura como Australia; la
-cotización en peniques (GBX) no lleva el símbolo de libras.
+scripts del mockup ni dependencias adicionales. El alcance de mercados está enfocado
+exclusivamente en mercados de Estados Unidos (NYSE, NASDAQ y NYSE Arca en USD).
 
 ## Alcance actual
 

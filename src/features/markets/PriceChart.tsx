@@ -21,6 +21,7 @@ export function PriceChart({ exchange }: { exchange: string }) {
   const catalog = useQuery({
     queryKey: ['instrument-options', exchange, letter, page],
     queryFn: ({ signal }) => getInstruments(exchange, letter, page, signal),
+    placeholderData: (previousData) => previousData,
   });
   const options = catalog.data?.results ?? [];
   const symbol =
@@ -49,7 +50,7 @@ export function PriceChart({ exchange }: { exchange: string }) {
       }
     >
       <header className={styles.head}>
-        <div>
+        <div className={styles.titleArea}>
           <h2>
             {symbol ? 'Gráfico de precios de ' + symbol : 'Gráfico de precios'}
           </h2>
@@ -60,68 +61,86 @@ export function PriceChart({ exchange }: { exchange: string }) {
             {periods[period].label}
           </p>
         </div>
-        <div className={styles.selectors}>
-          <label>
-            Filtro de nombre o símbolo
-            <select
-              value={letter}
-              onChange={(e) => {
-                setLetter(e.target.value);
-                setPage(1);
-                setSelected('');
-              }}
-            >
-              {Array.from('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-/').map(
-                (c) => (
-                  <option key={c}>{c}</option>
-                ),
-              )}
-            </select>
-          </label>
-          <label>
-            Instrumento
-            <select
-              aria-label="Instrumento"
-              value={symbol}
-              disabled={!symbol || Boolean(catalog.error)}
-              onChange={(e) => setSelected(e.target.value)}
-            >
-              {!symbol && <option value="">Selecciona un instrumento</option>}
-              {options.map((item) => (
-                <option value={item.symbol} key={item.symbol}>
-                  {item.symbol} · {item.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          {catalog.data && catalog.data.total > catalog.data.page_size && (
-            <div className={styles.pages}>
-              <button
-                type="button"
-                disabled={page === 1}
-                onClick={() => {
-                  setPage(page - 1);
+
+        <div className={styles.toolbar}>
+          <div className={styles.filterInputs}>
+            <label className={styles.field}>
+              <span>Filtro de nombre o símbolo</span>
+              <select
+                value={letter}
+                onChange={(e) => {
+                  setLetter(e.target.value);
+                  setPage(1);
                   setSelected('');
                 }}
               >
-                Anterior
-              </button>
-              <span>
-                {page} /{' '}
-                {Math.ceil(catalog.data.total / catalog.data.page_size)}
-              </span>
-              <button
-                type="button"
-                disabled={page * catalog.data.page_size >= catalog.data.total}
-                onClick={() => {
-                  setPage(page + 1);
-                  setSelected('');
-                }}
+                {Array.from('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-/').map(
+                  (c) => (
+                    <option key={c}>{c}</option>
+                  ),
+                )}
+              </select>
+            </label>
+
+            <label className={styles.field}>
+              <span>Instrumento</span>
+              <select
+                aria-label="Instrumento"
+                value={symbol}
+                disabled={!symbol || Boolean(catalog.error)}
+                onChange={(e) => setSelected(e.target.value)}
               >
-                Siguiente
-              </button>
-            </div>
-          )}
+                {!symbol && <option value="">Selecciona un instrumento</option>}
+                {options.map((item) => (
+                  <option value={item.symbol} key={item.symbol}>
+                    {item.symbol} · {item.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div className={styles.paginationArea}>
+            {catalog.data && catalog.data.total > catalog.data.page_size && (
+              <div
+                className={styles.pages}
+                role="navigation"
+                aria-label="Paginación de instrumentos"
+              >
+                <button
+                  type="button"
+                  className={styles.pageButton}
+                  disabled={page === 1}
+                  onClick={() => {
+                    setPage(page - 1);
+                    setSelected('');
+                  }}
+                  aria-label="Página anterior"
+                >
+                  ← Anterior
+                </button>
+                <span className={styles.pageIndicator}>
+                  <span className={styles.pageCurrent}>{page}</span>
+                  <span className={styles.pageDivider}>/</span>
+                  <span className={styles.pageTotal}>
+                    {Math.ceil(catalog.data.total / catalog.data.page_size)}
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  className={styles.pageButton}
+                  disabled={page * catalog.data.page_size >= catalog.data.total}
+                  onClick={() => {
+                    setPage(page + 1);
+                    setSelected('');
+                  }}
+                  aria-label="Página siguiente"
+                >
+                  Siguiente →
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
       <div className={styles.plot}>

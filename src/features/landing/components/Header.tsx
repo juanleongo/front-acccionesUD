@@ -1,17 +1,24 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Icon } from '@/components/ui/Icon';
+import { getCurrentUser } from '@/features/dashboard/client';
 import styles from '../landing.module.css';
 
 export function Brand() {
   return (
     <a href="#inicio" className={styles.brand} aria-label="Acciones UD, inicio">
-      <span className={styles.monogram}>
-        <span>U</span>
-        <span>D</span>
-      </span>
+      <Image
+        src="/logo-acciones-ud.png"
+        alt="Logo Acciones UD"
+        width={42}
+        height={42}
+        className={styles.brandLogo}
+        priority
+      />
       <span>Acciones UD</span>
     </a>
   );
@@ -19,6 +26,12 @@ export function Brand() {
 
 export function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const userQuery = useQuery({
+    queryKey: ['users', 'me'],
+    queryFn: ({ signal }) => getCurrentUser(signal),
+    retry: false,
+  });
+  const user = userQuery.data;
 
   function toggleTheme() {
     const theme =
@@ -45,9 +58,12 @@ export function Header() {
             }
           }}
         >
-          <Link href="/markets">
-            <Icon name="trend" size={17} /> Mercados
-          </Link>
+          <a href="#comisionistas">
+            <Icon name="check" size={17} /> Comisionistas
+          </a>
+          <a href="#mercados">
+            <Icon name="trend" size={17} /> Mercados EE. UU.
+          </a>
           <a href="#como-funciona">
             <Icon name="exchange" size={17} /> Cómo Funciona
           </a>
@@ -55,12 +71,21 @@ export function Header() {
             <Icon name="shield" size={17} /> Seguridad &amp; Confianza
           </a>
           <div className={styles.mobileAccount}>
-            <Link href="/login" className={styles.loginButton}>
-              Iniciar sesión
-            </Link>
-            <Link href="/registro" className={styles.primaryButton}>
-              Abrir cuenta de práctica
-            </Link>
+            {user ? (
+              <Link href="/dashboard" className={styles.primaryButton}>
+                Ir al Dashboard (
+                {user.first_names.split(' ')[0] ?? 'Inversionista'})
+              </Link>
+            ) : (
+              <>
+                <Link href="/login" className={styles.loginButton}>
+                  Iniciar sesión
+                </Link>
+                <Link href="/registro" className={styles.primaryButton}>
+                  Abrir cuenta de práctica
+                </Link>
+              </>
+            )}
           </div>
         </nav>
         <div className={styles.headerActions}>
@@ -80,15 +105,32 @@ export function Header() {
               <Icon name="moon" size={16} /> Oscuro
             </span>
           </button>
-          <Link href="/login" className={styles.loginButton}>
-            Iniciar sesión
-          </Link>
-          <Link
-            href="/registro"
-            className={`${styles.primaryButton} ${styles.headerCta}`}
-          >
-            Abrir cuenta de práctica <Icon name="arrow" size={17} />
-          </Link>
+          {user ? (
+            <Link
+              href="/dashboard"
+              className={`${styles.primaryButton} ${styles.headerCta}`}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.45rem',
+              }}
+            >
+              <span>Ir al Dashboard</span>
+              <Icon name="arrow" size={17} />
+            </Link>
+          ) : (
+            <>
+              <Link href="/login" className={styles.loginButton}>
+                Iniciar sesión
+              </Link>
+              <Link
+                href="/registro"
+                className={`${styles.primaryButton} ${styles.headerCta}`}
+              >
+                Abrir cuenta de práctica <Icon name="arrow" size={17} />
+              </Link>
+            </>
+          )}
           <button
             type="button"
             className={`${styles.iconButton} ${styles.menuButton}`}
