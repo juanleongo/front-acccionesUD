@@ -4,12 +4,11 @@ import { useRef, useState, useSyncExternalStore } from 'react';
 import type { ReactNode } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import type { IconName } from '@/components/ui/Icon';
-import { dashboardPreview } from './dashboard-preview';
-import type { DashboardView } from './dashboard-preview';
+import { Markets } from '@/features/markets';
 import styles from './dashboard.module.css';
+import { DashboardRecoveryCodes } from '@/features/login';
 
 const navigation: { label: string; icon: IconName }[] = [
-  { label: 'Mercados', icon: 'trend' },
   { label: 'Terminal de Órdenes', icon: 'devices' },
   { label: 'Portafolio', icon: 'pie' },
   { label: 'Depósitos & Retiros', icon: 'wallet' },
@@ -25,11 +24,7 @@ function isMobile() {
   return window.matchMedia('(max-width: 64rem)').matches;
 }
 
-export function Dashboard({
-  data = dashboardPreview,
-}: {
-  data?: DashboardView;
-}) {
+export function Dashboard() {
   const mobile = useSyncExternalStore(subscribeMobile, isMobile, () => false);
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -92,9 +87,7 @@ export function Dashboard({
         >
           <span className={styles.logo}>UD</span>
           <span className={styles.sidebarText}>
-            <strong>
-              Acciones UD <small>v2.4</small>
-            </strong>
+            <strong>Acciones UD</strong>
             <span>Simulador Bursátil</span>
           </span>
         </Link>
@@ -116,6 +109,10 @@ export function Dashboard({
             >
               <Icon name="grid" />
               <span className={styles.sidebarText}>Dashboard</span>
+            </Link>
+            <Link href="/markets" title="Mercados">
+              <Icon name="trend" />
+              <span className={styles.sidebarText}>Mercados</span>
             </Link>
             {navigation.map((item) => (
               <div key={item.label}>
@@ -189,13 +186,6 @@ export function Dashboard({
           </button>
           <h1>Panel de Control · Resumen General</h1>
           <div className={styles.headerActions}>
-            <span className={styles.preview}>● Vista previa</span>
-            <div className={styles.account}>
-              <span>Valor cuenta</span>
-              <strong>
-                {data.accountValue} <small>USD</small>
-              </strong>
-            </div>
             <span className={styles.language}>
               <Icon name="globe" size={17} /> ES
             </span>
@@ -211,193 +201,11 @@ export function Dashboard({
                 <Icon name="moon" size={18} /> Oscuro
               </span>
             </button>
-            {action('Mi perfil', data.user.initials, styles.avatar)}
           </div>
         </header>
         <main id="dashboard-content" className={styles.content}>
-          <div className={styles.welcome}>
-            <div>
-              <h2>Bienvenido, {data.user.name}</h2>
-              <p>Cuenta de Inversión y Trading · Resumen de tu actividad</p>
-            </div>
-            <div className={styles.marketStatus}>
-              <span>● Nueva York (NYSE / NASDAQ): Abierta ahora</span>
-              <span>● Londres / Tokio: Cerradas (Órdenes en cola)</span>
-            </div>
-          </div>
-          <p className={styles.notice}>
-            Datos de demostración: usuario, saldos, precios y estados
-            ilustrativos. Sin sesión autenticada ni operaciones reales.
-          </p>
-          <section className={styles.metrics} aria-label="Resumen financiero">
-            {data.metrics.map((metric) => (
-              <article
-                className={`${styles.metric} ${styles[metric.tone]}`}
-                key={metric.title}
-              >
-                <div className={styles.metricHeading}>
-                  <div>
-                    <h3>{metric.title}</h3>
-                    <p>{metric.description}</p>
-                  </div>
-                  <span className={styles.metricIcon}>
-                    <Icon name={metric.icon} size={24} />
-                  </span>
-                </div>
-                <p className={styles.amount}>
-                  {metric.value} <small>USD</small>
-                </p>
-                <div className={styles.metricNote}>
-                  {metric.note}
-                  {metric.tone === 'accent' && (
-                    <span className={styles.liquid}>100% Líquido</span>
-                  )}
-                </div>
-              </article>
-            ))}
-          </section>
-          <div className={styles.columns}>
-            <div>
-              <section className={styles.panel} aria-labelledby="stocks-title">
-                <div className={styles.panelHeading}>
-                  <div>
-                    <h2 id="stocks-title">
-                      <Icon name="trend" /> Acciones Populares
-                    </h2>
-                    <p>Vista de mercado · Cotizaciones de demostración</p>
-                  </div>
-                  {action(
-                    'Mercados',
-                    <>
-                      Ver todas las acciones <Icon name="arrow" size={16} />
-                    </>,
-                    styles.textButton,
-                  )}
-                </div>
-                <div
-                  className={styles.tableScroll}
-                  role="region"
-                  aria-label="Acciones populares, tabla desplazable"
-                  tabIndex={0}
-                >
-                  <table>
-                    <thead>
-                      <tr>
-                        <th scope="col">Empresa / Acción</th>
-                        <th scope="col">Bolsa</th>
-                        <th scope="col">Precio actual</th>
-                        <th scope="col">Subida / Bajada hoy</th>
-                        <th scope="col">Operar</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {data.stocks.map((stock) => (
-                        <tr key={stock.symbol}>
-                          <th scope="row">
-                            <div className={styles.company}>
-                              <span className={styles.symbol}>
-                                {stock.symbol}
-                              </span>
-                              <div>
-                                <strong>{stock.name}</strong>
-                                <small>{stock.sector}</small>
-                              </div>
-                            </div>
-                          </th>
-                          <td>
-                            <span
-                              className={
-                                stock.negative
-                                  ? styles.exchangeWarning
-                                  : styles.exchange
-                              }
-                            >
-                              {stock.exchange}
-                            </span>
-                          </td>
-                          <td className={styles.price}>{stock.price}</td>
-                          <td
-                            className={
-                              stock.negative ? styles.negative : styles.positive
-                            }
-                          >
-                            {stock.change}
-                          </td>
-                          <td>
-                            {action(
-                              `Invertir en ${stock.symbol}`,
-                              'Invertir',
-                              styles.invest,
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
-              <section className={styles.portfolio}>
-                <div>
-                  <h2>¿Quieres ver el detalle completo de tus inversiones?</h2>
-                  <p>
-                    Consulta tus gráficos de rendimiento, el reparto de tus
-                    activos y tus ganancias acumuladas.
-                  </p>
-                </div>
-                {action(
-                  'Portafolio',
-                  <>
-                    Ver mi Portafolio <Icon name="arrow" size={18} />
-                  </>,
-                  styles.primary,
-                )}
-              </section>
-            </div>
-            <div className={styles.rightColumn}>
-              <section className={styles.panel}>
-                <h2>
-                  <span className={styles.percent}>%</span> Comisión de
-                  Operación (2% Total)
-                </h2>
-                <p className={styles.commissionDescription}>
-                  Cada vez que compras o vendes, se aplica una comisión fija y
-                  transparente del <strong>2.0%</strong> sobre el valor de la
-                  operación, distribuida de forma equitativa:
-                </p>
-                <div className={styles.split}>
-                  <span>Para la Plataforma Acciones UD:</span>
-                  <strong>60% (1.2% total)</strong>
-                </div>
-                <div className={styles.split}>
-                  <span>Para tu Asesor de Inversión:</span>
-                  <strong>40% (0.8% total)</strong>
-                </div>
-                <p className={styles.finePrint}>
-                  Sin cargos sorpresa ni cobros ocultos por apertura o
-                  mantenimiento.
-                </p>
-              </section>
-              <section className={styles.panel}>
-                <div className={styles.panelHeading}>
-                  <h2>Tu Asesor Bursátil</h2>
-                  <span className={styles.assigned}>Asignado</span>
-                </div>
-                <div className={styles.advisor}>
-                  <span>CR</span>
-                  <div>
-                    <strong>Carlos Rodríguez, CFA</strong>
-                    <small>Registro Oficial #UD-ADV-042</small>
-                    <b>★ 4.9 de 5.0 (184 propuestas exitosas)</b>
-                  </div>
-                </div>
-                {action(
-                  'Asesores & Estrategias',
-                  'Consultar Asesores & Estrategias',
-                  styles.advisorButton,
-                )}
-              </section>
-            </div>
-          </div>
+          <DashboardRecoveryCodes />
+          <Markets />
         </main>
       </div>
       <dialog
@@ -409,9 +217,7 @@ export function Dashboard({
         <span className={styles.preview}>Próximamente</span>
         <h2 id="dashboard-dialog-title">{pending}</h2>
         <p id="dashboard-dialog-description">
-          Esta función estará disponible en una próxima etapa. Este dashboard es
-          una vista de demostración; no se han realizado operaciones ni cambios
-          de sesión.
+          Esta función estará disponible en una próxima etapa.
         </p>
         <form method="dialog">
           <button className={styles.primary}>Entendido</button>

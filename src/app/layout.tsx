@@ -6,7 +6,7 @@ import '@/styles/globals.css';
 export const metadata: Metadata = {
   title: 'Acciones UD | Mercados globales y simulación bursátil',
   description:
-    'Conoce Acciones UD: explora mercados globales y descubre la próxima plataforma de simulación bursátil. Vista previa con datos de demostración.',
+    'Conoce Acciones UD: explora mercados globales y descubre la próxima plataforma de simulación bursátil.',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

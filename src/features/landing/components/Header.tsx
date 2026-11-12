@@ -1,8 +1,8 @@
 'use client';
 
+import Link from 'next/link';
 import { useState } from 'react';
 import { Icon } from '@/components/ui/Icon';
-import { UpcomingButton } from './LandingActions';
 import styles from '../landing.module.css';
 
 export function Brand() {
@@ -45,12 +45,9 @@ export function Header() {
             }
           }}
         >
-          <a href="#comisionistas">
-            <Icon name="check" size={17} /> Comisionistas
-          </a>
-          <a href="#mercados">
-            <Icon name="trend" size={17} /> Mercados Globales
-          </a>
+          <Link href="/markets">
+            <Icon name="trend" size={17} /> Mercados
+          </Link>
           <a href="#como-funciona">
             <Icon name="exchange" size={17} /> Cómo Funciona
           </a>
@@ -58,15 +55,12 @@ export function Header() {
             <Icon name="shield" size={17} /> Seguridad &amp; Confianza
           </a>
           <div className={styles.mobileAccount}>
-            <UpcomingButton feature="Iniciar sesión">
+            <Link href="/login" className={styles.loginButton}>
               Iniciar sesión
-            </UpcomingButton>
-            <UpcomingButton
-              feature="Abrir cuenta de práctica"
-              className={styles.primaryButton}
-            >
+            </Link>
+            <Link href="/registro" className={styles.primaryButton}>
               Abrir cuenta de práctica
-            </UpcomingButton>
+            </Link>
           </div>
         </nav>
         <div className={styles.headerActions}>
@@ -86,18 +80,15 @@ export function Header() {
               <Icon name="moon" size={16} /> Oscuro
             </span>
           </button>
-          <UpcomingButton
-            feature="Iniciar sesión"
-            className={styles.loginButton}
-          >
+          <Link href="/login" className={styles.loginButton}>
             Iniciar sesión
-          </UpcomingButton>
-          <UpcomingButton
-            feature="Abrir cuenta de práctica"
+          </Link>
+          <Link
+            href="/registro"
             className={`${styles.primaryButton} ${styles.headerCta}`}
           >
             Abrir cuenta de práctica <Icon name="arrow" size={17} />
-          </UpcomingButton>
+          </Link>
           <button
             type="button"
             className={`${styles.iconButton} ${styles.menuButton}`}

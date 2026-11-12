@@ -1,4 +1,9 @@
-import { ApiError, parseRetryAfter, problemSchema } from './errors';
+import {
+  ApiError,
+  parseRetryAfter,
+  problemSchema,
+  validationDetailsSchema,
+} from './errors';
 import type {
   EmptyRequest,
   HttpPort,
@@ -12,7 +17,14 @@ interface TransportOptions {
 }
 
 function requestPath(options: RequestOptions): string {
-  if (!/^\/api\/(?:[A-Za-z0-9_-]+\/?)*$/.test(options.path)) {
+  const candles =
+    /^\/api\/v1\/instruments\/[a-z0-9.-]+(?:\/[a-z0-9.-]+)*\/candles$/i.test(
+      options.path,
+    ) &&
+    !options.path
+      .split('/')
+      .some((segment) => segment === '.' || segment === '..');
+  if (!candles && !/^\/api\/(?:[A-Za-z0-9_-]+\/?)*$/.test(options.path)) {
     throw new ApiError(
       'contract',
       'La ruta debe pertenecer a /api/ y no contener una URL, query o fragmento.',
@@ -20,7 +32,10 @@ function requestPath(options: RequestOptions): string {
   }
   const query = new URLSearchParams();
   for (const [key, value] of Object.entries(options.query ?? {})) {
-    if (/token|secret|password|authorization|cookie|api[_-]?key/i.test(key)) {
+    if (
+      !(candles && key === 'page_token') &&
+      /token|secret|password|authorization|cookie|api[_-]?key/i.test(key)
+    ) {
       throw new ApiError('contract', 'No se permiten credenciales en URLs.');
     }
     query.set(key, value);
@@ -112,6 +127,16 @@ export function createFetchTransport(config: TransportOptions): HttpPort {
         .toLowerCase();
       if (!response.ok) {
         let problem;
+        let invalidFields: string[] | undefined;
+        if (response.status === 422 && contentType === 'application/json') {
+          const parsed = validationDetailsSchema.safeParse(
+            await response.json().catch(() => null),
+          );
+          if (parsed.success)
+            invalidFields = parsed.data.details.errors.map(
+              (error) => error.field,
+            );
+        }
         if (contentType === 'application/problem+json') {
           try {
             const parsed = problemSchema.safeParse(await response.json());
@@ -126,6 +151,7 @@ export function createFetchTransport(config: TransportOptions): HttpPort {
         throw new ApiError('http', `Error HTTP ${response.status}.`, {
           ...metadata,
           status: response.status,
+          ...(invalidFields ? { invalidFields } : {}),
           ...(problem ? { problem } : {}),
           ...(retryAfterMs !== undefined ? { retryAfterMs } : {}),
         });
