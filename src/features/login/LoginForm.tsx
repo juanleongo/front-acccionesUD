@@ -29,6 +29,9 @@ export function LoginForm({
 }: { initialChallenge?: Challenge | null; registrationStatus?: string } = {}) {
   const router = useRouter();
   const { setCodes: showDashboardCodes } = usePendingCodes();
+  const [isAdminLogin, setIsAdminLogin] = useState(false);
+  const [emailValue, setEmailValue] = useState('');
+  const [passwordValue, setPasswordValue] = useState('');
   const [challenge, setChallenge] = useState(initialChallenge);
   const [recovery, setRecovery] = useState(false);
   const [codes, setCodes] = useState<string[] | null>(null);
@@ -92,8 +95,14 @@ export function LoginForm({
         setChallenge(null);
         if (registrationStatus) showDashboardCodes(result.recovery_codes);
         setCodes(registrationStatus ? [] : (result.recovery_codes ?? []));
+        const targetPath =
+          isAdminLogin ||
+          result.user.email === 'admin@accionesud.com' ||
+          result.user.email === 'admin@example.com'
+            ? '/admin'
+            : '/dashboard';
         if (registrationStatus || !result.recovery_codes?.length)
-          router.replace('/dashboard');
+          router.replace(targetPath);
       }
     } catch (cause) {
       const status = cause instanceof ApiError && cause.metadata.status;
@@ -158,9 +167,42 @@ export function LoginForm({
 
       <main className={styles.page}>
         <section className={styles.panel}>
-          <p className={styles.badge}>
-            <span className={styles.dot} /> Acceso Seguro 2FA · Wall Street
-          </p>
+          {!challenge && !codes && (
+            <div className={styles.roleTabs}>
+              <button
+                type="button"
+                className={`${styles.roleTab} ${!isAdminLogin ? styles.roleTabActive : ''}`}
+                onClick={() => {
+                  setIsAdminLogin(false);
+                  setError('');
+                }}
+              >
+                <Icon name="user" size={15} /> Inversor / Comisionista
+              </button>
+              <button
+                type="button"
+                className={`${styles.roleTab} ${isAdminLogin ? styles.roleTabAdminActive : ''}`}
+                onClick={() => {
+                  setIsAdminLogin(true);
+                  setError('');
+                }}
+              >
+                <Icon name="shield" size={15} /> Administrador (SysAdmin)
+              </button>
+            </div>
+          )}
+
+          {isAdminLogin ? (
+            <p className={styles.badgeAdmin}>
+              <Icon name="shield" size={14} /> Acceso Administrador · Control
+              RBAC &amp; Mercados
+            </p>
+          ) : (
+            <p className={styles.badge}>
+              <span className={styles.dot} /> Acceso Seguro 2FA · Wall Street
+            </p>
+          )}
+
           <h1>
             {codes
               ? codes.length
@@ -168,8 +210,22 @@ export function LoginForm({
                 : 'Sesión iniciada'
               : challenge
                 ? 'Verificación en dos pasos'
-                : 'Iniciar sesión'}
+                : isAdminLogin
+                  ? 'Portal de Administración'
+                  : 'Iniciar sesión'}
           </h1>
+
+          {isAdminLogin && !challenge && !codes && (
+            <div className={styles.adminCallout}>
+              <strong>
+                🛡️ Acceso Restringido para Administradores (RFP-02)
+              </strong>
+              Permite auditar y activar comisionistas AMV, gestionar políticas
+              RBAC de seguridad y supervisar los calendarios y horarios de Wall
+              Street.
+            </div>
+          )}
+
           {error && (
             <p className={styles.error} role="alert">
               {error}
@@ -185,8 +241,18 @@ export function LoginForm({
           {codes ? (
             <RecoveryCodesDisplay
               codes={codes}
-              onDismiss={() => router.replace('/dashboard')}
-              dismissText="Continuar al dashboard"
+              onDismiss={() =>
+                router.replace(
+                  isAdminLogin || emailValue === 'admin@example.com'
+                    ? '/admin'
+                    : '/dashboard',
+                )
+              }
+              dismissText={
+                isAdminLogin || emailValue === 'admin@example.com'
+                  ? 'Continuar al panel de administración'
+                  : 'Continuar al dashboard'
+              }
             />
           ) : (
             <form key={challenge ? 'verify' : 'login'} onSubmit={submit}>
@@ -228,6 +294,8 @@ export function LoginForm({
                       <input
                         type="email"
                         name="email"
+                        value={emailValue}
+                        onChange={(e) => setEmailValue(e.target.value)}
                         placeholder="correo@ejemplo.com"
                         autoComplete="username"
                         required
@@ -239,6 +307,8 @@ export function LoginForm({
                         <input
                           type={showPassword ? 'text' : 'password'}
                           name="password"
+                          value={passwordValue}
+                          onChange={(e) => setPasswordValue(e.target.value)}
                           placeholder="Tu contraseña"
                           autoComplete="current-password"
                           maxLength={128}
@@ -273,7 +343,9 @@ export function LoginForm({
                     ? 'Enviando…'
                     : challenge
                       ? 'Verificar'
-                      : 'Iniciar sesión'}
+                      : isAdminLogin
+                        ? 'Ingresar al Portal Administrativo'
+                        : 'Iniciar sesión'}
                 </button>
                 {challenge && !challenge.totp_enrollment && (
                   <button
@@ -303,8 +375,35 @@ export function LoginForm({
               </fieldset>
               {!challenge && (
                 <p className={styles.registerPrompt}>
-                  ¿Aún no tienes cuenta?{' '}
-                  <Link href="/registro">Abrir cuenta de práctica</Link>
+                  {isAdminLogin ? (
+                    <>
+                      ¿Eres inversionista o comisionista?{' '}
+                      <button
+                        type="button"
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--color-primary)',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          padding: 0,
+                          textDecoration: 'underline',
+                          font: 'inherit',
+                        }}
+                        onClick={() => {
+                          setIsAdminLogin(false);
+                          setError('');
+                        }}
+                      >
+                        Cambiar a modo Inversor / Comisionista
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      ¿Aún no tienes cuenta?{' '}
+                      <Link href="/registro">Abrir cuenta de práctica</Link>
+                    </>
+                  )}
                 </p>
               )}
             </form>

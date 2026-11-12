@@ -2,12 +2,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import {
-  useRef,
-  useState,
-  useSyncExternalStore,
-  type FormEvent,
-} from 'react';
+import { useRef, useState, useSyncExternalStore, type FormEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Icon } from '@/components/ui/Icon';
 import type { IconName } from '@/components/ui/Icon';
@@ -573,6 +568,28 @@ export function Dashboard({
           </nav>
         </div>
         <div className={styles.sideBottom}>
+          {user?.roles?.includes('administrator') && (
+            <Link
+              href="/admin"
+              className={styles.navButton}
+              style={{
+                color: '#ef4444',
+                borderColor: 'rgba(239, 68, 68, 0.3)',
+                background: 'rgba(239, 68, 68, 0.08)',
+                fontWeight: 700,
+                textDecoration: 'none',
+              }}
+            >
+              <Icon name="shield" />
+              <span className={styles.sidebarText}>Panel Administrador</span>
+              <span
+                className={styles.collapsedLabel}
+                aria-hidden={!collapsed || mobile}
+              >
+                Panel Administrador
+              </span>
+            </Link>
+          )}
           <button
             type="button"
             className={styles.navButton}
