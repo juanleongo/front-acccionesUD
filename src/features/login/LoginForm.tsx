@@ -26,7 +26,14 @@ const verifiedSchema = z.object({
 export function LoginForm({
   initialChallenge = null,
   registrationStatus,
-}: { initialChallenge?: Challenge | null; registrationStatus?: string } = {}) {
+  onRegisteredUserVerified,
+  registeredUserId,
+}: {
+  initialChallenge?: Challenge | null;
+  registrationStatus?: string;
+  registeredUserId?: string;
+  onRegisteredUserVerified?: () => Promise<void>;
+} = {}) {
   const router = useRouter();
   const { setCodes: showDashboardCodes } = usePendingCodes();
   const [isAdminLogin, setIsAdminLogin] = useState(false);
@@ -93,7 +100,18 @@ export function LoginForm({
           parse: verifiedSchema.parse,
         });
         setChallenge(null);
-        if (registrationStatus) showDashboardCodes(result.recovery_codes);
+        if (registeredUserId && result.user.user_id !== registeredUserId) {
+          setError(
+            'Inicia sesión con la cuenta que acabas de registrar para continuar.',
+          );
+          return;
+        }
+        if (registrationStatus && result.recovery_codes)
+          showDashboardCodes(result.recovery_codes);
+        if (onRegisteredUserVerified) {
+          await onRegisteredUserVerified();
+          return;
+        }
         setCodes(registrationStatus ? [] : (result.recovery_codes ?? []));
         const targetPath =
           isAdminLogin ||

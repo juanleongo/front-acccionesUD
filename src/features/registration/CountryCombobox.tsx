@@ -9,6 +9,7 @@ interface Country {
 
 interface CountryComboboxProps {
   countries: Country[];
+  onCountryChange?: (code: string) => void;
   defaultValue?: string;
   disabled?: boolean;
   id?: string;
@@ -16,6 +17,7 @@ interface CountryComboboxProps {
 
 export function CountryCombobox({
   countries,
+  onCountryChange,
   defaultValue = '',
   disabled = false,
   id = 'country-combobox-input',
@@ -57,6 +59,7 @@ export function CountryCombobox({
 
   function selectCountry(c: Country) {
     setSelectedCode(c.code);
+    onCountryChange?.(c.code);
     setQuery(c.name);
     setOpen(false);
     inputRef.current?.focus();
@@ -76,6 +79,7 @@ export function CountryCombobox({
         onChange={(e) => {
           const val = e.target.value;
           setSelectedCode(val);
+          onCountryChange?.(val);
           const match = countries.find((c) => c.code === val);
           if (match) setQuery(match.name);
         }}
@@ -110,7 +114,10 @@ export function CountryCombobox({
             setQuery(e.target.value);
             if (!open) setOpen(true);
             // Si borra el texto, resetear código
-            if (!e.target.value.trim()) setSelectedCode('');
+            if (!e.target.value.trim()) {
+              setSelectedCode('');
+              onCountryChange?.('');
+            }
           }}
           onKeyDown={(e) => {
             if (e.key === 'Escape') {

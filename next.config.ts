@@ -2,6 +2,7 @@ import type { NextConfig } from 'next';
 import { serverConfigSchema } from './src/lib/config/schema';
 
 const nextConfig: NextConfig = {
+  serverExternalPackages: ['country-state-city'],
   reactStrictMode: true,
   poweredByHeader: false,
   async rewrites() {
