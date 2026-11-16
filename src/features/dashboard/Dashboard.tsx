@@ -8,12 +8,20 @@ import { Icon } from '@/components/ui/Icon';
 import type { IconName } from '@/components/ui/Icon';
 import { DashboardRecoveryCodes } from '@/features/login';
 import { Markets } from '@/features/markets';
-import { marketInterestsCatalog } from '@/features/registration';
-import { TradingTerminal } from '@/features/trading';
-import { WalletDashboard } from '@/features/wallet';
 import {
+  KycFields,
+  marketInterestsCatalog,
+  readKyc,
+  validateBirthDateAge,
+} from '@/features/registration';
+import { TradingTerminal } from '@/features/trading';
+import { fetchWalletBalance, WalletDashboard } from '@/features/wallet';
+import { ApiError } from '@/lib/api';
+import {
+  fetchKycStatus,
   getCurrentUser,
   logoutCurrentSession,
+  submitKycApplication,
   updateUserInterests,
   type UserProfile,
 } from './user-api';
@@ -186,7 +194,11 @@ export function Dashboard({
   const [activeSection, setActiveSection] =
     useState<DashboardSection>(initialSection);
   const [loggingOut, setLoggingOut] = useState(false);
-  const [profileTab, setProfileTab] = useState<'info' | 'edit'>('info');
+  const [profileTab, setProfileTab] = useState<'info' | 'edit' | 'kyc'>('info');
+  const [kycModalStep, setKycModalStep] = useState(2);
+  const [kycBusy, setKycBusy] = useState(false);
+  const [kycMsg, setKycMsg] = useState('');
+  const [kycErr, setKycErr] = useState('');
   const [overrideLevel, setOverrideLevel] = useState<
     'beginner' | 'experienced' | null
   >(null);
@@ -197,6 +209,14 @@ export function Dashboard({
   const [saveSuccess, setSaveSuccess] = useState('');
   const [saveError, setSaveError] = useState('');
   const [localUser, setLocalUser] = useState<UserProfile | null>(null);
+
+  function navigateToSection(section: DashboardSection) {
+    setActiveSection(section);
+    if (mobile) setMobileOpen(false);
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }
 
   // Guía didáctica oculta / visible con useSyncExternalStore para evitar hydration mismatch y warnings de lint
   const guideDismissed = useSyncExternalStore(
@@ -221,6 +241,35 @@ export function Dashboard({
     retry: false,
   });
   const user = localUser ?? userQuery.data;
+
+  const kycQuery = useQuery({
+    queryKey: ['kyc', 'status'],
+    queryFn: ({ signal }) => fetchKycStatus(signal),
+    retry: false,
+  });
+
+  const walletQuery = useQuery({
+    queryKey: ['wallet', 'balances', 'summary'],
+    queryFn: ({ signal }) => fetchWalletBalance(signal),
+    retry: false,
+  });
+
+  const realWallet = walletQuery.data;
+  const hasRealAccount = Boolean(kycQuery.data?.has_account);
+  const headerAccountTotal = realWallet
+    ? `$${(
+        realWallet.available_balance_usd +
+        realWallet.reserved_balance_usd +
+        realWallet.invested_equity_usd
+      ).toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })}`
+    : hasRealAccount
+      ? '$0.00'
+      : user
+        ? '$0.00'
+        : dashboardPreview.accountValue;
 
   const editableLevel =
     overrideLevel ??
@@ -265,12 +314,123 @@ export function Dashboard({
           interests: editableInterests,
         });
       }
-    } catch {
-      setSaveError(
-        'No se pudieron guardar las preferencias en el servidor. Inténtalo de nuevo.',
-      );
+    } catch (cause) {
+      if (cause instanceof ApiError && cause.metadata.status === 422) {
+        setSaveError(
+          'El backend rechazó uno o más intereses (error 422) porque valida contra códigos de bolsa (NYSE, NASDAQ, AMEX) o sectores sincronizados en la tabla de instrumentos. Prueba seleccionando las bolsas EE. UU. mientras backend habilita sectores descriptivos.',
+        );
+      } else {
+        setSaveError(
+          'No se pudieron guardar las preferencias en el servidor. Inténtalo de nuevo.',
+        );
+      }
     } finally {
       setSavingPreferences(false);
+    }
+  }
+
+  async function handleDashboardKycSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (kycBusy || !user) return;
+    setKycErr('');
+    setKycMsg('');
+    const form = e.currentTarget;
+    for (const control of form.querySelectorAll<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >('input,select,textarea')) {
+      if (!control.closest('[hidden]') && !control.checkValidity()) {
+        setKycErr(
+          'Completa todos los campos obligatorios de este paso antes de continuar.',
+        );
+        return;
+      }
+    }
+    const data = new FormData(form);
+    if (kycModalStep === 2) {
+      const dobError = validateBirthDateAge(
+        String(data.get('date_of_birth') ?? ''),
+      );
+      if (dobError) {
+        setKycErr(dobError);
+        return;
+      }
+      if (!data.get('state') || !data.get('city')) {
+        setKycErr('Selecciona tu departamento/estado y ciudad.');
+        return;
+      }
+      setKycModalStep(3);
+      return;
+    }
+    if (kycModalStep === 3) {
+      try {
+        readKyc(data, {
+          first_names: user.first_names,
+          last_names: user.last_names,
+          email: user.email,
+          phone: user.phone,
+          country: user.country,
+          password: '',
+          terms_accepted: true,
+          monthly_report: false,
+          interests: user.interests,
+          investor_level: user.investor_level,
+          broker_requested: Boolean(user.broker_requested),
+          premium_requested: user.is_premium,
+        });
+      } catch (cause) {
+        setKycErr(
+          cause instanceof Error
+            ? cause.message
+            : 'Revisa tu perfil financiero.',
+        );
+        return;
+      }
+      setKycModalStep(4);
+      return;
+    }
+
+    let payload: Record<string, unknown>;
+    try {
+      payload = readKyc(data, {
+        first_names: user.first_names,
+        last_names: user.last_names,
+        email: user.email,
+        phone: user.phone,
+        country: user.country,
+        password: '',
+        terms_accepted: true,
+        monthly_report: false,
+        interests: user.interests,
+        investor_level: user.investor_level,
+        broker_requested: Boolean(user.broker_requested),
+        premium_requested: user.is_premium,
+      });
+    } catch (cause) {
+      setKycErr(
+        cause instanceof Error
+          ? cause.message
+          : 'Revisa los datos del trámite KYC.',
+      );
+      return;
+    }
+
+    setKycBusy(true);
+    try {
+      const res = await submitKycApplication(payload);
+      setKycMsg(
+        `¡Trámite KYC radicado exitosamente! Cuenta Alpaca: ${res.alpaca_account_id} (Estado: ${res.status}).`,
+      );
+      await kycQuery.refetch();
+      await userQuery.refetch();
+      await walletQuery.refetch();
+    } catch (cause) {
+      setKycErr(
+        cause instanceof ApiError
+          ? `Alpaca / Servidor rechazó la solicitud (${cause.metadata.status}): ${cause.message}`
+          : 'No se pudo enviar la solicitud KYC al servidor.',
+      );
+    } finally {
+      setKycBusy(false);
     }
   }
 
@@ -331,7 +491,7 @@ export function Dashboard({
           <button
             type="button"
             className={styles.brand}
-            onClick={() => setActiveSection('dashboard')}
+            onClick={() => navigateToSection('dashboard')}
             aria-label="Acciones UD, inicio"
             style={{
               background: 'none',
@@ -375,10 +535,7 @@ export function Dashboard({
           <button
             type="button"
             className={styles.newOrder}
-            onClick={() => {
-              setActiveSection('orders');
-              if (mobile) setMobileOpen(false);
-            }}
+            onClick={() => navigateToSection('orders')}
           >
             <span aria-hidden="true">⊕</span>
             <span className={styles.sidebarText}>Nueva Orden</span>
@@ -392,10 +549,7 @@ export function Dashboard({
                   key={item.id}
                   type="button"
                   className={isSelected ? styles.selected : styles.navButton}
-                  onClick={() => {
-                    setActiveSection(item.id);
-                    if (mobile) setMobileOpen(false);
-                  }}
+                  onClick={() => navigateToSection(item.id)}
                   title={item.label}
                 >
                   <Icon name={item.icon} size={18} />
@@ -488,8 +642,12 @@ export function Dashboard({
           <h1>{sectionTitles[activeSection]}</h1>
           <div className={styles.headerActions}>
             <div className={styles.account}>
-              <span>Valor Cuenta Simulación</span>
-              <strong>{dashboardPreview.accountValue} USD</strong>
+              <span>
+                {realWallet
+                  ? 'Valor Real Cuenta (USD)'
+                  : 'Valor Cuenta Simulación'}
+              </span>
+              <strong>{headerAccountTotal} USD</strong>
             </div>
 
             <button
@@ -612,30 +770,100 @@ export function Dashboard({
                   </section>
                 ))}
 
+              {user && !hasRealAccount && (
+                <div className={styles.kycActionBanner}>
+                  <div>
+                    <strong>
+                      🛡️ Completa tu verificación de identidad (KYC) en EE. UU.
+                    </strong>
+                    <p>
+                      Tu usuario ya está activo, pero aún falta radicar el
+                      formulario KYC ante Alpaca para habilitar saldo real,
+                      depósitos y envío de órdenes.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className={styles.primary}
+                    onClick={() => {
+                      setProfileTab('kyc');
+                      setKycModalStep(2);
+                      profileDialog.current?.showModal();
+                    }}
+                  >
+                    Completar Trámite KYC →
+                  </button>
+                </div>
+              )}
+
               <section
                 className={styles.metrics}
                 aria-label="Resumen financiero"
               >
-                {dashboardPreview.metrics.map((metric) => (
-                  <article
-                    key={metric.title}
-                    className={`${styles.metric} ${styles[metric.tone] ?? ''}`}
-                  >
-                    <div className={styles.metricHeading}>
-                      <div>
-                        <h3>{metric.title}</h3>
-                        <p>{metric.description}</p>
+                {dashboardPreview.metrics.map((metric, idx) => {
+                  const displayValue = realWallet
+                    ? idx === 0
+                      ? `$${(
+                          realWallet.available_balance_usd +
+                          realWallet.reserved_balance_usd +
+                          realWallet.invested_equity_usd
+                        ).toLocaleString('en-US', {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}`
+                      : idx === 1
+                        ? `$${realWallet.available_balance_usd.toLocaleString(
+                            'en-US',
+                            {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            },
+                          )}`
+                        : idx === 2
+                          ? `$${realWallet.reserved_balance_usd.toLocaleString(
+                              'en-US',
+                              {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              },
+                            )}`
+                          : `$${realWallet.invested_equity_usd.toLocaleString(
+                              'en-US',
+                              {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              },
+                            )}`
+                    : metric.value;
+                  const displayTitle =
+                    realWallet && idx === 3
+                      ? 'VALOR INVERTIDO EN ACCIONES'
+                      : metric.title;
+                  return (
+                    <article
+                      key={metric.title}
+                      className={`${styles.metric} ${styles[metric.tone] ?? ''}`}
+                    >
+                      <div className={styles.metricHeading}>
+                        <div>
+                          <h3>{displayTitle}</h3>
+                          <p>{metric.description}</p>
+                        </div>
+                        <div className={styles.metricIcon}>
+                          <Icon name={metric.icon} size={18} />
+                        </div>
                       </div>
-                      <div className={styles.metricIcon}>
-                        <Icon name={metric.icon} size={18} />
+                      <div className={styles.amount}>
+                        {displayValue} <small>USD</small>
                       </div>
-                    </div>
-                    <div className={styles.amount}>
-                      {metric.value} <small>USD</small>
-                    </div>
-                    <div className={styles.metricNote}>{metric.note}</div>
-                  </article>
-                ))}
+                      <div className={styles.metricNote}>
+                        {realWallet
+                          ? '● Sincronizado con tu Billetera Alpaca'
+                          : `${metric.note} (Demo)`}
+                      </div>
+                    </article>
+                  );
+                })}
               </section>
 
               <div className={styles.columns}>
@@ -648,7 +876,7 @@ export function Dashboard({
                       </h2>
                       <button
                         type="button"
-                        onClick={() => setActiveSection('markets')}
+                        onClick={() => navigateToSection('markets')}
                         className={styles.liveMarketsLink}
                       >
                         Ver cotizaciones en vivo →
@@ -699,7 +927,7 @@ export function Dashboard({
                                   type="button"
                                   onClick={() => {
                                     setOrderSymbol(stock.symbol);
-                                    setActiveSection('orders');
+                                    navigateToSection('orders');
                                   }}
                                   className={styles.invest}
                                 >
@@ -725,7 +953,7 @@ export function Dashboard({
                     </div>
                     <button
                       type="button"
-                      onClick={() => setActiveSection('markets')}
+                      onClick={() => navigateToSection('markets')}
                       className={styles.primary}
                     >
                       Explorar Mercados en Vivo <Icon name="arrow" size={18} />
@@ -773,15 +1001,12 @@ export function Dashboard({
                     </div>
                     <button
                       type="button"
-                      onClick={() => setActiveSection('advisors')}
+                      onClick={() => navigateToSection('advisors')}
                       className={styles.advisorButton}
                     >
                       Consultar Asesores &amp; Estrategias
                     </button>
                   </section>
-                </div>
-                <div style={{ marginTop: '2rem' }}>
-                  <Markets />
                 </div>
               </div>
             </>
@@ -804,7 +1029,7 @@ export function Dashboard({
                   <h2>Posiciones Activas en Mercados de EE. UU. (USD)</h2>
                   <button
                     type="button"
-                    onClick={() => setActiveSection('orders')}
+                    onClick={() => navigateToSection('orders')}
                     className={styles.primary}
                     style={{ fontSize: '0.85rem', padding: '0.45rem 1rem' }}
                   >
@@ -868,7 +1093,7 @@ export function Dashboard({
                               type="button"
                               onClick={() => {
                                 setOrderSymbol(stock.symbol);
-                                setActiveSection('orders');
+                                navigateToSection('orders');
                               }}
                               className={styles.invest}
                             >
@@ -890,44 +1115,58 @@ export function Dashboard({
             <div>
               <div style={{ marginBottom: '1.25rem' }}>
                 <h2 style={{ fontSize: '1.3rem', marginBottom: '0.3rem' }}>
-                  Directorio Oficial de Comisionistas y Asesores
+                  Directorio de Comisionistas y Asesores Bursátiles
                 </h2>
                 <p
                   style={{
                     color: 'var(--color-text-muted)',
                     fontSize: '0.9rem',
+                    marginBottom: '0.5rem',
                   }}
                 >
                   Profesionales acreditados para estructurar y supervisar tu
                   portafolio en mercados de Estados Unidos (NYSE / NASDAQ).
                 </p>
+                <div className={styles.advisorCatalogNotice}>
+                  <strong>ℹ️ Estado de vinculación con Backend:</strong> Los
+                  comisionistas reales aprobados por el SysAdmin en{' '}
+                  <code>/admin</code> todavía no cuentan con un endpoint público{' '}
+                  <code>GET /api/v1/brokers</code> en el backend para listarse
+                  automáticamente aquí; este directorio muestra los asesores de
+                  referencia del simulador.
+                </div>
               </div>
 
               <div className={styles.advisorsGrid}>
                 {advisorsData.map((adv) => (
                   <div key={adv.id} className={styles.advisorCardDetailed}>
                     <div className={styles.advisorCardHeader}>
-                      <button
-                        type="button"
-                        className={styles.advisorPhotoBtn}
-                        onClick={() => {
-                          setSelectedAdvisor(adv);
-                          advisorDialog.current?.showModal();
-                        }}
-                        title={`Ampliar foto y ver ficha técnica de ${adv.name}`}
-                        aria-label={`Ver foto y ficha técnica de ${adv.name}`}
-                      >
-                        <Image
-                          src={adv.photo}
-                          alt={`Foto ${adv.name}`}
-                          width={56}
-                          height={56}
-                          className={styles.advisorPhotoLarge}
-                        />
-                        <span className={styles.advisorPhotoZoomIcon}>
+                      <div className={styles.advisorPhotoWrap}>
+                        <button
+                          type="button"
+                          className={styles.advisorPhotoBtn}
+                          onClick={() => {
+                            setSelectedAdvisor(adv);
+                            advisorDialog.current?.showModal();
+                          }}
+                          title={`Ampliar foto y ver ficha técnica de ${adv.name}`}
+                          aria-label={`Ver foto y ficha técnica de ${adv.name}`}
+                        >
+                          <Image
+                            src={adv.photo}
+                            alt={`Foto ${adv.name}`}
+                            width={56}
+                            height={56}
+                            className={styles.advisorPhotoLarge}
+                          />
+                        </button>
+                        <span
+                          className={styles.advisorPhotoZoomIcon}
+                          aria-hidden="true"
+                        >
                           <Icon name="search" size={11} />
                         </span>
-                      </button>
+                      </div>
 
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div
@@ -991,7 +1230,7 @@ export function Dashboard({
                             type="button"
                             className={styles.navButton}
                             style={{ border: '1px solid var(--color-border)' }}
-                            onClick={() => setActiveSection('orders')}
+                            onClick={() => navigateToSection('orders')}
                           >
                             Operar con su estrategia
                           </button>
@@ -1074,6 +1313,13 @@ export function Dashboard({
           >
             Editar Intereses &amp; Nivel
           </button>
+          <button
+            type="button"
+            className={`${styles.profileTab} ${profileTab === 'kyc' ? styles.profileTabActive : ''}`}
+            onClick={() => setProfileTab('kyc')}
+          >
+            Trámite KYC {hasRealAccount ? '✓' : '· Pendiente'}
+          </button>
         </div>
 
         {profileTab === 'info' ? (
@@ -1102,7 +1348,7 @@ export function Dashboard({
                   País de Residencia
                 </span>
                 <span className={styles.profileCardValue}>
-                  {user?.country ? `${user.country} · Colombia` : 'Colombia'}
+                  {user?.country ? `${user.country}` : 'Colombia'}
                 </span>
               </div>
 
@@ -1122,10 +1368,9 @@ export function Dashboard({
                   Estado KYC / Identidad
                 </span>
                 <span className={styles.profileCardValue}>
-                  {user?.kyc_status ??
-                    (user?.kyc_status_unavailable
-                      ? 'No disponible'
-                      : 'Verificación Básica')}
+                  {kycQuery.data?.status ??
+                    user?.kyc_status ??
+                    (hasRealAccount ? 'Radicada' : 'Pendiente por radicar')}
                 </span>
               </div>
 
@@ -1147,6 +1392,22 @@ export function Dashboard({
               </div>
             </div>
 
+            {!hasRealAccount && (
+              <div className={styles.kycInlineCallout}>
+                <span>Tu trámite KYC ante Alpaca aún no está completo.</span>
+                <button
+                  type="button"
+                  className={styles.primary}
+                  onClick={() => {
+                    setKycModalStep(2);
+                    setProfileTab('kyc');
+                  }}
+                >
+                  Completar formulario KYC →
+                </button>
+              </div>
+            )}
+
             <div className={styles.profileInterestsSection}>
               <span className={styles.profileCardTitle}>
                 Sectores de Interés Bursátil Registrados
@@ -1161,7 +1422,7 @@ export function Dashboard({
                 ) : (
                   <span
                     style={{
-                      fontSize: '0.8rem',
+                      fontSize: '0.84rem',
                       color: 'var(--color-text-muted)',
                     }}
                   >
@@ -1170,8 +1431,16 @@ export function Dashboard({
                 )}
               </div>
             </div>
+
+            <p className={styles.profileBackendHint}>
+              Nota: El nombre, teléfono y país de registro actualmente son de
+              solo lectura en el backend (requiere endpoint{' '}
+              <code>PATCH /api/v1/users/me</code> para modificarse). Puedes
+              editar tu nivel e intereses o radicar tu trámite KYC en las
+              pestañas superiores.
+            </p>
           </>
-        ) : (
+        ) : profileTab === 'edit' ? (
           <div className={styles.editorSection}>
             {saveSuccess && (
               <p className={styles.profileSuccessMessage} role="status">
@@ -1208,8 +1477,34 @@ export function Dashboard({
 
             <div className={styles.editorField}>
               <label className={styles.editorLabel}>
-                Sectores bursátiles de interés (Haz clic para seleccionar o
-                deseleccionar)
+                Bolsas estadounidenses compatibles con Backend (
+                <code>PUT /api/v1/users/me/interests</code>)
+              </label>
+              <span className={styles.editorHelp}>
+                El servidor valida actualmente contra códigos de mercados o
+                sectores registrados en la base de datos:
+              </span>
+              <div
+                className={styles.chipsGrid}
+                style={{ marginBottom: '0.85rem' }}
+              >
+                {['NYSE', 'NASDAQ', 'AMEX'].map((mkt) => {
+                  const isSelected = editableInterests.includes(mkt);
+                  return (
+                    <button
+                      key={mkt}
+                      type="button"
+                      className={`${styles.chipBtn} ${isSelected ? styles.chipBtnSelected : ''}`}
+                      onClick={() => toggleInterest(mkt)}
+                    >
+                      <span>{isSelected ? '✓' : '+'}</span> {mkt}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <label className={styles.editorLabel}>
+                Sectores bursátiles de interés (Catálogo)
               </label>
               <span className={styles.editorHelp}>
                 Seleccionados: {editableInterests.length} de 20 permitidos
@@ -1250,6 +1545,89 @@ export function Dashboard({
                 Ver datos
               </button>
             </div>
+          </div>
+        ) : (
+          <div className={styles.editorSection}>
+            {hasRealAccount && !kycMsg ? (
+              <div className={styles.profileSuccessMessage} role="status">
+                <strong>✓ Tu cuenta KYC ya fue radicada en Alpaca.</strong>{' '}
+                Estado actual:{' '}
+                {kycQuery.data?.status ?? user?.kyc_status ?? 'SUBMITTED'}.
+              </div>
+            ) : (
+              <form
+                className={styles.kycModalForm}
+                onSubmit={handleDashboardKycSubmit}
+                noValidate
+              >
+                {kycMsg && (
+                  <p className={styles.profileSuccessMessage} role="status">
+                    {kycMsg}
+                  </p>
+                )}
+                {kycErr && (
+                  <p className={styles.profileErrorMessage} role="alert">
+                    {kycErr}
+                  </p>
+                )}
+                <div className={styles.kycStepPills}>
+                  <span
+                    className={
+                      kycModalStep === 2 ? styles.kycStepActive : styles.kycStep
+                    }
+                  >
+                    1. Identidad y domicilio
+                  </span>
+                  <span
+                    className={
+                      kycModalStep === 3 ? styles.kycStepActive : styles.kycStep
+                    }
+                  >
+                    2. Perfil financiero
+                  </span>
+                  <span
+                    className={
+                      kycModalStep === 4 ? styles.kycStepActive : styles.kycStep
+                    }
+                  >
+                    3. Acuerdos Alpaca
+                  </span>
+                </div>
+
+                <KycFields
+                  step={kycModalStep}
+                  country={user?.country ?? 'CO'}
+                  disabled={kycBusy}
+                />
+
+                <div className={styles.kycModalActions}>
+                  {kycModalStep > 2 && (
+                    <button
+                      type="button"
+                      className={styles.chipBtn}
+                      disabled={kycBusy}
+                      onClick={() => {
+                        setKycErr('');
+                        setKycModalStep((prev) => prev - 1);
+                      }}
+                    >
+                      ← Anterior
+                    </button>
+                  )}
+                  <button
+                    type="submit"
+                    className={styles.primary}
+                    disabled={kycBusy}
+                  >
+                    {kycBusy
+                      ? 'Enviando a Alpaca…'
+                      : kycModalStep < 4
+                        ? 'Continuar →'
+                        : 'Radicar solicitud KYC'}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         )}
 
@@ -1383,7 +1761,7 @@ export function Dashboard({
                 className={styles.primary}
                 onClick={() => {
                   advisorDialog.current?.close();
-                  setActiveSection('orders');
+                  navigateToSection('orders');
                 }}
               >
                 Operar con su estrategia en Wall Street

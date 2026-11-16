@@ -4,6 +4,7 @@ export { CurrencyConverterWidget } from './CurrencyConverterWidget';
 export { DepositModal } from './DepositModal';
 export { WithdrawalModal } from './WithdrawalModal';
 export { TransactionLedgerTable } from './TransactionLedgerTable';
+export { fetchWalletBalance } from './wallet-api';
 export type {
   CurrencyCode,
   FxRate,

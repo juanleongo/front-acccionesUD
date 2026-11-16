@@ -1,9 +1,56 @@
 'use client';
 
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import styles from './login.module.css';
+
+const STORAGE_KEY = 'acciones_ud_pending_recovery_codes';
+const CHANGE_EVENT = 'acciones_ud_recovery_codes_change';
+
+let cachedRaw: string | null = null;
+let cachedParsed: string[] | null = null;
+
+function subscribeRecoveryStore(callback: () => void) {
+  window.addEventListener('storage', callback);
+  window.addEventListener(CHANGE_EVENT, callback);
+  return () => {
+    window.removeEventListener('storage', callback);
+    window.removeEventListener(CHANGE_EVENT, callback);
+  };
+}
+
+function getRecoverySnapshot(): string[] | null {
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY);
+    if (raw === cachedRaw) return cachedParsed;
+    cachedRaw = raw;
+    if (!raw) {
+      cachedParsed = null;
+      return null;
+    }
+    const parsed = JSON.parse(raw) as unknown;
+    cachedParsed =
+      Array.isArray(parsed) &&
+      parsed.every((item) => typeof item === 'string') &&
+      parsed.length > 0
+        ? parsed
+        : null;
+    return cachedParsed;
+  } catch {
+    return null;
+  }
+}
+
+function getRecoveryServerSnapshot(): string[] | null {
+  return null;
+}
 
 const PendingCodes = createContext<{
   codes: string[] | null;
@@ -11,13 +58,30 @@ const PendingCodes = createContext<{
 } | null>(null);
 
 export function RecoveryCodesProvider({ children }: { children: ReactNode }) {
-  const path = usePathname();
-  const [previousPath, setPreviousPath] = useState(path);
-  const [codes, setCodes] = useState<string[] | null>(null);
-  if (path !== previousPath) {
-    setPreviousPath(path);
-    if (path !== '/dashboard') setCodes(null);
-  }
+  const codes = useSyncExternalStore(
+    subscribeRecoveryStore,
+    getRecoverySnapshot,
+    getRecoveryServerSnapshot,
+  );
+
+  const setCodes = useCallback((next: string[] | null) => {
+    try {
+      if (next && next.length > 0) {
+        const serialized = JSON.stringify(next);
+        sessionStorage.setItem(STORAGE_KEY, serialized);
+        cachedRaw = serialized;
+        cachedParsed = next;
+      } else {
+        sessionStorage.removeItem(STORAGE_KEY);
+        cachedRaw = null;
+        cachedParsed = null;
+      }
+      window.dispatchEvent(new Event(CHANGE_EVENT));
+    } catch {
+      /* sessionStorage opcional */
+    }
+  }, []);
+
   return (
     <PendingCodes.Provider value={{ codes, setCodes }}>
       {children}
@@ -43,15 +107,20 @@ export function RecoveryCodesDisplay({
   dismissText?: string;
 }) {
   const [copied, setCopied] = useState(false);
+  const [downloaded, setDownloaded] = useState(false);
 
   async function copyAll() {
     const text =
       `CÓDIGOS DE RECUPERACIÓN (2FA) - ACCIONES UD\n` +
       `Generados: ${new Date().toLocaleString()}\n\n` +
       codes.map((c, i) => `${i + 1}. ${c}`).join('\n');
-    await navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2500);
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 3000);
+    } catch {
+      /* Portapapeles opcional */
+    }
   }
 
   function downloadBackup() {
@@ -76,6 +145,7 @@ ${codes.map((c, i) => `[ ${String(i + 1).padStart(2, '0')} ]  ${c}`).join('\n')}
     a.download = `acciones-ud-codigos-recuperacion-${Date.now()}.txt`;
     a.click();
     URL.revokeObjectURL(url);
+    setDownloaded(true);
   }
 
   return (
@@ -88,12 +158,17 @@ ${codes.map((c, i) => `[ ${String(i + 1).padStart(2, '0')} ]  ${c}`).join('\n')}
           🛡️
         </div>
         <div className={styles.recoveryTitle}>
+          <span className={styles.recoveryBadge}>
+            RESPALDO OBLIGATORIO DE SEGURIDAD · 2FA
+          </span>
           <h2 id="recovery-heading">
             Guarda tus códigos de recuperación de emergencia
           </h2>
           <p>
-            Estos códigos son tu única forma de recuperar el acceso a tu cuenta
-            si pierdes tu celular. Cópialos o descarga un respaldo ahora.
+            Estos <strong>{codes.length} códigos de un solo uso</strong> son la
+            única llave para entrar a tu cuenta si pierdes o cambias tu celular.
+            Por seguridad no se volverán a mostrar automáticamente: cópialos o
+            descárgalos antes de continuar.
           </p>
         </div>
       </div>
@@ -104,7 +179,7 @@ ${codes.map((c, i) => `[ ${String(i + 1).padStart(2, '0')} ]  ${c}`).join('\n')}
       >
         {codes.map((code, index) => (
           <li key={code} className={styles.recoveryItem}>
-            <small>{index + 1}.</small>
+            <small>{String(index + 1).padStart(2, '0')}.</small>
             <code>{code}</code>
           </li>
         ))}
@@ -116,14 +191,16 @@ ${codes.map((c, i) => `[ ${String(i + 1).padStart(2, '0')} ]  ${c}`).join('\n')}
           onClick={copyAll}
           className={styles.recoveryBtnAction}
         >
-          {copied ? '✓ ¡Copiados al portapapeles!' : '📋 Copiar códigos'}
+          {copied ? '✓ ¡Copiados al portapapeles!' : '📋 Copiar todos'}
         </button>
         <button
           type="button"
           onClick={downloadBackup}
           className={styles.recoveryBtnAction}
         >
-          ⬇ Descargar respaldo (.txt)
+          {downloaded
+            ? '✓ Archivo .txt descargado'
+            : '⬇ Descargar respaldo (.txt)'}
         </button>
         {dismissHref ? (
           <Link href={dismissHref} className={styles.recoveryBtnPrimary}>
@@ -147,6 +224,8 @@ export function DashboardRecoveryCodes() {
   const { codes, setCodes } = usePendingCodes();
   if (!codes?.length) return null;
   return (
-    <RecoveryCodesDisplay codes={codes} onDismiss={() => setCodes(null)} />
+    <div className={styles.recoveryOverlayWrapper}>
+      <RecoveryCodesDisplay codes={codes} onDismiss={() => setCodes(null)} />
+    </div>
   );
 }

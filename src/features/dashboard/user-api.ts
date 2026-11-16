@@ -12,6 +12,7 @@ export const userProfileSchema = z.object({
   registered_at: z.string(),
   contracted_plan: z.string().nullable().optional(),
   is_premium: z.boolean(),
+  broker_requested: z.boolean().optional(),
   associated_broker: z.string().nullable().optional(),
   roles: z.array(z.string()),
   kyc_status: z.string().nullable(),
@@ -54,5 +55,36 @@ export function updateUserInterests(body: InterestsIn) {
     response: 'json',
     body,
     parse: interestsInSchema.parse,
+  });
+}
+
+export const kycStatusSchema = z.object({
+  has_account: z.boolean(),
+  status: z.string().nullable(),
+  status_updated_at: z.string().nullable().optional(),
+  can_trade: z.boolean().optional(),
+  stale: z.boolean().optional(),
+});
+
+export type KycStatus = z.infer<typeof kycStatusSchema>;
+
+export function fetchKycStatus(signal?: AbortSignal) {
+  return browserHttp.request({
+    path: '/api/v1/kyc/status',
+    method: 'GET',
+    response: 'json',
+    parse: kycStatusSchema.parse,
+    ...(signal ? { signal } : {}),
+  });
+}
+
+export function submitKycApplication(body: Record<string, unknown>) {
+  return browserHttp.request({
+    path: '/api/v1/kyc/account',
+    method: 'POST',
+    body,
+    response: 'json',
+    parse: z.object({ alpaca_account_id: z.string(), status: z.string() })
+      .parse,
   });
 }

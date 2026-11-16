@@ -14,6 +14,7 @@ const percent = new Intl.NumberFormat('es-CO', {
   maximumFractionDigits: 2,
   minimumFractionDigits: 2,
 });
+
 export function PriceChart({ exchange }: { exchange: string }) {
   const [letter, setLetter] = useState('A');
   const [page, setPage] = useState(1);
@@ -28,6 +29,39 @@ export function PriceChart({ exchange }: { exchange: string }) {
     options.find((item) => item.symbol === selected)?.symbol ??
     options[0]?.symbol ??
     '';
+  const currentIndex = Math.max(
+    0,
+    options.findIndex((item) => item.symbol === symbol),
+  );
+  const totalPages = catalog.data
+    ? Math.max(1, Math.ceil(catalog.data.total / catalog.data.page_size))
+    : 1;
+
+  const canGoPrev = currentIndex > 0 || page > 1;
+  const canGoNext =
+    currentIndex < options.length - 1 ||
+    Boolean(catalog.data && page < totalPages);
+
+  function handlePrevInstrument() {
+    if (currentIndex > 0) {
+      const prevItem = options[currentIndex - 1];
+      if (prevItem) setSelected(prevItem.symbol);
+    } else if (page > 1) {
+      setPage(page - 1);
+      setSelected('');
+    }
+  }
+
+  function handleNextInstrument() {
+    if (currentIndex < options.length - 1) {
+      const nextItem = options[currentIndex + 1];
+      if (nextItem) setSelected(nextItem.symbol);
+    } else if (page < totalPages) {
+      setPage(page + 1);
+      setSelected('');
+    }
+  }
+
   const [period, setPeriod] = useState<Period>('1M');
   const query = useQuery({
     queryKey: ['price-history', symbol, period],
@@ -42,6 +76,8 @@ export function PriceChart({ exchange }: { exchange: string }) {
       ? (last.price - first.price) / first.price
       : null;
   const status = query.error instanceof ApiError && query.error.metadata.status;
+  const isFetchingAny = catalog.isFetching || query.isFetching;
+
   return (
     <article
       className={styles.card}
@@ -64,7 +100,7 @@ export function PriceChart({ exchange }: { exchange: string }) {
 
         <div className={styles.toolbar}>
           <div className={styles.filterInputs}>
-            <label className={styles.field}>
+            <label className={`${styles.field} ${styles.letterField}`}>
               <span>Filtro de nombre o símbolo</span>
               <select
                 value={letter}
@@ -82,7 +118,7 @@ export function PriceChart({ exchange }: { exchange: string }) {
               </select>
             </label>
 
-            <label className={styles.field}>
+            <label className={`${styles.field} ${styles.instrumentField}`}>
               <span>Instrumento</span>
               <select
                 aria-label="Instrumento"
@@ -101,7 +137,7 @@ export function PriceChart({ exchange }: { exchange: string }) {
           </div>
 
           <div className={styles.paginationArea}>
-            {catalog.data && catalog.data.total > catalog.data.page_size && (
+            {options.length > 0 && (
               <div
                 className={styles.pages}
                 role="navigation"
@@ -110,31 +146,35 @@ export function PriceChart({ exchange }: { exchange: string }) {
                 <button
                   type="button"
                   className={styles.pageButton}
-                  disabled={page === 1}
-                  onClick={() => {
-                    setPage(page - 1);
-                    setSelected('');
-                  }}
-                  aria-label="Página anterior"
+                  disabled={!canGoPrev || isFetchingAny}
+                  onClick={handlePrevInstrument}
+                  aria-label="Instrumento anterior"
                 >
                   ← Anterior
                 </button>
-                <span className={styles.pageIndicator}>
-                  <span className={styles.pageCurrent}>{page}</span>
+                <span
+                  className={styles.pageIndicator}
+                  title={
+                    totalPages > 1
+                      ? `Instrumento ${currentIndex + 1} de ${options.length} (Lote ${page} de ${totalPages})`
+                      : `Instrumento ${currentIndex + 1} de ${options.length}`
+                  }
+                >
+                  <span className={styles.pageCurrent}>{currentIndex + 1}</span>
                   <span className={styles.pageDivider}>/</span>
-                  <span className={styles.pageTotal}>
-                    {Math.ceil(catalog.data.total / catalog.data.page_size)}
-                  </span>
+                  <span className={styles.pageTotal}>{options.length}</span>
+                  {totalPages > 1 ? (
+                    <small className={styles.pageBatchBadge}>
+                      · Lote {page}/{totalPages}
+                    </small>
+                  ) : null}
                 </span>
                 <button
                   type="button"
                   className={styles.pageButton}
-                  disabled={page * catalog.data.page_size >= catalog.data.total}
-                  onClick={() => {
-                    setPage(page + 1);
-                    setSelected('');
-                  }}
-                  aria-label="Página siguiente"
+                  disabled={!canGoNext || isFetchingAny}
+                  onClick={handleNextInstrument}
+                  aria-label="Siguiente instrumento"
                 >
                   Siguiente →
                 </button>
@@ -143,6 +183,17 @@ export function PriceChart({ exchange }: { exchange: string }) {
           </div>
         </div>
       </header>
+
+      {isFetchingAny && (
+        <div
+          className={styles.loadingBarWrap}
+          role="progressbar"
+          aria-label="Actualizando datos de mercado"
+        >
+          <div className={styles.loadingBarFill} />
+        </div>
+      )}
+
       <div className={styles.plot}>
         {catalog.error ? (
           <p role="alert">
@@ -150,7 +201,12 @@ export function PriceChart({ exchange }: { exchange: string }) {
             <button onClick={() => catalog.refetch()}>Reintentar</button>
           </p>
         ) : catalog.isPending ? (
-          <p role="status">Cargando instrumentos…</p>
+          <div className={styles.loadingStateBox} role="status">
+            <div className={styles.loadingBarTrack}>
+              <div className={styles.loadingBarFill} />
+            </div>
+            <p>Cargando instrumentos del mercado {exchange}…</p>
+          </div>
         ) : !symbol ? (
           <p>
             Sin instrumentos para este filtro en {exchange}. Selecciona otra
@@ -170,7 +226,12 @@ export function PriceChart({ exchange }: { exchange: string }) {
             <button onClick={() => query.refetch()}>Reintentar</button>
           </p>
         ) : query.isPending ? (
-          <p role="status">Consultando precios…</p>
+          <div className={styles.loadingStateBox} role="status">
+            <div className={styles.loadingBarTrack}>
+              <div className={styles.loadingBarFill} />
+            </div>
+            <p>Consultando precios históricos de {symbol} en Alpaca…</p>
+          </div>
         ) : query.data && points.length > 0 ? (
           <PriceSeries
             key={symbol + period}
@@ -206,7 +267,7 @@ export function PriceChart({ exchange }: { exchange: string }) {
           {new Date(last.time).toLocaleDateString('es-CO', {
             timeZone: 'America/New_York',
           })}{' '}
-          · {query.data.source}
+          · Fuente API: {query.data.source.toUpperCase()}
           {query.data.delayed && ' · Datos diferidos'}
         </footer>
       )}

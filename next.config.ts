@@ -34,6 +34,12 @@ const nextConfig: NextConfig = {
       '/api/v1/markets/:market/status',
       '/api/v1/instruments/:symbol+/candles',
       '/api/v1/instruments/search',
+      '/api/v1/admin/:path*',
+      '/api/v1/broker/:path*',
+      '/api/v1/orders',
+      '/api/v1/orders/:path*',
+      '/api/v1/wallet/:path*',
+      '/api/v1/subscriptions/:path*',
     ].map((path) => ({
       source: path,
       destination: API_INTERNAL_ORIGIN + path,

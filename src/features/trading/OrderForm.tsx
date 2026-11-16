@@ -1,9 +1,12 @@
 'use client';
 
-import { useCallback, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { ApiError } from '@/lib/api';
+import { fetchWalletBalance } from '@/features/wallet';
 import { OrderTypeSelector } from './OrderTypeSelector';
 import { PriceValidityTimer } from './PriceValidityTimer';
 import type { SlippageAlertData } from './PriceSlippageAlertModal';
+import { createBackendOrder, requestOrderPreview } from './trading-api';
 import {
   TRADING_SYMBOLS,
   type OrderPreview,
@@ -44,6 +47,25 @@ export function OrderForm({
   const [preview, setPreview] = useState<OrderPreview | null>(null);
   const [previewExpired, setPreviewExpired] = useState(false);
   const [feedback, setFeedback] = useState('');
+  const [buyingPowerUsd, setBuyingPowerUsd] = useState<number | null>(null);
+  const [balanceSource, setBalanceSource] = useState<'backend' | 'preview'>(
+    'preview',
+  );
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchWalletBalance(controller.signal)
+      .then((wallet) => {
+        if (wallet) {
+          setBuyingPowerUsd(wallet.available_balance_usd);
+          setBalanceSource('backend');
+        }
+      })
+      .catch(() => {
+        setBalanceSource('preview');
+      });
+    return () => controller.abort();
+  }, []);
 
   const selectedAsset = TRADING_SYMBOLS.find(
     (item) => item.symbol === symbol,
@@ -55,9 +77,36 @@ export function OrderForm({
     changePct: 1.42,
   };
 
-  const generatePreview = useCallback(() => {
+  const generatePreview = useCallback(async () => {
     setFeedback('');
     setPreviewExpired(false);
+    try {
+      const apiPreview = await requestOrderPreview({
+        symbol: selectedAsset.symbol,
+        side,
+        orderType,
+        quantity,
+        timeInForce,
+        limitPrice,
+        stopPrice,
+        scheduleIfClosed: !marketOpen,
+        ttlSeconds: PREVIEW_TTL_SECONDS,
+      });
+      setPreview(apiPreview);
+      setMarketOpen(apiPreview.market_open);
+      if (apiPreview.available_buying_power_usd !== undefined) {
+        setBuyingPowerUsd(apiPreview.available_buying_power_usd);
+        setBalanceSource('backend');
+      }
+      return;
+    } catch (cause) {
+      if (cause instanceof ApiError && cause.metadata.status === 409) {
+        setFeedback(
+          'Tu cuenta aún no tiene habilitada la billetera/cuenta KYC en Alpaca. Se muestra un cálculo simulado de referencia.',
+        );
+      }
+    }
+
     const basePrice =
       orderType === 'limit'
         ? parseFloat(limitPrice) || selectedAsset.priceUsd
@@ -101,6 +150,7 @@ export function OrderForm({
     selectedAsset.symbol,
     side,
     stopPrice,
+    timeInForce,
   ]);
 
   function buildOrderRecord(forceReauth = false): OrderRecord {
@@ -136,19 +186,55 @@ export function OrderForm({
     };
   }
 
-  function handleSubmit(event: FormEvent) {
+  async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     if (!preview || previewExpired) {
-      generatePreview();
+      await generatePreview();
       return;
     }
 
-    const order = buildOrderRecord(false);
+    const idempotencyKey = `idem-${preview.symbol.toLowerCase()}-${Date.now().toString(36)}`;
+    let order: OrderRecord;
+    let usedBackend = false;
+    try {
+      order = await createBackendOrder({
+        symbol: preview.symbol,
+        side: preview.side,
+        orderType: preview.order_type,
+        quantity: preview.quantity,
+        timeInForce,
+        limitPrice,
+        stopPrice,
+        scheduleIfClosed: !marketOpen,
+        idempotencyKey,
+      });
+      usedBackend = true;
+    } catch (cause) {
+      const status =
+        cause instanceof ApiError ? cause.metadata.status : undefined;
+      if (status === 409 || status === 422 || status === 403) {
+        setFeedback(
+          cause instanceof ApiError
+            ? `No se pudo enviar al servidor (${status}): ${cause.message}. Completa tu KYC o verifica tu poder de compra en Depósitos & Retiros.`
+            : 'No se pudo enviar la orden al servidor. Revisa tu verificación KYC o saldo.',
+        );
+        return;
+      }
+      order = buildOrderRecord(false);
+    }
+
     onOrderCreated(order);
+    if (usedBackend) {
+      fetchWalletBalance()
+        .then((wallet) => {
+          if (wallet) setBuyingPowerUsd(wallet.available_balance_usd);
+        })
+        .catch(() => {});
+    }
     setFeedback(
       order.status === 'QUEUED_OUT_OF_HOURS'
         ? `Orden ${order.id} encolada fuera de horario para la apertura de Wall Street.`
-        : `Orden ${order.id} (${order.symbol}) enviada con Idempotency-Key y Preview ${preview.preview_id}.`,
+        : `Orden ${order.id} (${order.symbol}) enviada con Idempotency-Key (${idempotencyKey})${usedBackend ? ' · Registrada en Alpaca Backend' : ' · Simulación local'}.`,
     );
     setPreview(null);
   }
@@ -179,7 +265,7 @@ export function OrderForm({
       <div className={styles.cardHeader}>
         <div>
           <h2 id="order-form-heading" className={styles.cardTitle}>
-            Terminal de Órdenes · ExecutionRouter (Mockup 06)
+            Terminal de Órdenes · ExecutionRouter
           </h2>
           <p className={styles.cardSubtitle}>
             Envío de órdenes hacia Alpaca Broker Sandbox (NYSE / NASDAQ) en
@@ -209,6 +295,27 @@ export function OrderForm({
           {feedback}
         </div>
       )}
+
+      <div className={styles.buyingPowerBanner}>
+        <div>
+          <span className={styles.buyingPowerLabel}>
+            Poder de compra disponible en tu cuenta
+          </span>
+          <small className={styles.buyingPowerSource}>
+            {balanceSource === 'backend'
+              ? '● Sincronizado con Billetera Alpaca (GET /api/v1/wallet/balances)'
+              : '○ Modo referencia (Completa KYC o deposita fondos para sincronizar saldo real)'}
+          </small>
+        </div>
+        <strong className={styles.buyingPowerAmount}>
+          {buyingPowerUsd !== null
+            ? `$${buyingPowerUsd.toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })} USD`
+            : 'Sin cuenta KYC vinculada'}
+        </strong>
+      </div>
 
       <form onSubmit={handleSubmit}>
         <div className={styles.sideToggle} role="group" aria-label="Sentido">

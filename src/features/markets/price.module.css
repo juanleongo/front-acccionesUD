@@ -53,20 +53,52 @@
   display: flex;
   align-items: flex-end;
   gap: 0.75rem;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  flex: 1;
+  min-width: 0;
 }
 .field {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 0.35rem;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--color-text-muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--color-text);
+  min-width: 0;
+}
+.letterField {
+  flex: 0 0 8.5rem;
+}
+.letterField select {
+  width: 100%;
+}
+.instrumentField {
+  flex: 1 1 16rem;
+  max-width: 24rem;
+  min-width: 12rem;
+}
+.instrumentField select {
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (max-width: 44rem) {
+  .filterInputs {
+    flex-wrap: wrap;
+  }
+  .letterField,
+  .instrumentField {
+    flex: 1 1 100%;
+    max-width: 100%;
+  }
 }
 .paginationArea {
   display: flex;
   align-items: flex-end;
   margin-left: auto;
   min-height: 2.35rem;
+  flex-shrink: 0;
 }
 .pages {
   display: inline-flex;
@@ -126,18 +158,70 @@
 .pageTotal {
   color: var(--color-text-muted);
 }
+.pageBatchBadge {
+  margin-left: 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+.loadingBarWrap {
+  width: 100%;
+  height: 4px;
+  background: var(--color-border-subtle);
+  overflow: hidden;
+  position: relative;
+}
+.loadingStateBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  width: min(22rem, 85%);
+  padding: 1.5rem;
+}
+.loadingBarTrack {
+  width: 100%;
+  height: 0.45rem;
+  border-radius: 999px;
+  background: var(--color-control);
+  border: 1px solid var(--color-border-strong);
+  overflow: hidden;
+  position: relative;
+}
+.loadingBarFill {
+  width: 45%;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    var(--color-button),
+    var(--color-accent),
+    var(--color-button)
+  );
+  animation: progressSlide 1.15s ease-in-out infinite;
+}
+@keyframes progressSlide {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(240%);
+  }
+}
 .head label {
-  font-size: 0.8rem;
-  color: var(--color-text-muted);
+  font-size: 0.82rem;
+  color: var(--color-text);
 }
 .card select,
 .card button {
   color: var(--color-text);
   background: var(--color-control);
-  border: 1px solid var(--color-border);
-  border-radius: 0.5rem;
+  border: 1.5px solid var(--color-border-strong);
+  border-radius: 0.65rem;
   font: inherit;
-  padding: 0.4rem 0.65rem;
+  padding: 0.5rem 0.75rem;
+  box-shadow: var(--shadow-control);
 }
 .head select {
   max-width: min(100%, 24rem);

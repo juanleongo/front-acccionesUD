@@ -1,2 +1,3 @@
 export { RegistrationForm } from './RegistrationForm';
-export { marketInterestsCatalog } from './contract';
+export { KycFields, readKyc, validateBirthDateAge } from './KycFields';
+export { marketInterestsCatalog, readRegistration } from './contract';

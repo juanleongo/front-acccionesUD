@@ -12,6 +12,7 @@ import styles from './login.module.css';
 
 import { startLogin, type Challenge } from './challenge';
 import { RecoveryCodesDisplay, usePendingCodes } from './RecoveryCodes';
+import { TotpQrCode } from './TotpQrCode';
 
 const verifiedSchema = z.object({
   user: z.object({
@@ -210,17 +211,6 @@ export function LoginForm({
             </div>
           )}
 
-          {isAdminLogin ? (
-            <p className={styles.badgeAdmin}>
-              <Icon name="shield" size={14} /> Acceso Administrador · Control
-              RBAC &amp; Mercados
-            </p>
-          ) : (
-            <p className={styles.badge}>
-              <span className={styles.dot} /> Acceso Seguro 2FA · Wall Street
-            </p>
-          )}
-
           <h1>
             {codes
               ? codes.length
@@ -232,17 +222,6 @@ export function LoginForm({
                   ? 'Portal de Administración'
                   : 'Iniciar sesión'}
           </h1>
-
-          {isAdminLogin && !challenge && !codes && (
-            <div className={styles.adminCallout}>
-              <strong>
-                🛡️ Acceso Restringido para Administradores (RFP-02)
-              </strong>
-              Permite auditar y activar comisionistas AMV, gestionar políticas
-              RBAC de seguridad y supervisar los calendarios y horarios de Wall
-              Street.
-            </div>
-          )}
 
           {error && (
             <p className={styles.error} role="alert">
@@ -283,16 +262,10 @@ export function LoginForm({
                 {challenge ? (
                   <>
                     {challenge.totp_enrollment && (
-                      <div className={styles.enrollmentBox}>
-                        <p>
-                          Agrega una cuenta con clave de configuración en tu
-                          aplicación autenticadora (Google Authenticator o
-                          Authy) e introduce esta clave:
-                        </p>
-                        <strong className={styles.secretCode}>
-                          {challenge.totp_enrollment.secret}
-                        </strong>
-                      </div>
+                      <TotpQrCode
+                        secret={challenge.totp_enrollment.secret}
+                        otpauthUri={challenge.totp_enrollment.otpauth_uri}
+                      />
                     )}
                     <label>
                       {recovery
@@ -388,37 +361,10 @@ export function LoginForm({
                   </button>
                 )}
               </fieldset>
-              {!challenge && (
+              {!challenge && !isAdminLogin && (
                 <p className={styles.registerPrompt}>
-                  {isAdminLogin ? (
-                    <>
-                      ¿Eres inversionista o comisionista?{' '}
-                      <button
-                        type="button"
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: 'var(--color-primary)',
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                          padding: 0,
-                          textDecoration: 'underline',
-                          font: 'inherit',
-                        }}
-                        onClick={() => {
-                          setIsAdminLogin(false);
-                          setError('');
-                        }}
-                      >
-                        Cambiar a modo Inversor / Comisionista
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      ¿Aún no tienes cuenta?{' '}
-                      <Link href="/registro">Abrir cuenta de práctica</Link>
-                    </>
-                  )}
+                  ¿Aún no tienes cuenta?{' '}
+                  <Link href="/registro">Abrir cuenta de práctica</Link>
                 </p>
               )}
             </form>

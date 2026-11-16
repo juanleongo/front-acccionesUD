@@ -98,6 +98,24 @@ export function PriceSeries({
               vectorEffect="non-scaling-stroke"
             />
           ))}
+          {coords.length === 1 && coords[0] && (
+            <>
+              <path
+                d={`M0 ${coords[0].y.toFixed(2)} L1000 ${coords[0].y.toFixed(2)} L1000 220 L0 220 Z`}
+                fill={'url(#' + id + ')'}
+              />
+              <line
+                x1="0"
+                x2="1000"
+                y1={coords[0].y}
+                y2={coords[0].y}
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeDasharray="6 4"
+                vectorEffect="non-scaling-stroke"
+              />
+            </>
+          )}
           {coords.length > 1 && (
             <>
               <path

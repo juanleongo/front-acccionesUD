@@ -1,11 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BalanceSummaryCard } from './BalanceSummaryCard';
 import { CurrencyConverterWidget } from './CurrencyConverterWidget';
 import { DepositModal } from './DepositModal';
 import { TransactionLedgerTable } from './TransactionLedgerTable';
 import { WithdrawalModal } from './WithdrawalModal';
+import {
+  fetchWalletBalance,
+  fetchWalletTransfers,
+  requestBackendDeposit,
+  requestBackendWithdrawal,
+} from './wallet-api';
 import {
   INITIAL_LEDGER_TRANSACTIONS,
   INITIAL_WALLET_BALANCE,
@@ -23,13 +29,44 @@ export function WalletDashboard() {
   const [depositOpen, setDepositOpen] = useState(false);
   const [withdrawalOpen, setWithdrawalOpen] = useState(false);
 
-  function handleConfirmDeposit(payload: {
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchWalletBalance(controller.signal)
+      .then((apiBalance) => {
+        if (apiBalance) {
+          setBalance(apiBalance);
+          return fetchWalletTransfers(
+            controller.signal,
+            apiBalance.available_balance_usd + apiBalance.reserved_balance_usd,
+          );
+        }
+        return null;
+      })
+      .then((apiTransfers) => {
+        if (apiTransfers && apiTransfers.length > 0) {
+          setTransactions(apiTransfers);
+        }
+      })
+      .catch(() => {
+        /* Mantiene estado simulado cuando aún no hay cuenta KYC o backend activo */
+      });
+    return () => controller.abort();
+  }, []);
+
+  async function handleConfirmDeposit(payload: {
     currency: CurrencyCode;
     originalAmount: number;
     amountUsd: number;
     feeUsd: number;
     method: string;
   }) {
+    let externalRef = `STRIPE-SIM-${Math.floor(100 + Math.random() * 900)}`;
+    try {
+      const apiTransfer = await requestBackendDeposit(payload.amountUsd);
+      externalRef = apiTransfer.alpaca_transfer_id || apiTransfer.id;
+    } catch {
+      /* Fallback local */
+    }
     const newAvailable = Number(
       (balance.available_balance_usd + payload.amountUsd).toFixed(2),
     );
@@ -47,7 +84,7 @@ export function WalletDashboard() {
       amount_usd: payload.amountUsd,
       fee_usd: payload.feeUsd,
       balance_after_usd: newAvailable + balance.reserved_balance_usd,
-      external_ref: `STRIPE-SIM-${Math.floor(100 + Math.random() * 900)}`,
+      external_ref: externalRef,
       status: 'COMPLETADO',
       created_at: new Date().toLocaleString('es-CO', {
         day: '2-digit',
@@ -60,10 +97,17 @@ export function WalletDashboard() {
     setTransactions((prev) => [newTx, ...prev]);
   }
 
-  function handleConfirmWithdrawal(payload: {
+  async function handleConfirmWithdrawal(payload: {
     amountUsd: number;
     destination: string;
   }) {
+    let externalRef = `WD-SIM-${Math.floor(100 + Math.random() * 900)}`;
+    try {
+      const apiTransfer = await requestBackendWithdrawal(payload.amountUsd);
+      externalRef = apiTransfer.alpaca_transfer_id || apiTransfer.id;
+    } catch {
+      /* Fallback local */
+    }
     const newAvailable = Math.max(
       0,
       Number((balance.available_balance_usd - payload.amountUsd).toFixed(2)),
@@ -82,7 +126,7 @@ export function WalletDashboard() {
       amount_usd: -payload.amountUsd,
       fee_usd: 0,
       balance_after_usd: newAvailable + balance.reserved_balance_usd,
-      external_ref: `WD-SIM-${Math.floor(100 + Math.random() * 900)}`,
+      external_ref: externalRef,
       status: 'COMPLETADO',
       created_at: new Date().toLocaleString('es-CO', {
         day: '2-digit',

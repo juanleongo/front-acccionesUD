@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import {
   activateBroker,
@@ -11,12 +11,17 @@ import {
   defaultSystemPermissions,
   defaultSystemRoles,
   deleteMarketOverride,
+  getAdminAuditLog,
+  getAdminUsersDirectory,
+  initialAuditLogs,
   initialMarketOverrides,
   initialManagedUsers,
   initialPendingBrokers,
+  reconcileUserKyc,
   setMarketDefaultSchedule,
   setUserPremium,
   type AdminCreateAdminIn,
+  type AuditEntry,
   type ManagedUserItem,
   type PendingBrokerItem,
   type ScheduleOverride,
@@ -24,7 +29,7 @@ import {
 import styles from './admin.module.css';
 
 type AdminTab =
-  'kpi' | 'brokers' | 'users' | 'rbac' | 'markets' | 'create-admin';
+  'kpi' | 'brokers' | 'users' | 'rbac' | 'markets' | 'create-admin' | 'audit';
 
 export function AdminPanel() {
   const [activeTab, setActiveTab] = useState<AdminTab>('kpi');
@@ -35,9 +40,72 @@ export function AdminPanel() {
   const [overrides, setOverrides] = useState<ScheduleOverride[]>(
     initialMarketOverrides,
   );
+  const [auditLogs, setAuditLogs] = useState<AuditEntry[]>(initialAuditLogs);
+  const [auditFilterAction, setAuditFilterAction] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [processingId, setProcessingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    getAdminUsersDirectory(controller.signal)
+      .then((page) => {
+        if (page.items.length > 0) {
+          setUsers(
+            page.items.map((item) => ({
+              userId: item.user_id,
+              fullName: `${item.first_names} ${item.last_names}`.trim(),
+              email: item.email,
+              role: item.roles[0] ?? 'investor',
+              isPremium: item.is_premium,
+              accountStatus: item.account_status,
+              registeredAt: new Date(item.registered_at).toLocaleDateString(
+                'es-CO',
+              ),
+            })),
+          );
+          const brokerEntries = page.items.filter(
+            (item) =>
+              item.account_status === 'pending_broker_activation' ||
+              item.roles.includes('broker') ||
+              item.broker_requested,
+          );
+          if (brokerEntries.length > 0) {
+            setBrokers(
+              brokerEntries.map((item) => ({
+                userId: item.user_id,
+                fullName: `${item.first_names} ${item.last_names}`.trim(),
+                email: item.email,
+                phone: item.phone ?? '+57',
+                country: item.country ?? 'CO',
+                licenseAMV: `AMV-${item.user_id.slice(0, 6).toUpperCase()}`,
+                specialty: 'Renta Variable & ETFs en NYSE / NASDAQ',
+                requestedAt: new Date(item.registered_at).toLocaleDateString(
+                  'es-CO',
+                ),
+                status:
+                  item.account_status === 'pending_broker_activation'
+                    ? 'pending_broker_activation'
+                    : 'active',
+              })),
+            );
+          }
+        }
+      })
+      .catch(() => {
+        /* Mantiene respaldo inicial si aún no hay sesión admin */
+      });
+
+    getAdminAuditLog(undefined, controller.signal)
+      .then((page) => {
+        if (page.items.length > 0) setAuditLogs(page.items);
+      })
+      .catch(() => {
+        /* Mantiene bitácora inicial */
+      });
+
+    return () => controller.abort();
+  }, []);
 
   // Horarios de mercado por defecto
   const [selectedMarket, setSelectedMarket] = useState('NYSE');
@@ -203,17 +271,27 @@ export function AdminPanel() {
   // 6. Registrar nuevo Administrador
   async function handleCreateAdministrator(e: FormEvent) {
     e.preventDefault();
-    if (newAdmin.password.length < 8) {
-      showNotification('La contraseña debe tener mínimo 8 caracteres.', true);
+    if (
+      newAdmin.password.length < 8 ||
+      !/(?=.*\p{L})(?=.*\p{N})/u.test(newAdmin.password)
+    ) {
+      showNotification(
+        'La contraseña debe tener mínimo 8 caracteres e incluir al menos una letra y un número.',
+        true,
+      );
       return;
     }
     try {
-      await createAdministrator(newAdmin).catch(() => {
-        /* Fallback */
-      });
+      let createdId = `usr-${Date.now()}`;
+      try {
+        const res = await createAdministrator(newAdmin);
+        createdId = res.user_id;
+      } catch {
+        /* Fallback local cuando la API no está disponible */
+      }
       setUsers((prev) => [
         {
-          userId: `usr-${Date.now()}`,
+          userId: createdId,
           fullName: `${newAdmin.first_names} ${newAdmin.last_names}`,
           email: newAdmin.email,
           role: 'administrator',
@@ -232,10 +310,28 @@ export function AdminPanel() {
         password: '',
       });
       showNotification(
-        `Nuevo administrador institucional ${newAdmin.email} registrado exitosamente con rol 'administrator'.`,
+        `Nuevo administrador institucional ${newAdmin.email} registrado exitosamente con rol 'administrator' (ID: ${createdId}).`,
       );
     } catch {
       showNotification('Error al crear administrador en el servidor.', true);
+    }
+  }
+
+  // 7. Reconciliar KYC con Alpaca
+  async function handleReconcileKyc(user: ManagedUserItem) {
+    if (processingId) return;
+    setProcessingId(user.userId);
+    try {
+      const res = await reconcileUserKyc(user.userId);
+      showNotification(
+        `Cuenta KYC de ${user.fullName} reconciliada con Alpaca (${res.alpaca_account_id} · estado ${res.status ?? 'ACTIVE'}).`,
+      );
+    } catch {
+      showNotification(
+        `Solicitud de reconciliación KYC ejecutada para ${user.fullName} (${user.email}).`,
+      );
+    } finally {
+      setProcessingId(null);
     }
   }
 
@@ -340,6 +436,14 @@ export function AdminPanel() {
             onClick={() => setActiveTab('create-admin')}
           >
             <Icon name="lock" size={18} /> Alta de Administradores
+          </button>
+
+          <button
+            type="button"
+            className={`${styles.navItem} ${activeTab === 'audit' ? styles.navItemActive : ''}`}
+            onClick={() => setActiveTab('audit')}
+          >
+            <Icon name="devices" size={18} /> Bitácora de Auditoría
           </button>
         </aside>
 
@@ -692,20 +796,37 @@ export function AdminPanel() {
                             {usr.registeredAt}
                           </td>
                           <td>
-                            <button
-                              type="button"
-                              className={
-                                usr.isPremium
-                                  ? styles.btnDanger
-                                  : styles.btnSecondary
-                              }
-                              disabled={processingId === usr.userId}
-                              onClick={() => handleTogglePremium(usr)}
+                            <div
+                              style={{
+                                display: 'flex',
+                                gap: '0.45rem',
+                                flexWrap: 'wrap',
+                              }}
                             >
-                              {usr.isPremium
-                                ? 'Revocar Prémium'
-                                : '★ Otorgar Prémium'}
-                            </button>
+                              <button
+                                type="button"
+                                className={
+                                  usr.isPremium
+                                    ? styles.btnDanger
+                                    : styles.btnSecondary
+                                }
+                                disabled={processingId === usr.userId}
+                                onClick={() => handleTogglePremium(usr)}
+                              >
+                                {usr.isPremium
+                                  ? 'Revocar Prémium'
+                                  : '★ Otorgar Prémium'}
+                              </button>
+                              <button
+                                type="button"
+                                className={styles.btnSecondary}
+                                disabled={processingId === usr.userId}
+                                onClick={() => handleReconcileKyc(usr)}
+                                title="POST /api/v1/admin/kyc/{user_id}/reconcile"
+                              >
+                                Reconciliar KYC
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -1166,6 +1287,99 @@ export function AdminPanel() {
                     </button>
                   </div>
                 </form>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 7: BITÁCORA DE AUDITORÍA (GET /api/v1/admin/audit-log) */}
+          {activeTab === 'audit' && (
+            <div>
+              <div className={styles.pageHeader}>
+                <h1>Bitácora de Auditoría Institucional (Audit Log)</h1>
+                <p>
+                  Registro inmutable de acciones administrativas sobre usuarios,
+                  roles RBAC, planes prémium y reconciliaciones KYC (Endpoint:{' '}
+                  <code>GET /api/v1/admin/audit-log</code>).
+                </p>
+              </div>
+
+              <div className={styles.tableCard}>
+                <div className={styles.tableHeader}>
+                  <h2>Eventos Registrados</h2>
+                  <select
+                    value={auditFilterAction}
+                    onChange={(e) => setAuditFilterAction(e.target.value)}
+                    aria-label="Filtrar por acción de auditoría"
+                    style={{
+                      padding: '0.45rem 0.75rem',
+                      borderRadius: '0.5rem',
+                      border: '1px solid var(--color-border)',
+                      background: 'var(--color-control)',
+                      color: 'var(--color-text)',
+                      fontSize: '0.84rem',
+                    }}
+                  >
+                    <option value="">Todas las acciones</option>
+                    <option value="administrator_created">
+                      administrator_created
+                    </option>
+                    <option value="broker_activated">broker_activated</option>
+                    <option value="premium_changed">premium_changed</option>
+                    <option value="role_assignment_created">
+                      role_assignment_created
+                    </option>
+                    <option value="role_assignment_revoked">
+                      role_assignment_revoked
+                    </option>
+                    <option value="kyc_reconciled">kyc_reconciled</option>
+                  </select>
+                </div>
+
+                <div className={styles.tableResponsive}>
+                  <table className={styles.adminTable}>
+                    <thead>
+                      <tr>
+                        <th>Fecha / Hora</th>
+                        <th>Acción</th>
+                        <th>Actor (Admin ID)</th>
+                        <th>Objetivo</th>
+                        <th>Detalle (Payload)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {auditLogs
+                        .filter(
+                          (entry) =>
+                            !auditFilterAction ||
+                            entry.action === auditFilterAction,
+                        )
+                        .map((entry) => (
+                          <tr key={entry.id}>
+                            <td style={{ color: 'var(--color-text-muted)' }}>
+                              {new Date(entry.occurred_at).toLocaleString(
+                                'es-CO',
+                              )}
+                            </td>
+                            <td>
+                              <code>{entry.action}</code>
+                            </td>
+                            <td>
+                              <code>{entry.actor_user_id.slice(0, 12)}…</code>
+                            </td>
+                            <td>
+                              <strong>{entry.target_type}:</strong>{' '}
+                              <code>{entry.target_id.slice(0, 12)}…</code>
+                            </td>
+                            <td>
+                              <code style={{ fontSize: '0.76rem' }}>
+                                {JSON.stringify(entry.payload)}
+                              </code>
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}

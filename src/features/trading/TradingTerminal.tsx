@@ -1,12 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActiveOrdersTable } from './ActiveOrdersTable';
 import { OrderForm } from './OrderForm';
 import {
   PriceSlippageAlertModal,
   type SlippageAlertData,
 } from './PriceSlippageAlertModal';
+import {
+  cancelBackendOrder,
+  fetchOrdersList,
+  reauthorizeBackendOrder,
+} from './trading-api';
 import {
   INITIAL_MOCK_ORDERS,
   TRADING_SYMBOLS,
@@ -27,6 +32,18 @@ export function TradingTerminal({
     string | null
   >(null);
 
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchOrdersList(controller.signal)
+      .then((apiOrders) => {
+        if (apiOrders.length > 0) setOrders(apiOrders);
+      })
+      .catch(() => {
+        /* Mantiene datos simulados si aún no hay conexión o cuenta KYC */
+      });
+    return () => controller.abort();
+  }, []);
+
   function handleOrderCreated(newOrder: OrderRecord) {
     setOrders((prev) => [newOrder, ...prev]);
   }
@@ -40,7 +57,16 @@ export function TradingTerminal({
     setSlippageAlert(alertData);
   }
 
-  function handleCancelOrder(orderId: string) {
+  async function handleCancelOrder(orderId: string) {
+    try {
+      const updated = await cancelBackendOrder(orderId);
+      setOrders((prev) =>
+        prev.map((ord) => (ord.id === orderId ? updated : ord)),
+      );
+      return;
+    } catch {
+      /* Fallback local */
+    }
     setOrders((prev) =>
       prev.map((ord) =>
         ord.id === orderId ? { ...ord, status: 'CANCELLED' } : ord,
@@ -65,8 +91,22 @@ export function TradingTerminal({
     });
   }
 
-  function handleConfirmReauthorization() {
+  async function handleConfirmReauthorization() {
     if (!pendingReauthOrderId || !slippageAlert) return;
+    try {
+      const updated = await reauthorizeBackendOrder(
+        pendingReauthOrderId,
+        'accept',
+      );
+      setOrders((prev) =>
+        prev.map((ord) => (ord.id === pendingReauthOrderId ? updated : ord)),
+      );
+      setSlippageAlert(null);
+      setPendingReauthOrderId(null);
+      return;
+    } catch {
+      /* Fallback local */
+    }
     setOrders((prev) =>
       prev.map((ord) =>
         ord.id === pendingReauthOrderId
@@ -85,7 +125,7 @@ export function TradingTerminal({
 
   function handleCancelSlippageModal() {
     if (pendingReauthOrderId) {
-      handleCancelOrder(pendingReauthOrderId);
+      void handleCancelOrder(pendingReauthOrderId);
     }
     setSlippageAlert(null);
     setPendingReauthOrderId(null);

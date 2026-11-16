@@ -4,9 +4,9 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { z } from 'zod';
-import { KycFields, readKyc } from './KycFields';
+import { KycFields, readKyc, validateBirthDateAge } from './KycFields';
 import { useRef, useState, type FormEvent } from 'react';
-import { Icon } from '@/components/ui/Icon';
+import { Icon, type IconName } from '@/components/ui/Icon';
 import { browserHttp } from '@/lib/api/client';
 import { ApiError } from '@/lib/api';
 import { LoginForm, startLogin, type Challenge } from '@/features/login';
@@ -20,6 +20,27 @@ import {
   type RegistrationKind,
 } from './contract';
 import styles from './registration.module.css';
+
+const SECTOR_ICONS: IconName[] = [
+  'devices',
+  'trend',
+  'coin',
+  'bolt',
+  'wallet',
+  'globe',
+  'shield',
+  'pie',
+  'grid',
+  'star',
+];
+
+function splitSectorLabel(item: { value: string; label: string }) {
+  const match = /\(([^)]+)\)\s*$/.exec(item.label);
+  return {
+    title: item.value,
+    subtitle: match?.[1] ?? item.label,
+  };
+}
 
 export function RegistrationForm({ kind }: { kind: RegistrationKind }) {
   const broker = kind === 'broker';
@@ -45,8 +66,8 @@ export function RegistrationForm({ kind }: { kind: RegistrationKind }) {
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
   const [challenge, setChallenge] = useState<Challenge | null>(null);
+  const [investorLevel, setInvestorLevel] = useState('');
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
-  const [pickerValue, setPickerValue] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const termsDialog = useRef<HTMLDialogElement>(null);
 
@@ -61,11 +82,15 @@ export function RegistrationForm({ kind }: { kind: RegistrationKind }) {
     }
   }
 
-  function addInterest(value: string) {
+  function toggleInterestSelection(value: string) {
     const trimmed = value.trim();
     if (!trimmed) return;
     setSelectedInterests((prev) =>
-      prev.includes(trimmed) || prev.length >= 20 ? prev : [...prev, trimmed],
+      prev.includes(trimmed)
+        ? prev.filter((item) => item !== trimmed)
+        : prev.length >= 20
+          ? prev
+          : [...prev, trimmed],
     );
   }
 
@@ -115,8 +140,25 @@ export function RegistrationForm({ kind }: { kind: RegistrationKind }) {
       } else if (code === 422) {
         setEditing(true);
         setStep(2);
+        const rawDetail =
+          cause instanceof ApiError ? cause.message.toLowerCase() : '';
+        let reason =
+          'Verifica que la fecha de nacimiento sea de un mayor de 18 años y que el número de documento o correo no estén ya registrados en el custodio Alpaca.';
+        if (rawDetail.includes('date_of_birth') || rawDetail.includes('age')) {
+          reason =
+            'La fecha de nacimiento ingresada no cumple la mayoría de edad (+18 años) o es inválida.';
+        } else if (
+          rawDetail.includes('already exists') ||
+          rawDetail.includes('email')
+        ) {
+          reason =
+            'Este correo o número de documento ya tiene una cuenta registrada en el sandbox de Alpaca.';
+        } else if (rawDetail.includes('tax_id')) {
+          reason =
+            'El número o formato de documento de identidad fue rechazado por el custodio.';
+        }
         setError(
-          'La solicitud KYC fue rechazada. Revisa los datos y vuelve a enviarla.',
+          `La solicitud KYC fue rechazada. ${reason} Revisa los datos y vuelve a enviarla.`,
         );
       } else
         setError(
@@ -131,6 +173,41 @@ export function RegistrationForm({ kind }: { kind: RegistrationKind }) {
     }
   }
 
+  function getCustomFieldError(
+    control: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement,
+  ): string {
+    const name = control.name;
+    if (name === 'first_names') return 'Ingresa tus nombres.';
+    if (name === 'last_names') return 'Ingresa tus apellidos.';
+    if (name === 'email')
+      return 'Ingresa un correo electrónico válido (ej. nombre@correo.com).';
+    if (name === 'phone')
+      return 'El teléfono debe incluir el indicativo del país (+) seguido únicamente de números, sin letras, espacios ni símbolos (ej. +573001234567).';
+    if (name === 'country') return 'Selecciona tu país de residencia.';
+    if (name === 'password')
+      return 'La contraseña debe tener al menos 8 caracteres, incluyendo mayúscula, minúscula y número.';
+    if (name === 'firm_name') return 'Ingresa el nombre de tu firma.';
+    if (name === 'license_number')
+      return 'Ingresa tu número de licencia profesional.';
+    if (name === 'tax_id')
+      return 'Ingresa un número de documento válido (para pasaporte puedes incluir letras y números, ej. PA1234567; para cédula/NIT usa solo números).';
+    if (name === 'date_of_birth')
+      return (
+        validateBirthDateAge(control.value) ??
+        'Selecciona tu fecha de nacimiento (+18 años).'
+      );
+    if (name === 'postal_code') return 'Ingresa el código postal de tu ciudad.';
+    if (name === 'street_address') return 'Ingresa tu dirección de residencia.';
+    if (name === 'state')
+      return 'Selecciona tu departamento, estado o provincia.';
+    if (name === 'city') return 'Selecciona tu ciudad de residencia.';
+    if (name === 'customer_agreement')
+      return 'Debes aceptar el Acuerdo de Cliente de Corretaje (obligatorio).';
+    if (name === 'terms_accepted')
+      return 'Debes aceptar los términos y condiciones de la plataforma para continuar.';
+    return 'Por favor completa todos los campos obligatorios de este paso.';
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busy) return;
@@ -139,12 +216,24 @@ export function RegistrationForm({ kind }: { kind: RegistrationKind }) {
     for (const control of form.querySelectorAll<
       HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
     >('input,select,textarea')) {
-      if (!control.closest('[hidden]') && !control.reportValidity()) return;
+      if (!control.closest('[hidden]') && !control.checkValidity()) {
+        setError(getCustomFieldError(control));
+        return;
+      }
     }
     const data = new FormData(form);
-    if (!broker && step === 2 && (!data.get('city') || !data.get('state'))) {
-      setError('Completa la región y la ciudad de tu domicilio.');
-      return;
+    if (!broker && step === 2) {
+      const dobError = validateBirthDateAge(
+        String(data.get('date_of_birth') ?? ''),
+      );
+      if (dobError) {
+        setError(dobError);
+        return;
+      }
+      if (!data.get('city') || !data.get('state')) {
+        setError('Completa la región y la ciudad de tu domicilio.');
+        return;
+      }
     }
     const body = readRegistration(data, kind);
     if (step < lastStep) {
@@ -362,15 +451,47 @@ export function RegistrationForm({ kind }: { kind: RegistrationKind }) {
                 data-kyc-edit={editing}
                 noValidate
               >
-                <p aria-live="polite">
-                  Paso {step + 1} de {steps.length} · {steps[step]}
-                </p>
-                <progress
-                  className={styles.stepProgress}
-                  aria-label="Progreso del registro"
-                  value={step + 1}
-                  max={steps.length}
-                />
+                <div
+                  className={styles.stepperCard}
+                  aria-label="Pasos del registro"
+                >
+                  <p className={styles.srOnly} aria-live="polite">
+                    Paso {step + 1} de {steps.length} · {steps[step]}
+                  </p>
+                  <progress
+                    className={styles.srOnly}
+                    aria-label="Progreso del registro"
+                    value={step + 1}
+                    max={steps.length}
+                  />
+                  <ol className={styles.stepperList}>
+                    {steps.map((label, idx) => {
+                      const done = idx < step;
+                      const current = idx === step;
+                      return (
+                        <li
+                          key={label}
+                          className={`${styles.stepperItem} ${done ? styles.stepperItemDone : ''} ${current ? styles.stepperItemCurrent : ''}`}
+                        >
+                          <div className={styles.stepperTrackRow}>
+                            <span
+                              className={`${styles.stepperLine} ${idx === 0 ? styles.stepperLineHidden : ''} ${idx <= step ? styles.stepperLineActive : ''}`}
+                            />
+                            <span className={styles.stepperCircle}>
+                              {done ? '✓' : idx + 1}
+                            </span>
+                            <span
+                              className={`${styles.stepperLine} ${idx === steps.length - 1 ? styles.stepperLineHidden : ''} ${idx < step ? styles.stepperLineActive : ''}`}
+                            />
+                          </div>
+                          <span className={styles.stepperLabel}>
+                            {idx + 1}. {label}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                </div>
                 <fieldset hidden={step !== 0} disabled={busy}>
                   <legend>
                     <Icon name="user" size={18} /> Datos personales
@@ -448,13 +569,24 @@ export function RegistrationForm({ kind }: { kind: RegistrationKind }) {
                           id="phone_input"
                           name="phone"
                           type="tel"
+                          inputMode="tel"
                           autoComplete="tel"
-                          placeholder="+573001234567"
+                          placeholder="Ej. +573001234567"
                           pattern={'\\+[1-9][0-9]{1,14}'}
-                          title="Incluye + y el indicativo del país, sin espacios."
+                          title="Debe ser el indicativo de país (+) seguido únicamente de números (ej. +573001234567). No se permiten letras, espacios ni símbolos."
+                          onInvalid={(e) =>
+                            e.currentTarget.setCustomValidity(
+                              'Formato inválido: escribe el indicativo del país (+) seguido solo de números (ej. +573001234567). No ingreses letras, espacios ni símbolos.',
+                            )
+                          }
+                          onInput={(e) => e.currentTarget.setCustomValidity('')}
                           required
                         />
                       </div>
+                      <small className={styles.fieldHelp}>
+                        Indicativo de país (+) + número, solo dígitos (sin
+                        letras ni símbolos).
+                      </small>
                     </div>
 
                     <div className={styles.field}>
@@ -578,82 +710,150 @@ export function RegistrationForm({ kind }: { kind: RegistrationKind }) {
                   <div className={styles.grid}>
                     <div className={`${styles.field} ${styles.fullWidth}`}>
                       <label
-                        className={styles.fieldLabel}
+                        className={styles.sectionBlockTitle}
                         htmlFor="investor_level_select"
                       >
-                        Nivel de experiencia (opcional)
+                        1. Nivel de experiencia (opcional)
                       </label>
-                      <div className={styles.fieldControl}>
-                        <select
-                          id="investor_level_select"
-                          name="investor_level"
-                          defaultValue=""
+                      <select
+                        id="investor_level_select"
+                        name="investor_level"
+                        value={investorLevel}
+                        onChange={(e) => setInvestorLevel(e.target.value)}
+                        tabIndex={-1}
+                        className={styles.hiddenNativeSelect}
+                      >
+                        <option value="">Sin especificar</option>
+                        <option value="beginner">Principiante</option>
+                        <option value="experienced">Con experiencia</option>
+                      </select>
+
+                      <div
+                        className={styles.experienceCardsGrid}
+                        role="radiogroup"
+                        aria-label="Selección visual de nivel de experiencia"
+                      >
+                        <button
+                          type="button"
+                          role="radio"
+                          aria-checked={investorLevel === 'beginner'}
+                          onClick={() =>
+                            setInvestorLevel((prev) =>
+                              prev === 'beginner' ? '' : 'beginner',
+                            )
+                          }
+                          className={`${styles.experienceCard} ${investorLevel === 'beginner' ? styles.experienceCardActive : ''}`}
                         >
-                          <option value="">Sin especificar</option>
-                          <option value="beginner">
-                            Principiante (Iniciando en Wall Street ·
-                            Instrumentos de menor volatilidad)
-                          </option>
-                          <option value="experienced">
-                            Con experiencia (Operación activa en NYSE / NASDAQ ·
-                            Órdenes avanzadas)
-                          </option>
-                        </select>
+                          <div className={styles.experienceCardTop}>
+                            <span className={styles.experienceIcon}>
+                              <Icon name="user" size={20} />
+                            </span>
+                            <span className={styles.experienceRadio} />
+                          </div>
+                          <strong>Principiante</strong>
+                          <small>
+                            Iniciando en Wall Street · Instrumentos de menor
+                            volatilidad, ETFs y herramientas de aprendizaje.
+                          </small>
+                        </button>
+
+                        <button
+                          type="button"
+                          role="radio"
+                          aria-checked={investorLevel === 'experienced'}
+                          onClick={() =>
+                            setInvestorLevel((prev) =>
+                              prev === 'experienced' ? '' : 'experienced',
+                            )
+                          }
+                          className={`${styles.experienceCard} ${investorLevel === 'experienced' ? styles.experienceCardActive : ''}`}
+                        >
+                          <div className={styles.experienceCardTop}>
+                            <span className={styles.experienceIcon}>
+                              <Icon name="trend" size={20} />
+                            </span>
+                            <span className={styles.experienceRadio} />
+                          </div>
+                          <strong>Con experiencia</strong>
+                          <small>
+                            Operación activa en NYSE / NASDAQ · Órdenes
+                            avanzadas (Limit, Stop Loss, Take Profit) y análisis
+                            bursátil.
+                          </small>
+                        </button>
                       </div>
-                      <small className={styles.fieldHelp}>
-                        Adapta las recomendaciones de activos y comisionistas a
-                        tu perfil bursátil.
-                      </small>
                     </div>
 
                     <div className={`${styles.field} ${styles.fullWidth}`}>
-                      <label
-                        className={styles.fieldLabel}
-                        htmlFor="interests_input"
+                      <div className={styles.sectorHeaderRow}>
+                        <label
+                          className={styles.sectionBlockTitle}
+                          htmlFor="interests_input"
+                        >
+                          2. Intereses (opcional)
+                        </label>
+                        <span className={styles.sectorCounterBadge}>
+                          {selectedInterests.length}{' '}
+                          {selectedInterests.length === 1
+                            ? 'seleccionado'
+                            : 'seleccionados'}
+                        </span>
+                      </div>
+
+                      <div
+                        className={styles.interestCatalogGrid}
+                        role="group"
+                        aria-label="Catálogo de sectores bursátiles"
                       >
-                        Intereses (opcional)
-                      </label>
-                      <div className={styles.fieldControl}>
+                        {marketInterestsCatalog.map((item, idx) => {
+                          const isSelected = selectedInterests.includes(
+                            item.value,
+                          );
+                          const { title, subtitle } = splitSectorLabel(item);
+                          const iconName =
+                            SECTOR_ICONS[idx % SECTOR_ICONS.length] ?? 'trend';
+                          return (
+                            <button
+                              key={item.value}
+                              type="button"
+                              aria-pressed={isSelected}
+                              onClick={() =>
+                                toggleInterestSelection(item.value)
+                              }
+                              className={`${styles.interestCard} ${isSelected ? styles.interestCardActive : ''}`}
+                            >
+                              <div className={styles.interestCardTop}>
+                                <span className={styles.interestSectorIcon}>
+                                  <Icon name={iconName} size={18} />
+                                </span>
+                                <span className={styles.interestCheckBadge}>
+                                  {isSelected ? '✓' : '+'}
+                                </span>
+                              </div>
+                              <strong className={styles.interestCardTitle}>
+                                {title}
+                              </strong>
+                              <span className={styles.interestCardTickers}>
+                                {subtitle}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <div className={styles.customInterestsWrap}>
                         <textarea
                           id="interests_input"
                           name="interests"
-                          rows={2}
-                          placeholder="Escribe tus intereses bursátiles o elígelos de la lista (ej. Tecnología, Banca, Petróleo)"
+                          rows={1}
+                          className={styles.customInterestsBox}
+                          placeholder="¿Tienes algún otro sector o activo de interés? Escríbelo aquí (opcional)…"
                           aria-describedby="interests-help"
                         />
                       </div>
-                      <div
-                        className={styles.fieldControl}
-                        style={{ marginTop: '0.5rem' }}
-                      >
-                        <select
-                          id="interests_picker"
-                          aria-label="Catálogo rápido de intereses"
-                          value={pickerValue}
-                          onChange={(event) => {
-                            const chosen = event.target.value;
-                            setPickerValue('');
-                            if (chosen) addInterest(chosen);
-                          }}
-                        >
-                          <option value="">
-                            + Agregar sector rápido (Oro, Petróleo, Tecnología,
-                            Banca...)
-                          </option>
-                          {marketInterestsCatalog.map((item) => (
-                            <option
-                              key={item.value}
-                              value={item.value}
-                              disabled={selectedInterests.includes(item.value)}
-                            >
-                              {item.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
                       <small id="interests-help" className={styles.fieldHelp}>
-                        Escribe tus sectores de interés o agrégalos rápidamente
-                        con el selector desplegable.
+                        Selecciona uno o varios sectores arriba o escribe
+                        intereses personalizados adicionales.
                       </small>
                     </div>
                   </div>
@@ -693,39 +893,74 @@ export function RegistrationForm({ kind }: { kind: RegistrationKind }) {
                     </div>
                   )}
 
-                  <div className={styles.checkGroup}>
-                    <label className={styles.check}>
-                      <input type="checkbox" name="monthly_report" />
-                      <span>
-                        <strong>Recibir el informe mensual</strong>
-                        <small>
-                          Resumen ejecutivo del mercado estadounidense (S&amp;P
-                          500 y NASDAQ).
-                        </small>
-                      </span>
-                    </label>
-                    <label className={styles.check}>
-                      <input type="checkbox" name="broker_requested" />
-                      <span>
-                        <strong>
-                          Solicitar acompañamiento de un comisionista
-                        </strong>
-                        <small>
-                          Asesoría personalizada para estructurar tu portafolio
-                          en USD.
-                        </small>
-                      </span>
-                    </label>
-                    <label className={styles.check}>
-                      <input type="checkbox" name="premium_requested" />
-                      <span>
-                        <strong>Solicitar el plan prémium</strong>
-                        <small>
-                          Acceso a listas de seguimiento avanzadas y alertas de
-                          precio en tiempo real.
-                        </small>
-                      </span>
-                    </label>
+                  <div className={styles.servicesSection}>
+                    <span className={styles.sectionBlockTitle}>
+                      3. Servicios Adicionales y Acompañamiento
+                    </span>
+                    <div className={styles.servicesGrid}>
+                      <label
+                        className={`${styles.check} ${styles.serviceCard}`}
+                      >
+                        <div className={styles.serviceCardHeader}>
+                          <span className={styles.serviceCardIcon}>
+                            <Icon name="file" size={18} />
+                          </span>
+                          <input type="checkbox" name="monthly_report" />
+                        </div>
+                        <div className={styles.serviceCardBody}>
+                          <strong>Recibir el informe mensual</strong>
+                          <small>
+                            Resumen ejecutivo del mercado estadounidense
+                            (S&amp;P 500 y NASDAQ).
+                          </small>
+                        </div>
+                        <em className={styles.serviceCardTagAccent}>
+                          Incluido en simulación
+                        </em>
+                      </label>
+
+                      <label
+                        className={`${styles.check} ${styles.serviceCard}`}
+                      >
+                        <div className={styles.serviceCardHeader}>
+                          <span className={styles.serviceCardIcon}>
+                            <Icon name="users" size={18} />
+                          </span>
+                          <input type="checkbox" name="broker_requested" />
+                        </div>
+                        <div className={styles.serviceCardBody}>
+                          <strong>
+                            Solicitar acompañamiento de un comisionista
+                          </strong>
+                          <small>
+                            Asesoría personalizada para estructurar tu
+                            portafolio en USD.
+                          </small>
+                        </div>
+                        <em className={styles.serviceCardTagMuted}>Opcional</em>
+                      </label>
+
+                      <label
+                        className={`${styles.check} ${styles.serviceCard}`}
+                      >
+                        <div className={styles.serviceCardHeader}>
+                          <span className={styles.serviceCardIcon}>
+                            <Icon name="star" size={18} />
+                          </span>
+                          <input type="checkbox" name="premium_requested" />
+                        </div>
+                        <div className={styles.serviceCardBody}>
+                          <strong>Solicitar el plan prémium</strong>
+                          <small>
+                            Acceso a listas de seguimiento avanzadas y alertas
+                            de precio en tiempo real.
+                          </small>
+                        </div>
+                        <em className={styles.serviceCardTagAccent}>
+                          Simulación Pro
+                        </em>
+                      </label>
+                    </div>
                   </div>
                 </fieldset>
 
@@ -770,6 +1005,7 @@ export function RegistrationForm({ kind }: { kind: RegistrationKind }) {
                     {step > (editing ? 2 : 0) && (
                       <button
                         type="button"
+                        className={styles.backStepButton}
                         disabled={busy}
                         onClick={() => {
                           setError('');

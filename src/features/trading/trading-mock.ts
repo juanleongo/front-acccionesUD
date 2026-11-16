@@ -34,6 +34,8 @@ export interface OrderPreview {
   expires_at_ms: number;
   ttl_seconds: number;
   market_open: boolean;
+  available_buying_power_usd?: number | undefined;
+  from_backend?: boolean | undefined;
 }
 
 export interface OrderRecord {

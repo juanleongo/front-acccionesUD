@@ -69,6 +69,7 @@ test('dashboard consulta el catálogo, reloj, estado diario y calendario', async
     });
   });
   await page.goto('/dashboard');
+  await page.getByRole('button', { name: 'Mercados en Vivo' }).click();
   await expect(
     page.getByRole('heading', { name: /Reloj bursátil/ }),
   ).toBeVisible();

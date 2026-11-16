@@ -11,16 +11,18 @@ function Problem({ error, retry }: { error: Error; retry: () => void }) {
   const status = error instanceof ApiError && error.metadata.status;
   if (status === 401)
     return (
-      <p role="alert">
+      <p className={styles.alertBox} role="alert">
         <Link href="/login">Inicia sesión</Link> para consultar los mercados.
       </p>
     );
   if (status === 403)
     return (
-      <p role="alert">Tu cuenta no tiene permiso para consultar mercados.</p>
+      <p className={styles.alertBox} role="alert">
+        Tu cuenta no tiene permiso para consultar mercados.
+      </p>
     );
   return (
-    <div role="alert">
+    <div className={styles.alertBox} role="alert">
       <p>
         {status === 404
           ? 'No se encontró el mercado solicitado.'
@@ -28,7 +30,9 @@ function Problem({ error, retry }: { error: Error; retry: () => void }) {
             ? 'Revisa las fechas de la consulta.'
             : 'No se pudieron cargar los datos de mercado.'}
       </p>
-      <button onClick={retry}>Reintentar</button>
+      <button type="button" className={styles.retryBtn} onClick={retry}>
+        Reintentar
+      </button>
     </div>
   );
 }
@@ -57,42 +61,46 @@ function MarketClock() {
   });
   return (
     <div className={styles.clockCard}>
-      <h3>Reloj bursátil en vivo</h3>
+      <div className={styles.clockHeader}>
+        <div>
+          <span className={styles.sectionKicker}>
+            SINCRONIZACIÓN WALL STREET · {tz}
+          </span>
+          <h3>Reloj bursátil en vivo</h3>
+        </div>
+        {clock.data && (
+          <span
+            className={
+              clock.data.is_open ? styles.badgeOpen : styles.badgeClosed
+            }
+          >
+            ● {clock.data.is_open ? 'Mercado Abierto' : 'Mercado Cerrado'}
+          </span>
+        )}
+      </div>
       {clock.error ? (
         <Problem error={clock.error} retry={clock.refetch} />
       ) : clock.data ? (
-        <>
-          <p
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.6rem',
-              margin: '0.4rem 0',
-            }}
-          >
-            <span
-              className={
-                clock.data.is_open ? styles.badgeOpen : styles.badgeClosed
-              }
-            >
-              ● {clock.data.is_open ? 'Mercado Abierto' : 'Mercado Cerrado'}
-            </span>
-            <small style={{ color: 'var(--color-text-muted)' }}>
-              Actualizado: {formatInstant(clock.data.timestamp)}
-            </small>
-          </p>
-          <p
-            style={{
-              margin: '0.25rem 0 0',
-              color: 'var(--color-text-muted)',
-              fontSize: '0.85rem',
-            }}
-          >
-            Próxima apertura:{' '}
-            <strong>{formatInstant(clock.data.next_open)}</strong> · Próximo
-            cierre: <strong>{formatInstant(clock.data.next_close)}</strong>
-          </p>
-        </>
+        <div className={styles.clockStatsGrid}>
+          <div className={styles.clockStatItem}>
+            <span className={styles.clockStatLabel}>Última actualización</span>
+            <strong className={styles.clockStatValue}>
+              {formatInstant(clock.data.timestamp)}
+            </strong>
+          </div>
+          <div className={styles.clockStatItem}>
+            <span className={styles.clockStatLabel}>Próxima apertura</span>
+            <strong className={styles.clockStatValue}>
+              {formatInstant(clock.data.next_open)}
+            </strong>
+          </div>
+          <div className={styles.clockStatItem}>
+            <span className={styles.clockStatLabel}>Próximo cierre</span>
+            <strong className={styles.clockStatValue}>
+              {formatInstant(clock.data.next_close)}
+            </strong>
+          </div>
+        </div>
       ) : (
         <p role="status">Consultando reloj…</p>
       )}
@@ -178,49 +186,68 @@ function MarketSchedule({ code }: { code: string }) {
     enabled: valid,
   });
   return (
-    <section>
-      <h3>Calendario de {code}</h3>
-      <div className={styles.filters}>
-        <label>
-          Desde
-          <input
-            type="date"
-            value={start}
-            onChange={(e) => setStart(e.target.value)}
-          />
-        </label>
-        <label>
-          Hasta
-          <input
-            type="date"
-            min={start}
-            value={end}
-            onChange={(e) => setEnd(e.target.value)}
-          />
-        </label>
+    <section className={styles.scheduleCard}>
+      <div className={styles.scheduleHeader}>
+        <div>
+          <span className={styles.sectionKicker}>
+            CRONOGRAMA OFICIAL DE SESIONES ({tz})
+          </span>
+          <h3>Calendario de {code}</h3>
+        </div>
+
+        <div className={styles.filters}>
+          <label className={styles.dateFilterLabel}>
+            <span>Desde</span>
+            <input
+              type="date"
+              value={start}
+              onChange={(e) => setStart(e.target.value)}
+            />
+          </label>
+          <label className={styles.dateFilterLabel}>
+            <span>Hasta</span>
+            <input
+              type="date"
+              min={start}
+              value={end}
+              onChange={(e) => setEnd(e.target.value)}
+            />
+          </label>
+        </div>
       </div>
+
       {status.error ? (
         <Problem error={status.error} retry={status.refetch} />
       ) : (
         status.data && (
-          <p>
-            <strong>
-              {status.data.open ? 'Jornada de negociación' : 'Sin negociación'}
-            </strong>{' '}
-            · {status.data.date}
-            {status.data.open && (
-              <>
-                {' '}
-                · {formatInstant(status.data.open_at)} –{' '}
-                {formatInstant(status.data.close_at)}
-              </>
-            )}
-            {status.data.override && ' · Horario especial'}
-          </p>
+          <div
+            className={`${styles.dayStatusBanner} ${
+              status.data.open ? styles.dayStatusOpen : styles.dayStatusClosed
+            }`}
+          >
+            <span className={styles.dayStatusDot} />
+            <p style={{ margin: 0 }}>
+              <strong>
+                {status.data.open
+                  ? 'Jornada de negociación'
+                  : 'Sin negociación'}
+              </strong>{' '}
+              · {status.data.date}
+              {status.data.open && (
+                <>
+                  {' '}
+                  · {formatInstant(status.data.open_at)} –{' '}
+                  {formatInstant(status.data.close_at)}
+                </>
+              )}
+              {status.data.override && ' · Horario especial'}
+            </p>
+          </div>
         )
       )}
+
       {!valid ? (
-        <p role="alert">
+        <p className={styles.alertBox} role="alert">
           Selecciona un intervalo válido de hasta 366 días entre las fechas.
         </p>
       ) : calendar.error ? (
@@ -232,13 +259,16 @@ function MarketSchedule({ code }: { code: string }) {
       ) : (
         <div className={styles.scroll}>
           <table>
-            <caption>Jornadas · {calendar.data.time_zone}</caption>
+            <caption>
+              Jornadas bursátiles de {code} · Zona horaria:{' '}
+              {calendar.data.time_zone}
+            </caption>
             <thead>
               <tr>
                 <th>Fecha</th>
                 <th>Jornada</th>
                 <th className={styles.thSchedule}>
-                  <span>Horario de negociación</span>
+                  <span>Horario de negociación (09:30 – 16:00 ET)</span>
                   <div className={styles.axis}>
                     <span>00 h</span>
                     <span>12 h</span>
@@ -250,31 +280,35 @@ function MarketSchedule({ code }: { code: string }) {
               </tr>
             </thead>
             <tbody>
-              {calendar.data.days.map((day) => (
-                <tr key={day.date}>
-                  <th scope="row">{day.date}</th>
-                  <td>
-                    {(
-                      {
-                        trading_day: 'Negociación',
-                        holiday: 'Festivo',
-                        weekend: 'Fin de semana',
-                      } as Record<string, string>
-                    )[day.kind] ?? day.kind}
-                    {day.override && ' · Horario especial'}
-                  </td>
-                  <td>
-                    <SessionBar
-                      day={day.date}
-                      open={day.open_at}
-                      close={day.close_at}
-                      trading={day.kind === 'trading_day'}
-                    />
-                  </td>
-                  <td>{formatInstant(day.open_at)}</td>
-                  <td>{formatInstant(day.close_at)}</td>
-                </tr>
-              ))}
+              {calendar.data.days.map((day) => {
+                const kindLabel =
+                  (
+                    {
+                      trading_day: 'Negociación',
+                      holiday: 'Festivo',
+                      weekend: 'Fin de semana',
+                    } as Record<string, string>
+                  )[day.kind] ?? day.kind;
+                return (
+                  <tr key={day.date} data-kind={day.kind}>
+                    <th scope="row">{day.date}</th>
+                    <td className={styles.kindCell}>
+                      {kindLabel}
+                      {day.override && ' · Horario especial'}
+                    </td>
+                    <td>
+                      <SessionBar
+                        day={day.date}
+                        open={day.open_at}
+                        close={day.close_at}
+                        trading={day.kind === 'trading_day'}
+                      />
+                    </td>
+                    <td>{formatInstant(day.open_at)}</td>
+                    <td>{formatInstant(day.close_at)}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -292,7 +326,31 @@ export function Markets() {
   const current = list.data?.find((m) => m.code === selected) ?? list.data?.[0];
   return (
     <section className={styles.panel} aria-label="Mercados bursátiles">
-      <h2>Mercados bursátiles</h2>
+      <div className={styles.marketTopBar}>
+        <div>
+          <span className={styles.sectionKicker}>
+            DATOS EN TIEMPO REAL · ALPACA MARKET DATA API
+          </span>
+          <h2>Mercados bursátiles</h2>
+        </div>
+        {list.data && current && (
+          <label className={styles.marketPickerLabel}>
+            <span>Mercado</span>
+            <select
+              aria-label="Mercado"
+              value={current.code}
+              onChange={(e) => setSelected(e.target.value)}
+            >
+              {list.data.map((m) => (
+                <option key={m.code} value={m.code}>
+                  {m.name} ({m.code})
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+      </div>
+
       {list.error ? (
         <Problem error={list.error} retry={list.refetch} />
       ) : !list.data ? (
@@ -301,22 +359,7 @@ export function Markets() {
         <>
           {current ? (
             <>
-              <label>
-                Mercado
-                <select
-                  aria-label="Mercado"
-                  value={current.code}
-                  onChange={(e) => setSelected(e.target.value)}
-                >
-                  {list.data.map((m) => (
-                    <option key={m.code} value={m.code}>
-                      {m.name} ({m.code})
-                    </option>
-                  ))}
-                </select>
-              </label>
               <PriceChart key={current.code} exchange={current.code} />
-              <p>Horarios en {tz}.</p>
               <MarketClock />
               <MarketSchedule code={current.code} />
             </>

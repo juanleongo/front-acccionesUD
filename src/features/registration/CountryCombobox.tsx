@@ -1,4 +1,5 @@
 'use client';
+import Image from 'next/image';
 import { useEffect, useId, useRef, useState } from 'react';
 import styles from './registration.module.css';
 
@@ -96,6 +97,16 @@ export function CountryCombobox({
 
       {/* Input de búsqueda visible */}
       <div className={styles.comboboxInputWrapper}>
+        {selectedCode && (
+          <Image
+            src={`https://flagcdn.com/w40/${selectedCode.toLowerCase()}.png`}
+            width={22}
+            height={15}
+            alt=""
+            unoptimized
+            className={styles.selectedFlagIcon}
+          />
+        )}
         <input
           ref={inputRef}
           id={id}
@@ -108,7 +119,7 @@ export function CountryCombobox({
           value={query}
           disabled={disabled}
           autoComplete="off"
-          className={styles.comboboxInput}
+          className={`${styles.comboboxInput} ${selectedCode ? styles.comboboxInputWithFlag : ''}`}
           onFocus={() => setOpen(true)}
           onChange={(e) => {
             setQuery(e.target.value);
@@ -166,7 +177,15 @@ export function CountryCombobox({
                   className={`${styles.comboboxOption} ${isSelected ? styles.selectedOption : ''}`}
                   onClick={() => selectCountry(c)}
                 >
-                  <span className={styles.countryCode}>{c.code}</span>
+                  <Image
+                    src={`https://flagcdn.com/w40/${c.code.toLowerCase()}.png`}
+                    width={24}
+                    height={16}
+                    alt=""
+                    unoptimized
+                    loading="lazy"
+                    className={styles.countryFlag}
+                  />
                   <span className={styles.countryName}>{c.name}</span>
                   {isSelected && <span className={styles.countryCheck}>✓</span>}
                 </li>
