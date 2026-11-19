@@ -15,9 +15,31 @@ const close = z
   .union([z.number(), z.string().regex(/^-?\d+(?:\.\d+)?(?:e[+-]?\d+)?$/i)])
   .transform(Number)
   .pipe(z.number().finite());
+export const candleFrames = {
+  '1Min': '1 minuto',
+  '5Min': '5 minutos',
+  '15Min': '15 minutos',
+  '1Hour': '1 hora',
+  '1Day': '1 día',
+} as const;
+export type CandleFrame = keyof typeof candleFrames;
+export type Candle = {
+  time: number;
+  price: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+};
 const pageSchema = z.object({
   bars: z.array(
-    z.object({ timestamp: z.iso.datetime({ offset: true }), close }),
+    z.object({
+      timestamp: z.iso.datetime({ offset: true }),
+      open: close,
+      high: close,
+      low: close,
+      close,
+    }),
   ),
   next_page_token: z.string().nullable(),
   currency: z.string().nullable(),
@@ -28,18 +50,19 @@ export async function history(
   symbol: string,
   period: Period,
   signal: AbortSignal,
+  timeframe?: CandleFrame,
 ) {
   const end = new Date();
   const { days, frame } = periods[period];
   const start = new Date(days ? end.getTime() - days * 86400000 : 0);
-  const values = new Map<number, number>();
+  const values = new Map<number, Candle>();
   const seen = new Set<string>();
   let token: string | null = null;
   for (;;) {
     const page: z.infer<typeof pageSchema> = await browserHttp.request({
       path: '/api/v1/instruments/' + symbol + '/candles',
       query: {
-        timeframe: frame,
+        timeframe: timeframe ?? frame,
         start: start.toISOString(),
         end: end.toISOString(),
         page_size: '10000',
@@ -50,13 +73,18 @@ export async function history(
       parse: pageSchema.parse,
     });
     for (const bar of page.bars)
-      values.set(Date.parse(bar.timestamp), bar.close);
+      values.set(Date.parse(bar.timestamp), {
+        time: Date.parse(bar.timestamp),
+        price: bar.close,
+        open: bar.open,
+        high: bar.high,
+        low: bar.low,
+        close: bar.close,
+      });
     token = page.next_page_token;
     if (!token)
       return {
-        points: Array.from(values, ([time, price]) => ({ time, price })).sort(
-          (a, b) => a.time - b.time,
-        ),
+        points: Array.from(values.values()).sort((a, b) => a.time - b.time),
         currency: page.currency,
         source: page.source,
         delayed: page.is_delayed,

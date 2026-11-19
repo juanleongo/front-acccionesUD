@@ -8,6 +8,7 @@ import {
   orderAction,
   resubmitBody,
   searchAssets,
+  listTradingMarkets,
   type OrderInput,
   type OrderDetail,
   type Preview,
@@ -73,12 +74,21 @@ export function OrderForm({
           schedule_if_closed: false,
         },
   );
-  const [search, setSearch] = useState(initialSymbol ?? 'A');
+  const [search, setSearch] = useState(initialSymbol ?? '');
+  const [exchange, setExchange] = useState('');
+  const [letter, setLetter] = useState('A');
+  const markets = useQuery({
+    queryKey: ['trading-markets'],
+    queryFn: ({ signal }) => listTradingMarkets(signal),
+    enabled: !editing,
+    retry: false,
+  });
+  const query = search.trim() || letter;
   const [page, setPage] = useState(1);
   const assets = useQuery({
-    queryKey: ['trading-assets', search, page],
-    queryFn: ({ signal }) => searchAssets(search.trim(), page, signal),
-    enabled: search.trim().length > 0 && !editing,
+    queryKey: ['trading-assets', query, exchange, page],
+    queryFn: ({ signal }) => searchAssets(query, page, signal, exchange),
+    enabled: !editing,
     retry: false,
   });
   const [preview, setPreview] = useState<Preview | null>(null);
@@ -194,7 +204,63 @@ export function OrderForm({
           {!editing && (
             <>
               <label className={styles.fieldGroup}>
-                Filtrar instrumentos
+                Bolsa de valores
+                <select
+                  className={styles.select}
+                  value={exchange}
+                  disabled={markets.isPending || markets.isError}
+                  onChange={(e) => {
+                    setExchange(e.target.value);
+                    setSearch('');
+                    setPage(1);
+                    update({ symbol: '' });
+                  }}
+                >
+                  <option value="">Todas las bolsas</option>
+                  {markets.data?.map((market) => (
+                    <option key={market.code} value={market.code}>
+                      {market.name} ({market.code})
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {markets.isError && (
+                <p role="alert">
+                  No se pudieron cargar las bolsas.{' '}
+                  <button
+                    type="button"
+                    className={styles.btnSecondary}
+                    onClick={() => {
+                      void markets.refetch();
+                    }}
+                  >
+                    Reintentar
+                  </button>
+                </p>
+              )}
+              <label className={styles.fieldGroup}>
+                Explorar por letra
+                <select
+                  className={styles.select}
+                  value={letter}
+                  disabled={Boolean(search.trim())}
+                  onChange={(e) => {
+                    setLetter(e.target.value);
+                    setPage(1);
+                    update({ symbol: '' });
+                  }}
+                >
+                  {'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+                    .split('')
+                    .map((value) => (
+                      <option key={value} value={value}>
+                        {value}
+                      </option>
+                    ))}
+                </select>
+              </label>
+              <label className={styles.fieldGroup}>
+                Buscar acción por nombre o símbolo
                 <input
                   className={styles.input}
                   value={search}
@@ -202,9 +268,18 @@ export function OrderForm({
                   onChange={(e) => {
                     setSearch(e.target.value);
                     setPage(1);
+                    update({ symbol: '' });
                   }}
                 />
               </label>
+              <p className={styles.cardSubtitle}>
+                Solo instrumentos negociables. Sin búsqueda, se muestran
+                coincidencias de la letra seleccionada en el símbolo o nombre.
+              </p>
+              {assets.isFetching && <p role="status">Cargando acciones…</p>}
+              {!assets.isFetching && assets.data?.total === 0 && (
+                <p>No hay acciones para estos filtros.</p>
+              )}
               {assets.isError && (
                 <p role="alert">No se pudieron consultar los instrumentos.</p>
               )}
@@ -213,6 +288,7 @@ export function OrderForm({
                 <select
                   className={styles.select}
                   required
+                  disabled={assets.isFetching || assets.isError}
                   value={draft.symbol}
                   onChange={(e) => update({ symbol: e.target.value })}
                 >
@@ -237,7 +313,9 @@ export function OrderForm({
                 >
                   Anterior
                 </button>
-                <span>Página {page}</span>
+                <span>
+                  Página {page} · {assets.data?.total ?? 0} resultados
+                </span>
                 <button
                   type="button"
                   className={styles.btnSecondary}

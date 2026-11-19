@@ -7,12 +7,14 @@ import {
   previewOrder,
   submitOrder,
   searchAssets,
+  listTradingMarkets,
   type OrderDetail,
 } from './trading-api';
 vi.mock('./trading-api', () => ({
   previewOrder: vi.fn(),
   submitOrder: vi.fn(),
   searchAssets: vi.fn(),
+  listTradingMarkets: vi.fn(),
   orderAction: vi.fn(),
   resubmitBody: vi.fn(),
 }));
@@ -27,6 +29,10 @@ const preview = {
   scheduled_for: null,
 };
 beforeEach(() => {
+  vi.mocked(listTradingMarkets).mockResolvedValue([
+    { code: 'NASDAQ', name: 'Nasdaq' },
+    { code: 'NYSE', name: 'New York Stock Exchange' },
+  ]);
   vi.mocked(searchAssets).mockResolvedValue({
     results: [{ symbol: 'AAPL', name: 'Apple', exchange: 'NASDAQ' }],
     total: 1,
@@ -205,4 +211,33 @@ it('no genera una vista previa local cuando falla el backend', async () => {
   expect(
     screen.queryByLabelText('Vista previa de la orden'),
   ).not.toBeInTheDocument();
+});
+
+it('filtra por bolsa y elimina la acción anterior al cambiar de mercado', async () => {
+  setup();
+  await screen.findByRole('option', { name: 'New York Stock Exchange (NYSE)' });
+  fireEvent.change(screen.getByLabelText('Bolsa de valores'), {
+    target: { value: 'NYSE' },
+  });
+  expect(screen.getByLabelText('Instrumento')).toHaveValue('');
+  await waitFor(() =>
+    expect(searchAssets).toHaveBeenCalledWith(
+      'A',
+      1,
+      expect.any(AbortSignal),
+      'NYSE',
+    ),
+  );
+  fireEvent.change(
+    screen.getByLabelText('Buscar acción por nombre o símbolo'),
+    { target: { value: 'IBM' } },
+  );
+  await waitFor(() =>
+    expect(searchAssets).toHaveBeenCalledWith(
+      'IBM',
+      1,
+      expect.any(AbortSignal),
+      'NYSE',
+    ),
+  );
 });

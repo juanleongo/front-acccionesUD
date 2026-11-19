@@ -1,3 +1,4 @@
+'use client';
 import { useId, useMemo, useState } from 'react';
 import styles from './price.module.css';
 

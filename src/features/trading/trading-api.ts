@@ -182,15 +182,30 @@ export function resubmitBody(input: OrderInput) {
   void _confirmed;
   return changes;
 }
+export async function listTradingMarkets(signal?: AbortSignal) {
+  return browserHttp.request({
+    path: '/api/v1/markets',
+    method: 'GET',
+    response: 'json',
+    parse: z.array(z.object({ code: z.string(), name: z.string() })).parse,
+    ...(signal ? { signal } : {}),
+  });
+}
 export async function searchAssets(
   q: string,
   page: number,
   signal?: AbortSignal,
+  exchange = '',
 ) {
   return browserHttp.request({
     path: '/api/v1/instruments/search',
     method: 'GET',
-    query: { q, page: String(page), classification: 'tradable' },
+    query: {
+      q,
+      page: String(page),
+      classification: 'tradable',
+      ...(exchange ? { exchange } : {}),
+    },
     response: 'json',
     parse: z.object({
       results: z.array(

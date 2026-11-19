@@ -3,7 +3,14 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { ApiError } from '@/lib/api';
-import { history, periods, type Period } from './history';
+import {
+  history,
+  periods,
+  candleFrames,
+  type CandleFrame,
+  type Period,
+} from './history';
+import { CandleSeries } from './CandleSeries';
 import styles from './price.module.css';
 import { PriceSeries } from './PriceSeries';
 import { getInstruments } from './api';
@@ -63,10 +70,13 @@ export function PriceChart({ exchange }: { exchange: string }) {
   }
 
   const [period, setPeriod] = useState<Period>('1M');
+  const [chartType, setChartType] = useState('line');
+  const [frame, setFrame] = useState<CandleFrame | 'auto'>('auto');
+  const timeframe = frame === 'auto' ? periods[period].frame : frame;
   const query = useQuery({
-    queryKey: ['price-history', symbol, period],
+    queryKey: ['price-history', symbol, period, timeframe],
     enabled: Boolean(symbol) && !catalog.error,
-    queryFn: ({ signal }) => history(symbol, period, signal),
+    queryFn: ({ signal }) => history(symbol, period, signal, timeframe),
   });
   const points = query.data?.points ?? [];
   const first = points[0],
@@ -98,6 +108,34 @@ export function PriceChart({ exchange }: { exchange: string }) {
           </p>
         </div>
 
+        <div className={styles.filterInputs}>
+          <label className={styles.field}>
+            <span>Tipo de gráfico</span>
+            <select
+              value={chartType}
+              onChange={(e) => setChartType(e.target.value)}
+            >
+              <option value="line">Línea / área</option>
+              <option value="candles">Velas japonesas</option>
+            </select>
+          </label>
+          <label className={styles.field}>
+            <span>Duración de cada vela</span>
+            <select
+              value={frame}
+              onChange={(e) => setFrame(e.target.value as CandleFrame | 'auto')}
+            >
+              <option value="auto">
+                Automática ({candleFrames[periods[period].frame]})
+              </option>
+              {Object.entries(candleFrames).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
         <div className={styles.toolbar}>
           <div className={styles.filterInputs}>
             <label className={`${styles.field} ${styles.letterField}`}>
@@ -233,12 +271,21 @@ export function PriceChart({ exchange }: { exchange: string }) {
             <p>Consultando precios históricos de {symbol} en Alpaca…</p>
           </div>
         ) : query.data && points.length > 0 ? (
-          <PriceSeries
-            key={symbol + period}
-            points={query.data.points}
-            currency={query.data.currency}
-            label={'Evolución de ' + symbol + ' · ' + periods[period].label}
-          />
+          chartType === 'candles' ? (
+            <CandleSeries
+              key={symbol + period + timeframe}
+              candles={query.data.points}
+              currency={query.data.currency}
+              label={'Velas japonesas de ' + symbol}
+            />
+          ) : (
+            <PriceSeries
+              key={symbol + period + timeframe}
+              points={query.data.points}
+              currency={query.data.currency}
+              label={'Evolución de ' + symbol + ' · ' + periods[period].label}
+            />
+          )
         ) : (
           <p>Sin precios disponibles para este período.</p>
         )}
