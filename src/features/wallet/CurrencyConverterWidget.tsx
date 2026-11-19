@@ -67,10 +67,8 @@ export function CurrencyConverterWidget() {
       </div>
 
       <div className={styles.conversionResult}>
-        <span style={{ fontSize: '0.84rem', color: 'var(--color-text-muted)' }}>
-          Equivalente neto en USD:
-        </span>
-        <strong style={{ fontSize: '1.25rem', color: '#10b981' }}>
+        <span className={styles.converterLabel}>Equivalente neto en USD:</span>
+        <strong className={styles.converterValue}>
           $
           {convertedUsd.toLocaleString('en-US', {
             minimumFractionDigits: 2,

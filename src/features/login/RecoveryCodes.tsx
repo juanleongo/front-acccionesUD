@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from 'react';
 import Link from 'next/link';
+import { Icon } from '@/components/ui/Icon';
 import styles from './login.module.css';
 
 const STORAGE_KEY = 'acciones_ud_pending_recovery_codes';
@@ -99,7 +100,7 @@ export function RecoveryCodesDisplay({
   codes,
   onDismiss,
   dismissHref,
-  dismissText = 'Ya guardé los códigos',
+  dismissText = 'Continuar al panel',
 }: {
   codes: string[];
   onDismiss?: () => void;
@@ -155,20 +156,18 @@ ${codes.map((c, i) => `[ ${String(i + 1).padStart(2, '0')} ]  ${c}`).join('\n')}
     >
       <div className={styles.recoveryHeader}>
         <div className={styles.recoveryIcon} aria-hidden="true">
-          🛡️
+          <Icon name="shield" size={24} />
         </div>
         <div className={styles.recoveryTitle}>
           <span className={styles.recoveryBadge}>
-            RESPALDO OBLIGATORIO DE SEGURIDAD · 2FA
+            Último paso · Respaldo de acceso
           </span>
-          <h2 id="recovery-heading">
-            Guarda tus códigos de recuperación de emergencia
-          </h2>
+          <h2 id="recovery-heading">Guarda tus códigos de recuperación</h2>
           <p>
             Estos <strong>{codes.length} códigos de un solo uso</strong> son la
-            única llave para entrar a tu cuenta si pierdes o cambias tu celular.
-            Por seguridad no se volverán a mostrar automáticamente: cópialos o
-            descárgalos antes de continuar.
+            forma de recuperar el acceso si pierdes tu autenticador. Esta
+            pantalla permanecerá disponible hasta que pulses Continuar. Cópialos
+            o descárgalos antes de continuar.
           </p>
         </div>
       </div>
@@ -185,13 +184,18 @@ ${codes.map((c, i) => `[ ${String(i + 1).padStart(2, '0')} ]  ${c}`).join('\n')}
         ))}
       </ul>
 
+      <p className={styles.backupHint}>
+        Guárdalos en un lugar privado. Cada código se puede utilizar una sola
+        vez.
+      </p>
       <div className={styles.recoveryActions}>
         <button
           type="button"
           onClick={copyAll}
           className={styles.recoveryBtnAction}
         >
-          {copied ? '✓ ¡Copiados al portapapeles!' : '📋 Copiar todos'}
+          <Icon name="file" size={16} />{' '}
+          {copied ? 'Códigos copiados' : 'Copiar todos'}
         </button>
         <button
           type="button"
@@ -200,10 +204,14 @@ ${codes.map((c, i) => `[ ${String(i + 1).padStart(2, '0')} ]  ${c}`).join('\n')}
         >
           {downloaded
             ? '✓ Archivo .txt descargado'
-            : '⬇ Descargar respaldo (.txt)'}
+            : 'Descargar respaldo (.txt)'}
         </button>
         {dismissHref ? (
-          <Link href={dismissHref} className={styles.recoveryBtnPrimary}>
+          <Link
+            href={dismissHref}
+            onClick={() => onDismiss?.()}
+            className={styles.recoveryBtnPrimary}
+          >
             {dismissText}
           </Link>
         ) : onDismiss ? (

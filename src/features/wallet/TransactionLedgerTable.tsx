@@ -1,8 +1,19 @@
 'use client';
 
 import { useState } from 'react';
+import {
+  formatTransferStatus,
+  formatUsd,
+  getTransferStatusTone,
+} from './wallet-labels';
 import type { LedgerTransaction, LedgerTxType } from './wallet-mock';
 import styles from './wallet.module.css';
+
+const TONE_BADGE_MAP = {
+  success: styles.badgeSuccess,
+  reserved: styles.badgeReserved,
+  error: styles.badgeError,
+} as const;
 
 export function TransactionLedgerTable({
   transactions,
@@ -24,7 +35,7 @@ export function TransactionLedgerTable({
             Historial de depósitos y retiros
           </h2>
           <p className={styles.cardSubtitle}>
-            Transferencias de la cuenta KYC en USD.
+            Movimientos registrados en tu cuenta de inversión en USD.
           </p>
         </div>
       </div>
@@ -55,87 +66,64 @@ export function TransactionLedgerTable({
           <thead>
             <tr>
               <th>Fecha</th>
-              <th>Concepto / Referencia</th>
-              <th>Divisa Orig.</th>
+              <th>Concepto</th>
+              <th>Divisa orig.</th>
               <th>Monto USD</th>
               <th>Comisión</th>
-              <th>Saldo Posterior</th>
+              <th>Saldo posterior</th>
               <th>Estado</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td
-                  colSpan={7}
-                  style={{
-                    textAlign: 'center',
-                    padding: '2rem',
-                    color: 'var(--color-text-muted)',
-                  }}
-                >
+                <td colSpan={7} className={styles.emptyCell}>
                   No existen movimientos para el filtro seleccionado.
                 </td>
               </tr>
             ) : (
               filtered.map((tx) => {
                 const isPositive = tx.amount_usd >= 0;
+                const tone = getTransferStatusTone(tx.status);
+
                 return (
                   <tr key={tx.id}>
-                    <td
-                      style={{
-                        fontSize: '0.78rem',
-                        color: 'var(--color-text-muted)',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {tx.created_at}
-                    </td>
+                    <td className={styles.dateCell}>{tx.created_at}</td>
                     <td>
                       <strong>{tx.concept}</strong>
-                      <div
-                        style={{
-                          fontSize: '0.72rem',
-                          color: 'var(--color-text-subtle)',
-                        }}
-                      >
-                        Ref: {tx.external_ref}
+                      <div className={styles.txRef}>
+                        Operación en {tx.original_currency}
                       </div>
                     </td>
-                    <td>
+                    <td className={styles.tabularNum}>
                       {tx.original_amount.toLocaleString('en-US')}{' '}
                       {tx.original_currency}
                     </td>
                     <td>
                       <strong
-                        style={{
-                          color: isPositive ? '#10b981' : '#ef4444',
-                        }}
+                        className={
+                          isPositive
+                            ? styles.amountPositive
+                            : styles.amountNegative
+                        }
                       >
                         {isPositive ? '+' : '-'}$
-                        {Math.abs(tx.amount_usd).toLocaleString('en-US', {
-                          minimumFractionDigits: 2,
-                        })}
+                        {formatUsd(Math.abs(tx.amount_usd))}
                       </strong>
                     </td>
-                    <td>
-                      {tx.fee_usd === null ? '—' : `$${tx.fee_usd.toFixed(2)}`}
+                    <td className={styles.tabularNum}>
+                      {tx.fee_usd === null ? '—' : `$${formatUsd(tx.fee_usd)}`}
                     </td>
-                    <td>
-                      $
-                      {tx.balance_after_usd?.toLocaleString('en-US', {
-                        minimumFractionDigits: 2,
-                      }) ?? '—'}
+                    <td className={styles.tabularNum}>
+                      {tx.balance_after_usd === null
+                        ? '—'
+                        : `$${formatUsd(tx.balance_after_usd)}`}
                     </td>
                     <td>
                       <span
-                        className={
-                          tx.status !== 'COMPLETE'
-                            ? styles.badgeReserved
-                            : styles.badgeSuccess
-                        }
+                        className={`${styles.statusBadge} ${TONE_BADGE_MAP[tone]}`}
                       >
-                        {tx.status}
+                        {formatTransferStatus(tx.status)}
                       </span>
                     </td>
                   </tr>

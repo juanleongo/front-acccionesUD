@@ -2,7 +2,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { FundingPanel } from './FundingPanel';
-import { fetchBanks, requestTransfer } from './wallet-api';
+import { createBank, fetchBanks, requestTransfer } from './wallet-api';
 
 vi.mock('./wallet-api', () => ({
   fetchBanks: vi.fn(),
@@ -107,4 +107,49 @@ it('impide retirar más que el efectivo disponible', async () => {
   );
   expect(await screen.findByRole('alert')).toHaveTextContent('supera el saldo');
   expect(requestTransfer).not.toHaveBeenCalled();
+});
+
+it('abre primero la vinculación y bloquea el selector cuando no hay cuentas aprobadas', async () => {
+  vi.mocked(fetchBanks).mockResolvedValueOnce([]);
+  render(<FundingPanel onRefresh={vi.fn()} available={100} />);
+  await screen.findByText('Primero vincula una cuenta bancaria');
+  expect(screen.getByLabelText('Cuenta bancaria vinculada')).toBeDisabled();
+  const owner = screen.getByLabelText('Nombre completo del titular');
+  expect(owner.closest('details')).toHaveAttribute('open');
+  fireEvent.change(owner, { target: { value: 'Ana Perez' } });
+  fireEvent.change(screen.getByLabelText('Número de cuenta'), {
+    target: { value: '123' },
+  });
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Vincular cuenta de prueba' }),
+  );
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'entre 4 y 17 dígitos',
+  );
+  expect(createBank).not.toHaveBeenCalled();
+  fireEvent.change(screen.getByLabelText('Número de cuenta'), {
+    target: { value: '12345678' },
+  });
+  fireEvent.change(
+    screen.getByLabelText('Código bancario ACH (routing number)'),
+    { target: { value: '123' } },
+  );
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Vincular cuenta de prueba' }),
+  );
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'exactamente 9 dígitos',
+  );
+  expect(createBank).not.toHaveBeenCalled();
+  fireEvent.change(
+    screen.getByLabelText('Código bancario ACH (routing number)'),
+    { target: { value: '145789456' } },
+  );
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Vincular cuenta de prueba' }),
+  );
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'no es un routing number ABA válido',
+  );
+  expect(createBank).not.toHaveBeenCalled();
 });

@@ -1,5 +1,11 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { OrderForm } from './OrderForm';
@@ -66,6 +72,27 @@ async function showPreview() {
   );
   await screen.findByLabelText('Vista previa de la orden');
 }
+it('no anuncia cero resultados ni un catálogo vacío mientras carga los instrumentos', async () => {
+  let resolve!: (value: Awaited<ReturnType<typeof searchAssets>>) => void;
+  vi.mocked(searchAssets).mockImplementationOnce(
+    () =>
+      new Promise((done) => {
+        resolve = done;
+      }),
+  );
+  setup();
+  expect(screen.getByText('Cargando acciones…')).toBeVisible();
+  expect(screen.queryByText(/0 resultados/)).not.toBeInTheDocument();
+  expect(
+    screen.queryByText('No hay acciones para estos filtros.'),
+  ).not.toBeInTheDocument();
+  await act(async () => resolve({ results: [], total: 0, page_size: 20 }));
+  expect(
+    await screen.findByText('No hay acciones para estos filtros.'),
+  ).toBeVisible();
+  expect(screen.getByText('Página 1 · 0 resultados')).toBeVisible();
+});
+
 it.each([
   ['market', {}, {}],
   ['limit', { 'Precio límite (USD)': '95' }, { limit_price: '95' }],

@@ -67,21 +67,37 @@ El script `scripts/check-boundaries.mjs` valida el grafo de dependencias en cada
 
 - **Mercado exclusivo:** Todo el simulador opera sobre bolsas de **Estados Unidos (NYSE, NASDAQ, NYSE Arca)** en **USD** y bajo horario **America/New_York (ET)**.
 - **Módulo 03 — Motor de Órdenes (`src/features/trading/`):**
-  - Actualmente opera con datos simulados en `trading-mock.ts`.
-  - Endpoints a conectar:
-    - `POST /api/v1/orders/preview` → obtiene `preview_id` y alimenta `PriceValidityTimer` (vigencia 5–10s).
-    - `POST /api/v1/orders` → envía la orden con header `Idempotency-Key` y `preview_id`.
-    - `GET /api/v1/orders` / `GET /api/v1/orders/{order_id}` → alimenta `ActiveOrdersTable`.
-    - `DELETE /api/v1/orders/{order_id}` → botón cancelar orden abierta o encolada.
-    - `POST /api/v1/orders/{order_id}/reauthorize` → flujo de `PriceSlippageAlertModal`.
-- **Módulo 04 — Billetera Multi-Moneda (`src/features/wallet/`):**
-  - Actualmente opera con datos simulados en `wallet-mock.ts`.
-  - Endpoints a conectar:
-    - `GET /api/v1/wallet/balance` → alimenta `BalanceSummaryCard` (manteniendo segregación entre `available_balance_usd` y `reserved_balance_usd`).
-    - `POST /api/v1/wallet/deposit` → `DepositModal` (soporta COP, EUR, GBP, USD).
-    - `POST /api/v1/wallet/withdraw` → `WithdrawalModal` (validando monto `<= available_balance_usd`).
-    - `GET /api/v1/wallet/rates?base=USD` → `CurrencyConverterWidget`.
-    - `GET /api/v1/wallet/transactions` → `TransactionLedgerTable`.
+  - Conectado en `trading-api.ts` (`OrderForm`, `TradingTerminal`, `ActiveOrdersTable`, `OrderDetails` + subcomponentes modulares en `components/` y etiquetas en `trading-labels.ts`).
+  - Endpoints conectados:
+    - `GET /api/v1/instruments/search` → selector de instrumentos tradables en `InstrumentSelector`.
+    - `GET /api/v1/portfolio/positions` → tabla de posiciones disponibles y reservadas en `PositionsCard`.
+    - `POST /api/v1/orders/preview` → previsualización de costos, mercado abierto/cerrado y autorización adicional (MFA TOTP o monto elevado) en `OrderPreviewCard`.
+    - `POST /api/v1/orders` → envío con header `Idempotency-Key`.
+    - `GET /api/v1/orders` y `GET /api/v1/orders/{id}` → historial paginado con filtros en `ActiveOrdersTable` y panel `OrderDetails`.
+    - `POST /api/v1/orders/{id}/cancel|reauthorization|resubmit|resume` → cancelación, reautorización de precio, corrección y reanudación.
+- **Módulo 04 — Billetera y Fondos (`src/features/wallet/`):**
+  - Conectado en `wallet-api.ts` (`WalletDashboard`, `BalanceSummaryCard`, `FundingPanel`, `LinkBankAccordion`, `TransactionLedgerTable` y `wallet-labels.ts`).
+  - Endpoints conectados:
+    - `GET /api/v1/wallet/balances` → alimenta `BalanceSummaryCard` manteniendo segregación entre `cash_withdrawable` y efectivo no retirable.
+    - `GET /api/v1/wallet/bank-relationships` y `POST /api/v1/wallet/bank-relationships` → consulta y vinculación de cuentas bancarias de prueba en `FundingPanel` y `LinkBankAccordion`.
+    - `POST /api/v1/wallet/deposits` y `POST /api/v1/wallet/withdrawals` → solicitudes de depósito y retiro ACH con `Idempotency-Key` y validación de saldo retirable.
+    - `GET /api/v1/wallet/transfers` → historial de depósitos y retiros en `TransactionLedgerTable`.
+- **Módulo 05 — Portafolio y Seguimiento de Activos (`src/features/portfolio/`):**
+  - Implementado en `PortfolioDashboard.tsx`, `portfolio-api.ts` y `portfolio-mock.ts`.
+  - Endpoints conectados:
+    - `GET /api/v1/portfolio/positions` → Posiciones en vivo (tabla, tarjetas y barras de peso %), valor de mercado, costo base y P&L no realizado.
+    - `PUT /api/v1/users/preferences/portfolio` → Persistencia de preferencia visual (`table`, `cards`, `chart`).
+    - `GET /api/v1/portfolio/statistics?from=&to=` → Volumen negociado y distribución porcentual por sector, mercado e instrumento.
+    - `GET /api/v1/portfolio/risk-profile` → Modelo cuantitativo de riesgo F/C/E/T (Frecuencia, Concentración, Exposición, Tamaño relativo) y clasificación (`conservative`, `moderate`, `aggressive`).
+    - `GET /api/v1/portfolio/executions` → Libro mayor de ejecuciones y comisiones (2%).
+    - `POST /api/v1/portfolio/reports` y `GET /api/v1/portfolio/reports` → Generador y visor de reportes auditables.
+- **Módulo 06 — Comisionistas, Vínculos, Propuestas y Portal Broker (`src/features/brokers/`):**
+  - Implementado en `BrokersHub.tsx`, `brokers-api.ts` y `brokers-mock.ts` con selector de rol (**Vista Inversionista** y **Portal Comisionista**).
+  - Endpoints conectados:
+    - `GET /api/v1/brokers`, `GET /api/v1/brokers/suggestions`, `GET /api/v1/brokers/{id}/reputation`, `GET /api/v1/brokers/{id}/reviews`, `PUT /api/v1/brokers/{id}/rating` → Directorio público, reputación y calificaciones 1–5 estrellas.
+    - `GET /api/v1/broker-links/current`, `POST /api/v1/broker-links`, `POST /api/v1/broker-links/{id}/trading-authorization`, `POST /api/v1/broker-links/{id}/trading-authorization/revoke`, `PUT /api/v1/broker-links/{id}/order-review`, `POST /api/v1/broker-links/{id}/end` → Gestión integral del vínculo y permisos del asesor.
+    - `GET /api/v1/proposals`, `POST /api/v1/proposals/{id}/decision`, `GET/POST /api/v1/proposals/{id}/messages` → Bandeja de propuestas de inversión, firma con código 2FA TOTP e hilo de chat.
+    - `GET /api/v1/broker/link-requests`, `POST /api/v1/broker/link-requests/{id}/accept|decline`, `GET /api/v1/broker/clients`, `POST /api/v1/broker/proposals`, `PUT /api/v1/brokers/me/profile` → Portal del comisionista.
 
 ---
 

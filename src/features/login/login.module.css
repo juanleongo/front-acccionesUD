@@ -676,3 +676,170 @@
   margin-bottom: 0.25rem;
   font-size: 0.85rem;
 }
+/* Security setup and recovery share the institutional surface and spacing. */
+.securityPage {
+  max-width: 52rem;
+}
+.securityIntro h2 {
+  margin: 0.5rem 0;
+  font-size: 1.15rem;
+  letter-spacing: -0.025em;
+}
+.securityIntro p {
+  line-height: 1.6;
+}
+.securityIntro .qrBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.securityPage .qrLayout {
+  display: grid;
+  grid-template-columns: 13rem minmax(0, 1fr);
+  align-items: center;
+  gap: 1.5rem;
+  margin-top: 1.25rem;
+}
+.securityPage .qrFrame {
+  border-color: var(--color-border);
+  padding: 0.8rem;
+}
+.setupSteps {
+  padding-left: 1.3rem;
+  margin: 0 0 1rem;
+  color: var(--color-text);
+  line-height: 1.6;
+}
+.setupSteps li + li {
+  margin-top: 0.7rem;
+}
+.manualSetup {
+  width: 100%;
+  border-top: 1px solid var(--color-border);
+  padding-top: 0.8rem;
+}
+.manualSetup summary {
+  cursor: pointer;
+  color: var(--color-primary);
+  font-weight: 600;
+}
+.manualSetup p {
+  margin-top: 0.75rem;
+}
+.manualSetup .secretCode {
+  display: block;
+  overflow-wrap: anywhere;
+  margin-bottom: 0.75rem;
+}
+.securityPage .recoveryBanner {
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+.recoveryOverlayWrapper .recoveryBanner {
+  max-width: 52rem;
+  margin-inline: auto;
+}
+.recoveryBanner {
+  border-left: 1px solid var(--color-border-strong);
+  box-shadow: var(--shadow-card);
+}
+.recoveryIcon {
+  background: var(--color-shield-bg);
+  border-color: var(--color-border);
+  color: var(--color-primary);
+}
+.recoveryBadge {
+  background: var(--color-accent-soft);
+  color: var(--color-accent-text);
+  border-color: var(--color-accent-border);
+  text-transform: none;
+  letter-spacing: 0;
+}
+.recoveryGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem 1rem;
+}
+.recoveryItem {
+  justify-content: flex-start;
+  padding: 0.85rem 1rem;
+  box-shadow: none;
+  border-width: 1px;
+}
+.recoveryItem small {
+  min-width: 1.5rem;
+  font-variant-numeric: tabular-nums;
+}
+.recoveryItem code {
+  font-family: ui-monospace, monospace;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+.backupHint {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  line-height: 1.6;
+  margin: 0 0 1.25rem;
+}
+.recoveryActions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--color-border);
+}
+.recoveryBtnAction {
+  width: 100% !important;
+}
+.recoveryBtnPrimary {
+  grid-column: 1 / -1;
+  width: 100% !important;
+  margin: 0.25rem 0 0;
+  box-sizing: border-box;
+  color: var(--color-on-button) !important;
+  box-shadow: var(--shadow-control);
+}
+@media (max-width: 600px) {
+  .securityPage .qrLayout {
+    grid-template-columns: 1fr;
+  }
+  .securityPage .qrFrame {
+    justify-self: center;
+  }
+  .recoveryHeader {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .recoveryActions {
+    grid-template-columns: 1fr;
+  }
+  .recoveryItem {
+    gap: 0.3rem;
+    padding: 0.7rem 0.5rem;
+    font-size: 0.8rem;
+  }
+  .recoveryItem small {
+    min-width: 1.1rem;
+  }
+}
+@media (max-width: 600px) {
+  .topBarInner {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+  .brandText strong {
+    white-space: nowrap;
+  }
+  .brandText span {
+    display: none;
+  }
+  .topActions {
+    width: 100%;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+  .back {
+    white-space: nowrap;
+  }
+}

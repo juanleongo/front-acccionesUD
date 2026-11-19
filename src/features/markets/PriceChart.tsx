@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
+import { LoadingState } from '@/components/ui/LoadingState';
 import { ApiError } from '@/lib/api';
 import {
   history,
@@ -29,7 +30,6 @@ export function PriceChart({ exchange }: { exchange: string }) {
   const catalog = useQuery({
     queryKey: ['instrument-options', exchange, letter, page],
     queryFn: ({ signal }) => getInstruments(exchange, letter, page, signal),
-    placeholderData: (previousData) => previousData,
   });
   const options = catalog.data?.results ?? [];
   const symbol =
@@ -101,7 +101,7 @@ export function PriceChart({ exchange }: { exchange: string }) {
             {symbol ? 'Gráfico de precios de ' + symbol : 'Gráfico de precios'}
           </h2>
           <p>
-            {!query.error && change !== null && (
+            {!catalog.error && !query.error && change !== null && (
               <strong>{percent.format(change)}</strong>
             )}{' '}
             {periods[period].label}
@@ -222,14 +222,8 @@ export function PriceChart({ exchange }: { exchange: string }) {
         </div>
       </header>
 
-      {isFetchingAny && (
-        <div
-          className={styles.loadingBarWrap}
-          role="progressbar"
-          aria-label="Actualizando datos de mercado"
-        >
-          <div className={styles.loadingBarFill} />
-        </div>
+      {isFetchingAny && !catalog.isPending && !query.isPending && (
+        <LoadingState mode="compact" label="Actualizando datos de mercado…" />
       )}
 
       <div className={styles.plot}>
@@ -239,12 +233,10 @@ export function PriceChart({ exchange }: { exchange: string }) {
             <button onClick={() => catalog.refetch()}>Reintentar</button>
           </p>
         ) : catalog.isPending ? (
-          <div className={styles.loadingStateBox} role="status">
-            <div className={styles.loadingBarTrack}>
-              <div className={styles.loadingBarFill} />
-            </div>
-            <p>Cargando instrumentos del mercado {exchange}…</p>
-          </div>
+          <LoadingState
+            label={`Cargando instrumentos de ${exchange}…`}
+            detail="Consultando el catálogo bursátil disponible."
+          />
         ) : !symbol ? (
           <p>
             Sin instrumentos para este filtro en {exchange}. Selecciona otra
@@ -264,12 +256,10 @@ export function PriceChart({ exchange }: { exchange: string }) {
             <button onClick={() => query.refetch()}>Reintentar</button>
           </p>
         ) : query.isPending ? (
-          <div className={styles.loadingStateBox} role="status">
-            <div className={styles.loadingBarTrack}>
-              <div className={styles.loadingBarFill} />
-            </div>
-            <p>Consultando precios históricos de {symbol} en Alpaca…</p>
-          </div>
+          <LoadingState
+            label={`Consultando precios históricos de ${symbol}…`}
+            detail={`Sincronizando cierres para el período ${periods[period].label.toLowerCase()}.`}
+          />
         ) : query.data && points.length > 0 ? (
           chartType === 'candles' ? (
             <CandleSeries
@@ -306,7 +296,7 @@ export function PriceChart({ exchange }: { exchange: string }) {
           </button>
         ))}
       </div>
-      {last && query.data && !query.error && (
+      {last && query.data && !catalog.error && !query.error && (
         <footer>
           Último cierre:{' '}
           {last.price.toLocaleString('es-CO', { maximumFractionDigits: 8 })}{' '}

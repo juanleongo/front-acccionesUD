@@ -13,6 +13,10 @@ export type ProblemDetails = z.infer<typeof problemSchema>;
 export const validationDetailsSchema = z.object({
   details: z.object({ errors: z.array(z.object({ field: z.string() })) }),
 });
+export const backendErrorBodySchema = z.object({
+  code: z.string().optional(),
+  message: z.string().optional(),
+});
 export type ApiErrorKind = 'http' | 'transport' | 'cancelled' | 'contract';
 
 export class ApiError extends Error {
@@ -21,6 +25,7 @@ export class ApiError extends Error {
     message: string,
     public readonly metadata: {
       status?: number;
+      code?: string;
       invalidFields?: string[];
       requestId?: string;
       problem?: ProblemDetails;

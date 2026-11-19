@@ -1,0 +1,107 @@
+.cardWrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: clamp(1.75rem, 4vw, 2.75rem) 1.5rem;
+  border-radius: 1rem;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-card);
+  text-align: center;
+  width: 100%;
+}
+
+.compactWrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.95rem 1.15rem;
+  border-radius: 0.85rem;
+  background: var(--color-control);
+  border: 1px solid var(--color-border);
+  width: 100%;
+}
+
+.ringBox {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ringLarge {
+  width: 4.5rem;
+  height: 4.5rem;
+}
+
+.ringCompact {
+  width: 2.85rem;
+  height: 2.85rem;
+}
+
+.ringSvg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.ringTrack {
+  fill: none;
+  stroke: var(--color-border);
+  stroke-width: 6;
+}
+
+.ringProgress {
+  fill: none;
+  stroke-width: 6;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.percentLabel {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.percentLarge {
+  font-size: 0.88rem;
+}
+
+.percentCompact {
+  font-size: 0.68rem;
+}
+
+.textGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.22rem;
+  min-width: 0;
+}
+
+.title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.compactWrapper .title {
+  font-size: 0.86rem;
+}
+
+.detail {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  line-height: 1.45;
+  max-width: 34rem;
+}

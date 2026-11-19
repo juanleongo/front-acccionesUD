@@ -3,6 +3,7 @@ import { delay, http, HttpResponse } from 'msw';
 import { z } from 'zod';
 import { mockServer } from '../../../tests/fixtures/http';
 import { createFetchTransport } from './fetch-transport';
+import { subscribeSessionExpired } from './session-events';
 
 const origin = 'http://infrastructure.test';
 const transport = createFetchTransport({ origin, credentials: 'omit' });
@@ -18,6 +19,53 @@ afterEach(() => mockServer.resetHandlers());
 afterAll(() => mockServer.close());
 
 describe('HTTP transport (technical fixtures only)', () => {
+  it('notifica cierre de sesión en 401 de rutas protegidas y lo omite en /api/v1/auth/', async () => {
+    const expiredPaths: string[] = [];
+    const unsubscribe = subscribeSessionExpired((path) => {
+      expiredPaths.push(path);
+    });
+    mockServer.use(
+      http.get(`${origin}/api/v1/wallet/balances`, () =>
+        HttpResponse.json({ code: 'NOT_AUTHENTICATED' }, { status: 401 }),
+      ),
+      http.post(`${origin}/api/v1/auth/login`, () =>
+        HttpResponse.json({ code: 'INVALID_CREDENTIALS' }, { status: 401 }),
+      ),
+    );
+    try {
+      await expect(
+        transport.request({ ...options, path: '/api/v1/wallet/balances' }),
+      ).rejects.toMatchObject({ metadata: { status: 401 } });
+      await expect(
+        transport.request({
+          path: '/api/v1/auth/login',
+          method: 'POST',
+          body: {},
+          response: 'json',
+          parse: schema.parse,
+        }),
+      ).rejects.toMatchObject({ metadata: { status: 401 } });
+      expect(expiredPaths).toEqual(['/api/v1/wallet/balances']);
+    } finally {
+      unsubscribe();
+    }
+  });
+  it('conserva el código de error de negocio para distinguir rechazo bancario y cuenta inactiva', async () => {
+    mockServer.use(
+      http.get(`${origin}/api/probe`, () =>
+        HttpResponse.json(
+          {
+            code: 'ALPACA_REJECTED',
+            message: 'Alpaca rejected the submitted data.',
+          },
+          { status: 422 },
+        ),
+      ),
+    );
+    await expect(transport.request(options)).rejects.toMatchObject({
+      metadata: { status: 422, code: 'ALPACA_REJECTED' },
+    });
+  });
   it('validates JSON and sends the configured method, body, correlation and no-store policy', async () => {
     mockServer.use(
       http.post(`${origin}/api/probe`, async ({ request }) => {

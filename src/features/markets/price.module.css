@@ -164,51 +164,6 @@
   font-weight: 700;
   color: var(--color-primary);
 }
-.loadingBarWrap {
-  width: 100%;
-  height: 4px;
-  background: var(--color-border-subtle);
-  overflow: hidden;
-  position: relative;
-}
-.loadingStateBox {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-  width: min(22rem, 85%);
-  padding: 1.5rem;
-}
-.loadingBarTrack {
-  width: 100%;
-  height: 0.45rem;
-  border-radius: 999px;
-  background: var(--color-control);
-  border: 1px solid var(--color-border-strong);
-  overflow: hidden;
-  position: relative;
-}
-.loadingBarFill {
-  width: 45%;
-  height: 100%;
-  border-radius: 999px;
-  background: linear-gradient(
-    90deg,
-    var(--color-button),
-    var(--color-accent),
-    var(--color-button)
-  );
-  animation: progressSlide 1.15s ease-in-out infinite;
-}
-@keyframes progressSlide {
-  0% {
-    transform: translateX(-100%);
-  }
-  100% {
-    transform: translateX(240%);
-  }
-}
 .head label {
   font-size: 0.82rem;
   color: var(--color-text);
@@ -336,34 +291,53 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.75rem;
-  padding: 1rem;
+  gap: 0.65rem;
+  padding: 0.9rem 1.25rem;
   color: var(--color-text);
+  background: var(--color-surface-raised);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+.candleControls label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
 }
 .candleControls select,
 .candleControls button {
   background: var(--color-control);
   color: var(--color-text);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: 0.5rem;
+  border: 1.5px solid var(--color-border-strong);
+  border-radius: 0.55rem;
+  padding: 0.42rem 0.78rem;
   font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+.candleControls button:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
 }
 .candleControls button:disabled {
-  opacity: 0.5;
-  cursor: default;
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 .ohlc {
-  padding: 0.5rem 1rem;
-  font-size: 0.8rem;
+  padding: 0.65rem 1.25rem;
+  font-size: 0.82rem;
+  font-weight: 500;
   color: var(--color-text-muted);
-  min-height: 2.5rem;
+  min-height: 2.4rem;
+  font-variant-numeric: tabular-nums;
 }
 .candleDates {
   display: flex;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0.5rem 1rem;
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
+  padding: 0.5rem 1.25rem;
+  font-size: 0.76rem;
+  color: var(--color-text-subtle);
+  font-variant-numeric: tabular-nums;
 }

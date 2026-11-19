@@ -1,22 +1,40 @@
 'use client';
-import Image from 'next/image';
-import Link from 'next/link';
+
 import { useRouter } from 'next/navigation';
-import { useRef, useState, useSyncExternalStore, type FormEvent } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Icon } from '@/components/ui/Icon';
-import type { IconName } from '@/components/ui/Icon';
+import {
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type FormEvent,
+} from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { SessionClosedOverlay } from '@/components/ui/SessionClosedOverlay';
+import { BrokersHub } from '@/features/brokers';
 import { DashboardRecoveryCodes } from '@/features/login';
 import { Markets } from '@/features/markets';
+import { PortfolioDashboard } from '@/features/portfolio';
 import {
-  KycFields,
-  marketInterestsCatalog,
+  formatKycSubmissionError,
   readKyc,
   validateBirthDateAge,
 } from '@/features/registration';
 import { TradingTerminal } from '@/features/trading';
 import { fetchWalletBalance, WalletDashboard } from '@/features/wallet';
-import { ApiError } from '@/lib/api';
+import { ApiError, subscribeSessionExpired } from '@/lib/api';
+import { formatPersonName } from '@/lib/format-person-name';
+import { DashboardAdvisorsGallery } from './components/DashboardAdvisorsGallery';
+import { DashboardHeader } from './components/DashboardHeader';
+import { DashboardOverviewSection } from './components/DashboardOverviewSection';
+import { DashboardSidebar } from './components/DashboardSidebar';
+import { ProfileKycDialog } from './components/ProfileKycDialog';
+import {
+  getGuideServerSnapshot,
+  getGuideSnapshot,
+  subscribeGuideStore,
+  type DashboardSection,
+} from './dashboard-constants';
+import { dashboardPreview } from './dashboard-preview';
 import {
   fetchKycStatus,
   getCurrentUser,
@@ -25,152 +43,9 @@ import {
   updateUserInterests,
   type UserProfile,
 } from './user-api';
-import { dashboardPreview } from './dashboard-preview';
 import styles from './dashboard.module.css';
 
-export type DashboardSection =
-  'dashboard' | 'markets' | 'orders' | 'portfolio' | 'funds' | 'advisors';
-
-const navItems: { id: DashboardSection; label: string; icon: IconName }[] = [
-  { id: 'dashboard', label: 'Dashboard', icon: 'grid' },
-  { id: 'markets', label: 'Mercados en Vivo', icon: 'trend' },
-  { id: 'orders', label: 'Terminal de Órdenes', icon: 'devices' },
-  { id: 'portfolio', label: 'Portafolio', icon: 'pie' },
-  { id: 'funds', label: 'Depósitos & Retiros', icon: 'wallet' },
-  { id: 'advisors', label: 'Comisionistas', icon: 'users' },
-];
-
-const sectionTitles: Record<DashboardSection, string> = {
-  dashboard: 'Panel de Control · Resumen General',
-  markets: 'Mercados en Vivo · Cotizaciones de Wall Street',
-  orders: 'Terminal de Órdenes · Ejecución en NYSE & NASDAQ',
-  portfolio: 'Portafolio de Inversión · Posiciones Activas',
-  funds: 'Depósitos & Retiros · Gestión de Fondos Simulados (USD)',
-  advisors: 'Comisionistas Bursátiles · Directorio de Asesores',
-};
-
-function subscribeGuideStore(callback: () => void) {
-  window.addEventListener('storage', callback);
-  window.addEventListener('acciones_ud_guide_change', callback);
-  return () => {
-    window.removeEventListener('storage', callback);
-    window.removeEventListener('acciones_ud_guide_change', callback);
-  };
-}
-
-function getGuideSnapshot(): boolean {
-  try {
-    return localStorage.getItem('acciones_ud_hide_guide') === 'true';
-  } catch {
-    return false;
-  }
-}
-
-function getGuideServerSnapshot(): boolean {
-  return false;
-}
-
-function setGuideDismissedPreference(hide: boolean) {
-  try {
-    if (hide) {
-      localStorage.setItem('acciones_ud_hide_guide', 'true');
-    } else {
-      localStorage.setItem('acciones_ud_hide_guide', 'false');
-    }
-    window.dispatchEvent(new Event('acciones_ud_guide_change'));
-  } catch {
-    /* localStorage opcional */
-  }
-}
-
-interface AdvisorItem {
-  id: string;
-  name: string;
-  license: string;
-  photo: string;
-  rating: string;
-  success: string;
-  proposals: number;
-  assigned?: boolean;
-  specialty: string;
-  bio: string;
-  strategy: string;
-  recommendedAssets: string[];
-}
-
-const advisorsData: AdvisorItem[] = [
-  {
-    id: 'carlos-rodriguez',
-    name: 'Carlos Rodríguez, CFA',
-    license: 'Licencia AMV #UD-ADV-042 · Wall Street',
-    photo: '/advisors/advisor-1.jpg',
-    rating: '4.9 de 5.0',
-    success: '94.2%',
-    proposals: 184,
-    assigned: true,
-    specialty: 'NYSE & NASDAQ Tech · S&P 500 Large Cap',
-    bio: 'Más de 12 años de trayectoria estructurando portafolios bursátiles en Wall Street. Enfoque disciplinado en compañías de alta capitalización, dividendos crecientes y análisis financiero de valor.',
-    strategy:
-      'Estrategia de Dividend Growth & Cash Flow con cobertura en opciones y asignación dinámica entre acciones líderes del S&P 500 y activos defensivos en USD.',
-    recommendedAssets: ['AAPL', 'MSFT', 'JPM', 'SPY'],
-  },
-  {
-    id: 'ana-morales',
-    name: 'Ana María Morales, MSc',
-    license: 'Licencia AMV #UD-ADV-019 · NYSE Commodities',
-    photo: '/advisors/advisor-2.jpg',
-    rating: '4.85 de 5.0',
-    success: '91.8%',
-    proposals: 142,
-    specialty: 'NYSE · Energía, Minería & Materias Primas',
-    bio: 'Magíster en Finanzas Cuantitativas con especialidad en el sector energético global y materias primas cotizadas en Wall Street. Experiencia en macroeconomía y ciclos de inflación.',
-    strategy:
-      'Ciclos de materias primas y valor relativo con coberturas cambiarias y exposición a productores de energía con balance sólido y flujo de caja libre.',
-    recommendedAssets: ['CVX', 'XOM', 'FCX', 'GLD'],
-  },
-  {
-    id: 'felipe-tanaka',
-    name: 'Felipe Tanaka',
-    license: 'Licencia AMV #UD-ADV-088 · NASDAQ Tech',
-    photo: '/advisors/advisor-3.jpg',
-    rating: '4.95 de 5.0',
-    success: '96.5%',
-    proposals: 210,
-    specialty: 'NASDAQ · Inteligencia Artificial & Semiconductores',
-    bio: 'Pionero en análisis técnico algorítmico y momentum en firmas tecnológicas de vanguardia. Rastreo directo de innovación en silicio, centros de datos e infraestructura de IA.',
-    strategy:
-      'Momentum cuantitativo en semiconductores y líderes de software de IA con stop-loss disciplinado y tomas de ganancias progresivas.',
-    recommendedAssets: ['NVDA', 'TSM', 'AMD', 'AVGO'],
-  },
-  {
-    id: 'valentina-gomez',
-    name: 'Valentina Gómez Restrepo',
-    license: 'Licencia AMV #UD-ADV-053 · S&P 500',
-    photo: '/advisors/advisor-4.jpg',
-    rating: '4.88 de 5.0',
-    success: '93.0%',
-    proposals: 165,
-    specialty: 'S&P 500 · Dividend Aristocrats & Valor',
-    bio: 'Especialista en portafolios defensivos y preservación de patrimonio a largo plazo en dólares. Análisis exhaustivo de empresas con más de 25 años incrementando dividendos.',
-    strategy:
-      'Indexación ponderada por dividendos y reinversión compuesta, minimizando volatilidad y protegiendo contra caídas abruptas del mercado.',
-    recommendedAssets: ['PG', 'KO', 'PEP', 'JNJ'],
-  },
-  {
-    id: 'mateo-benavides',
-    name: 'Mateo Benavides, MBA',
-    license: 'Licencia AMV #UD-ADV-071 · NYSE Arca',
-    photo: '/advisors/advisor-5.jpg',
-    rating: '4.82 de 5.0',
-    success: '90.4%',
-    proposals: 128,
-    specialty: 'NYSE Arca · ETFs Sectoriales & Rebalanceo',
-    bio: 'MBA con amplia experiencia en fondos cotizados (ETFs), asignación multiactivo y optimización de costes operacionales en plataformas de corretaje de EE. UU.',
-    strategy:
-      'Asignación táctica de activos mediante ETFs de bajo coste con rebalanceo trimestral automático para capturar rotaciones sectoriales en Nueva York.',
-    recommendedAssets: ['QQQ', 'VOO', 'IWM', 'XLK'],
-  },
-];
+export type { DashboardSection } from './dashboard-constants';
 
 function subscribeMobile(callback: () => void) {
   const query = window.matchMedia('(max-width: 64rem)');
@@ -209,31 +84,22 @@ export function Dashboard({
   const [saveSuccess, setSaveSuccess] = useState('');
   const [saveError, setSaveError] = useState('');
   const [localUser, setLocalUser] = useState<UserProfile | null>(null);
+  const [orderSymbol, setOrderSymbol] = useState('AAPL');
+  const [sessionClosed, setSessionClosed] = useState(false);
 
-  function navigateToSection(section: DashboardSection) {
-    setActiveSection(section);
-    if (mobile) setMobileOpen(false);
-    if (typeof window !== 'undefined') {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-  }
+  const profileDialog = useRef<HTMLDialogElement>(null);
+  const menu = useRef<HTMLButtonElement>(null);
+  const manualLogoutRef = useRef(false);
+  const hadActiveSessionRef = useRef(false);
+  const activeSectionRef = useRef(activeSection);
 
-  // Guía didáctica oculta / visible con useSyncExternalStore para evitar hydration mismatch y warnings de lint
   const guideDismissed = useSyncExternalStore(
     subscribeGuideStore,
     getGuideSnapshot,
     getGuideServerSnapshot,
   );
 
-  // Terminal de órdenes estado (símbolo preseleccionado desde dashboard/portafolio)
-  const [orderSymbol, setOrderSymbol] = useState('AAPL');
-
-  const profileDialog = useRef<HTMLDialogElement>(null);
-  const advisorDialog = useRef<HTMLDialogElement>(null);
-  const [selectedAdvisor, setSelectedAdvisor] = useState<AdvisorItem | null>(
-    null,
-  );
-  const menu = useRef<HTMLButtonElement>(null);
+  const queryClient = useQueryClient();
 
   const userQuery = useQuery({
     queryKey: ['users', 'me'],
@@ -254,8 +120,53 @@ export function Dashboard({
     retry: false,
   });
 
+  const isLoadingAccount =
+    userQuery.isPending || kycQuery.isPending || walletQuery.isPending;
   const realWallet = walletQuery.data;
-  const hasRealAccount = Boolean(kycQuery.data?.has_account);
+  const hasRealAccount = Boolean(kycQuery.data?.has_account || kycMsg);
+  const sessionExpired =
+    sessionClosed ||
+    (!loggingOut &&
+      activeSection !== 'markets' &&
+      userQuery.error instanceof ApiError &&
+      userQuery.error.metadata.status === 401);
+
+  useEffect(() => {
+    activeSectionRef.current = activeSection;
+  }, [activeSection]);
+
+  useEffect(() => {
+    if (userQuery.data || kycQuery.data || walletQuery.data) {
+      hadActiveSessionRef.current = true;
+    }
+  }, [userQuery.data, kycQuery.data, walletQuery.data]);
+
+  useEffect(() => {
+    return subscribeSessionExpired((path) => {
+      if (manualLogoutRef.current) return;
+      const isPublicMarketsPath =
+        path.startsWith('/api/v1/markets') ||
+        path.startsWith('/api/v1/instruments') ||
+        path.startsWith('/api/v1/users/me') ||
+        path.startsWith('/api/v1/kyc') ||
+        path.startsWith('/api/v1/wallet');
+      if (
+        activeSectionRef.current === 'markets' &&
+        !hadActiveSessionRef.current &&
+        isPublicMarketsPath
+      ) {
+        return;
+      }
+      if (
+        profileDialog.current?.open &&
+        typeof profileDialog.current.close === 'function'
+      ) {
+        profileDialog.current.close();
+      }
+      queryClient.clear();
+      setSessionClosed(true);
+    });
+  }, [queryClient]);
   const headerAccountTotal = realWallet
     ? `$${(
         realWallet.available_balance_usd +
@@ -265,11 +176,9 @@ export function Dashboard({
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       })}`
-    : hasRealAccount
+    : hasRealAccount || user
       ? '$0.00'
-      : user
-        ? '$0.00'
-        : dashboardPreview.accountValue;
+      : dashboardPreview.accountValue;
 
   const editableLevel =
     overrideLevel ??
@@ -279,6 +188,19 @@ export function Dashboard({
     (user?.interests?.length
       ? user.interests
       : ['Tecnología & Semiconductores']);
+
+  function navigateToSection(section: DashboardSection) {
+    setActiveSection(section);
+    if (mobile) setMobileOpen(false);
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }
+
+  function startOrderForSymbol(symbol: string) {
+    setOrderSymbol(symbol);
+    navigateToSection('orders');
+  }
 
   function toggleInterest(value: string) {
     const current = editableInterests;
@@ -305,7 +227,7 @@ export function Dashboard({
         level: editableLevel,
       });
       setSaveSuccess(
-        '¡Preferencias e intereses actualizados con éxito en tu cuenta de Wall Street!',
+        '¡Preferencias e intereses actualizados con éxito en tu cuenta!',
       );
       if (user) {
         setLocalUser({
@@ -317,11 +239,11 @@ export function Dashboard({
     } catch (cause) {
       if (cause instanceof ApiError && cause.metadata.status === 422) {
         setSaveError(
-          'El backend rechazó uno o más intereses (error 422) porque valida contra códigos de bolsa (NYSE, NASDAQ, AMEX) o sectores sincronizados en la tabla de instrumentos. Prueba seleccionando las bolsas EE. UU. mientras backend habilita sectores descriptivos.',
+          'Algunas preferencias seleccionadas aún no están habilitadas en el catálogo activo. Selecciona bolsas principales (NYSE, NASDAQ, AMEX) para guardar.',
         );
       } else {
         setSaveError(
-          'No se pudieron guardar las preferencias en el servidor. Inténtalo de nuevo.',
+          'No se pudieron guardar las preferencias en este momento. Inténtalo de nuevo.',
         );
       }
     } finally {
@@ -361,22 +283,25 @@ export function Dashboard({
       setKycModalStep(3);
       return;
     }
+
+    const baseInfo = {
+      first_names: formatPersonName(user.first_names),
+      last_names: formatPersonName(user.last_names),
+      email: user.email,
+      phone: user.phone,
+      country: user.country,
+      password: '',
+      terms_accepted: true,
+      monthly_report: false,
+      interests: user.interests,
+      investor_level: user.investor_level,
+      broker_requested: Boolean(user.broker_requested),
+      premium_requested: user.is_premium,
+    };
+
     if (kycModalStep === 3) {
       try {
-        readKyc(data, {
-          first_names: user.first_names,
-          last_names: user.last_names,
-          email: user.email,
-          phone: user.phone,
-          country: user.country,
-          password: '',
-          terms_accepted: true,
-          monthly_report: false,
-          interests: user.interests,
-          investor_level: user.investor_level,
-          broker_requested: Boolean(user.broker_requested),
-          premium_requested: user.is_premium,
-        });
+        readKyc(data, baseInfo);
       } catch (cause) {
         setKycErr(
           cause instanceof Error
@@ -391,20 +316,7 @@ export function Dashboard({
 
     let payload: Record<string, unknown>;
     try {
-      payload = readKyc(data, {
-        first_names: user.first_names,
-        last_names: user.last_names,
-        email: user.email,
-        phone: user.phone,
-        country: user.country,
-        password: '',
-        terms_accepted: true,
-        monthly_report: false,
-        interests: user.interests,
-        investor_level: user.investor_level,
-        broker_requested: Boolean(user.broker_requested),
-        premium_requested: user.is_premium,
-      });
+      payload = readKyc(data, baseInfo);
     } catch (cause) {
       setKycErr(
         cause instanceof Error
@@ -418,15 +330,29 @@ export function Dashboard({
     try {
       const res = await submitKycApplication(payload);
       setKycMsg(
-        `¡Trámite KYC radicado exitosamente! Cuenta Alpaca: ${res.alpaca_account_id} (Estado: ${res.status}).`,
+        '¡Trámite KYC radicado exitosamente! Tu solicitud quedó registrada y en proceso de validación.',
       );
-      await kycQuery.refetch();
-      await userQuery.refetch();
-      await walletQuery.refetch();
+      setLocalUser((prev) =>
+        prev ? { ...prev, kyc_status: res.status } : null,
+      );
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['kyc'] }),
+        queryClient.invalidateQueries({ queryKey: ['users'] }),
+        queryClient.invalidateQueries({ queryKey: ['wallet'] }),
+      ]);
+      await Promise.all([
+        kycQuery.refetch(),
+        userQuery.refetch(),
+        walletQuery.refetch(),
+      ]);
     } catch (cause) {
       setKycErr(
         cause instanceof ApiError
-          ? `Alpaca / Servidor rechazó la solicitud (${cause.metadata.status}): ${cause.message}`
+          ? formatKycSubmissionError(
+              cause.message,
+              cause.metadata.invalidFields,
+              payload,
+            )
           : 'No se pudo enviar la solicitud KYC al servidor.',
       );
     } finally {
@@ -435,16 +361,18 @@ export function Dashboard({
   }
 
   async function handleLogout() {
+    manualLogoutRef.current = true;
     setLoggingOut(true);
     try {
       await logoutCurrentSession();
     } catch {
       /* Redirigir aun si falla la revocación en servidor. */
     }
+    queryClient.clear();
     router.push('/login');
   }
 
-  function theme() {
+  function toggleTheme() {
     const value =
       document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
     document.documentElement.dataset.theme = value;
@@ -460,13 +388,26 @@ export function Dashboard({
     menu.current?.focus();
   }
 
+  const normalizedFirstNames = user ? formatPersonName(user.first_names) : '';
+  const normalizedLastNames = user ? formatPersonName(user.last_names) : '';
+
   const userInitials = user
-    ? `${user.first_names[0] ?? ''}${user.last_names[0] ?? ''}`.toUpperCase()
+    ? `${normalizedFirstNames[0] ?? ''}${normalizedLastNames[0] ?? ''}`.toUpperCase()
     : dashboardPreview.user.initials;
 
   const displayName = user
-    ? `${user.first_names} ${user.last_names}`
-    : dashboardPreview.user.name;
+    ? `${normalizedFirstNames} ${normalizedLastNames}`.trim()
+    : formatPersonName(dashboardPreview.user.name);
+
+  if (sessionExpired) {
+    return (
+      <SessionClosedOverlay
+        onBeforeNavigate={() => {
+          queryClient.clear();
+        }}
+      />
+    );
+  }
 
   return (
     <div className={`${styles.dashboard} ${collapsed ? styles.collapsed : ''}`}>
@@ -480,1296 +421,116 @@ export function Dashboard({
           onClick={closeMenu}
         />
       )}
-      <aside
-        id="dashboard-navigation"
-        className={`${styles.sidebar} ${mobileOpen ? styles.mobileOpen : ''}`}
-        onKeyDown={(event) => {
-          if (event.key === 'Escape') closeMenu();
+
+      <DashboardSidebar
+        activeSection={activeSection}
+        collapsed={collapsed}
+        mobile={mobile}
+        mobileOpen={mobileOpen}
+        isAdmin={Boolean(user?.roles?.includes('administrator'))}
+        loggingOut={loggingOut}
+        onNavigate={navigateToSection}
+        onToggleCollapse={() => {
+          if (window.matchMedia('(max-width: 64rem)').matches) {
+            setMobileOpen(false);
+          } else {
+            setCollapsed(!collapsed);
+          }
         }}
-      >
-        <div className={styles.sidebarHeader}>
-          <button
-            type="button"
-            className={styles.brand}
-            onClick={() => navigateToSection('dashboard')}
-            aria-label="Acciones UD, inicio"
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              textAlign: 'left',
-            }}
-          >
-            <Image
-              src="/logo-acciones-ud.png"
-              alt="Logo Acciones UD"
-              width={36}
-              height={36}
-              className={styles.brandLogoImg}
-              priority
-            />
-            <span className={styles.sidebarText}>
-              <strong>Acciones UD</strong>
-              <span>Simulador Bursátil USA</span>
-            </span>
-          </button>
-          <button
-            type="button"
-            className={styles.sidebarToggle}
-            aria-label={
-              collapsed ? 'Expandir menú lateral' : 'Colapsar menú lateral'
-            }
-            onClick={() => {
-              if (window.matchMedia('(max-width: 64rem)').matches) {
-                setMobileOpen(false);
-              } else {
-                setCollapsed(!collapsed);
-              }
-            }}
-          >
-            <Icon name="menu" size={18} />
-          </button>
-        </div>
-
-        <div className={styles.sideMain}>
-          <button
-            type="button"
-            className={styles.newOrder}
-            onClick={() => navigateToSection('orders')}
-          >
-            <span aria-hidden="true">⊕</span>
-            <span className={styles.sidebarText}>Nueva Orden</span>
-          </button>
-
-          <nav aria-label="Navegación del dashboard">
-            {navItems.map((item) => {
-              const isSelected = activeSection === item.id;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  className={isSelected ? styles.selected : styles.navButton}
-                  onClick={() => navigateToSection(item.id)}
-                  title={item.label}
-                >
-                  <Icon name={item.icon} size={18} />
-                  <span className={styles.sidebarText}>{item.label}</span>
-                  <span
-                    className={styles.collapsedLabel}
-                    aria-hidden={!collapsed || mobile}
-                  >
-                    {item.label}
-                  </span>
-                </button>
-              );
-            })}
-          </nav>
-        </div>
-        <div className={styles.sideBottom}>
-          {user?.roles?.includes('administrator') && (
-            <Link
-              href="/admin"
-              className={styles.navButton}
-              style={{
-                color: '#ef4444',
-                borderColor: 'rgba(239, 68, 68, 0.3)',
-                background: 'rgba(239, 68, 68, 0.08)',
-                fontWeight: 700,
-                textDecoration: 'none',
-              }}
-            >
-              <Icon name="shield" />
-              <span className={styles.sidebarText}>Panel Administrador</span>
-              <span
-                className={styles.collapsedLabel}
-                aria-hidden={!collapsed || mobile}
-              >
-                Panel Administrador
-              </span>
-            </Link>
-          )}
-          <button
-            type="button"
-            className={styles.navButton}
-            onClick={() => {
-              profileDialog.current?.showModal();
-            }}
-          >
-            <Icon name="user" />
-            <span className={styles.sidebarText}>Mi Perfil &amp; KYC</span>
-            <span
-              className={styles.collapsedLabel}
-              aria-hidden={!collapsed || mobile}
-            >
-              Mi Perfil &amp; KYC
-            </span>
-          </button>
-          <button
-            type="button"
-            className={styles.navButton}
-            onClick={handleLogout}
-            disabled={loggingOut}
-          >
-            <Icon name="arrow" />
-            <span className={styles.sidebarText}>
-              {loggingOut ? 'Cerrando sesión…' : 'Cerrar Sesión'}
-            </span>
-            <span
-              className={styles.collapsedLabel}
-              aria-hidden={!collapsed || mobile}
-            >
-              Cerrar Sesión
-            </span>
-          </button>
-          <Link href="/" className={styles.homeLink}>
-            Volver a la portada
-          </Link>
-        </div>
-      </aside>
+        onCloseMobile={closeMenu}
+        onOpenProfile={() => profileDialog.current?.showModal()}
+        onLogout={handleLogout}
+      />
 
       <div className={styles.workspace}>
-        <header className={styles.header}>
-          <button
-            ref={menu}
-            className={styles.menu}
-            aria-label="Abrir menú de navegación"
-            aria-controls="dashboard-navigation"
-            aria-expanded={mobile ? mobileOpen : !collapsed}
-            onClick={() => setMobileOpen(!mobileOpen)}
-          >
-            <Icon name="menu" size={20} />
-          </button>
-          <h1>{sectionTitles[activeSection]}</h1>
-          <div className={styles.headerActions}>
-            <div className={styles.account}>
-              <span>
-                {realWallet
-                  ? 'Valor Real Cuenta (USD)'
-                  : 'Valor Cuenta Simulación'}
-              </span>
-              <strong>{headerAccountTotal} USD</strong>
-            </div>
-
-            <button
-              type="button"
-              className={styles.avatar}
-              title={`Ver perfil de ${displayName}`}
-              onClick={() => profileDialog.current?.showModal()}
-            >
-              {userInitials}
-            </button>
-
-            <span className={styles.language}>
-              <Icon name="globe" size={17} /> ES
-            </span>
-            <button
-              onClick={theme}
-              className={styles.theme}
-              aria-label="Cambiar tema de color"
-            >
-              <span className={styles.darkLabel}>
-                <Icon name="sun" size={18} /> Claro
-              </span>
-              <span className={styles.lightLabel}>
-                <Icon name="moon" size={18} /> Oscuro
-              </span>
-            </button>
-          </div>
-        </header>
+        <DashboardHeader
+          menuRef={menu}
+          activeSection={activeSection}
+          mobile={mobile}
+          mobileOpen={mobileOpen}
+          collapsed={collapsed}
+          isLoadingAccount={isLoadingAccount}
+          hasRealWallet={Boolean(realWallet)}
+          headerAccountTotal={headerAccountTotal}
+          displayName={displayName}
+          userInitials={userInitials}
+          onToggleMobileMenu={() => setMobileOpen(!mobileOpen)}
+          onOpenProfile={() => profileDialog.current?.showModal()}
+          onToggleTheme={toggleTheme}
+        />
 
         <main id="dashboard-content" className={styles.content}>
           <DashboardRecoveryCodes />
 
           {activeSection === 'dashboard' && (
-            <>
-              <div className={styles.welcome}>
-                <div>
-                  <h2>¡Hola, {user ? user.first_names : 'Inversionista'}!</h2>
-                  <p>
-                    Cuenta de Inversión y Trading · Supervisión en vivo de tu
-                    actividad en mercados de EE. UU.
-                  </p>
-                </div>
-                <div className={styles.marketStatus}>
-                  <span>● Wall Street (NYSE / NASDAQ): Abierta ahora</span>
-                  <span>● Operación simulada en USD</span>
-                  <span>
-                    Nivel:{' '}
-                    {user?.investor_level === 'experienced'
-                      ? 'Con experiencia'
-                      : 'Principiante'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Guía didáctica activa para principiantes */}
-              {user?.investor_level !== 'experienced' &&
-                (guideDismissed ? (
-                  <div className={styles.didacticCollapsedBar}>
-                    <span>
-                      🎓 Modo Principiante activo · Guía didáctica oculta
-                    </span>
-                    <button
-                      type="button"
-                      className={styles.didacticToggleBtn}
-                      onClick={() => setGuideDismissedPreference(false)}
-                    >
-                      Mostrar Guía
-                    </button>
-                  </div>
-                ) : (
-                  <section
-                    className={styles.didacticGuide}
-                    aria-label="Guía pedagógica para principiantes"
-                  >
-                    <div className={styles.didacticHeader}>
-                      <div className={styles.didacticBadge}>
-                        🎓 Guía Didáctica Activa · Modo Principiante
-                      </div>
-                      <span className={styles.didacticNote}>
-                        Protección activa: Activos de alta volatilidad y
-                        derivados complejos están filtrados para proteger tu
-                        curva de aprendizaje.
-                      </span>
-                      <button
-                        type="button"
-                        className={styles.didacticDismissBtn}
-                        onClick={() => setGuideDismissedPreference(true)}
-                        title="Ocultar guía didáctica"
-                        aria-label="Ocultar guía didáctica"
-                      >
-                        ✕ Ocultar
-                      </button>
-                    </div>
-                    <div className={styles.didacticGrid}>
-                      <div className={styles.didacticCard}>
-                        <strong>1. Órdenes de Mercado (Market)</strong>
-                        <p>
-                          Se ejecutan al instante al mejor precio de oferta en
-                          Wall Street (NYSE/NASDAQ). Ideales para tomar
-                          posiciones de forma inmediata en USD.
-                        </p>
-                      </div>
-                      <div className={styles.didacticCard}>
-                        <strong>2. Órdenes Límite (Limit)</strong>
-                        <p>
-                          Tú estableces el precio máximo a pagar o el mínimo a
-                          recibir. La orden solo se ejecuta si el mercado toca
-                          tu cotización objetivo.
-                        </p>
-                      </div>
-                      <div className={styles.didacticCard}>
-                        <strong>3. Comisión del 2% y Acompañamiento</strong>
-                        <p>
-                          Desglose transparente: 60% para la plataforma de
-                          simulación Acciones UD y 40% para tu asesor
-                          comisionista asignado.
-                        </p>
-                      </div>
-                    </div>
-                  </section>
-                ))}
-
-              {user && !hasRealAccount && (
-                <div className={styles.kycActionBanner}>
-                  <div>
-                    <strong>
-                      🛡️ Completa tu verificación de identidad (KYC) en EE. UU.
-                    </strong>
-                    <p>
-                      Tu usuario ya está activo, pero aún falta radicar el
-                      formulario KYC ante Alpaca para habilitar saldo real,
-                      depósitos y envío de órdenes.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    className={styles.primary}
-                    onClick={() => {
-                      setProfileTab('kyc');
-                      setKycModalStep(2);
-                      profileDialog.current?.showModal();
-                    }}
-                  >
-                    Completar Trámite KYC →
-                  </button>
-                </div>
-              )}
-
-              <section
-                className={styles.metrics}
-                aria-label="Resumen financiero"
-              >
-                {dashboardPreview.metrics.map((metric, idx) => {
-                  const displayValue = realWallet
-                    ? idx === 0
-                      ? `$${(
-                          realWallet.available_balance_usd +
-                          realWallet.reserved_balance_usd +
-                          realWallet.invested_equity_usd
-                        ).toLocaleString('en-US', {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })}`
-                      : idx === 1
-                        ? `$${realWallet.available_balance_usd.toLocaleString(
-                            'en-US',
-                            {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2,
-                            },
-                          )}`
-                        : idx === 2
-                          ? `$${realWallet.reserved_balance_usd.toLocaleString(
-                              'en-US',
-                              {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                              },
-                            )}`
-                          : `$${realWallet.invested_equity_usd.toLocaleString(
-                              'en-US',
-                              {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                              },
-                            )}`
-                    : metric.value;
-                  const displayTitle =
-                    realWallet && idx === 3
-                      ? 'VALOR INVERTIDO EN ACCIONES'
-                      : metric.title;
-                  return (
-                    <article
-                      key={metric.title}
-                      className={`${styles.metric} ${styles[metric.tone] ?? ''}`}
-                    >
-                      <div className={styles.metricHeading}>
-                        <div>
-                          <h3>{displayTitle}</h3>
-                          <p>{metric.description}</p>
-                        </div>
-                        <div className={styles.metricIcon}>
-                          <Icon name={metric.icon} size={18} />
-                        </div>
-                      </div>
-                      <div className={styles.amount}>
-                        {displayValue} <small>USD</small>
-                      </div>
-                      <div className={styles.metricNote}>
-                        {realWallet
-                          ? '● Sincronizado con tu Billetera Alpaca'
-                          : `${metric.note} (Demo)`}
-                      </div>
-                    </article>
-                  );
-                })}
-              </section>
-
-              <div className={styles.columns}>
-                <div className={styles.leftColumn}>
-                  <section className={styles.panel}>
-                    <div className={styles.panelHeading}>
-                      <h2>
-                        <Icon name="trend" size={18} /> Tus Inversiones Activas
-                        · Principales Acciones de Wall Street
-                      </h2>
-                      <button
-                        type="button"
-                        onClick={() => navigateToSection('markets')}
-                        className={styles.liveMarketsLink}
-                      >
-                        Ver cotizaciones en vivo →
-                      </button>
-                    </div>
-                    <div className={styles.tableScroll}>
-                      <table>
-                        <thead>
-                          <tr>
-                            <th>Activo</th>
-                            <th>Bolsa</th>
-                            <th>Precio (USD)</th>
-                            <th>Variación 24h</th>
-                            <th>Operación</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {dashboardPreview.stocks.map((stock) => (
-                            <tr key={stock.symbol}>
-                              <td>
-                                <div className={styles.company}>
-                                  <span className={styles.symbol}>
-                                    {stock.symbol}
-                                  </span>
-                                  <div>
-                                    <strong>{stock.name}</strong>
-                                    <small>{stock.sector}</small>
-                                  </div>
-                                </div>
-                              </td>
-                              <td>
-                                <span className={styles.exchange}>
-                                  {stock.exchange}
-                                </span>
-                              </td>
-                              <td className={styles.price}>{stock.price}</td>
-                              <td
-                                className={
-                                  stock.negative
-                                    ? styles.negative
-                                    : styles.positive
-                                }
-                              >
-                                {stock.change}
-                              </td>
-                              <td>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setOrderSymbol(stock.symbol);
-                                    navigateToSection('orders');
-                                  }}
-                                  className={styles.invest}
-                                >
-                                  Operar
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </section>
-
-                  <section className={styles.portfolio}>
-                    <div>
-                      <h2>
-                        ¿Quieres ver el detalle completo de tus inversiones?
-                      </h2>
-                      <p>
-                        Consulta tus gráficos de rendimiento, el reparto de tus
-                        activos y tus órdenes ejecutadas en Wall Street.
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => navigateToSection('markets')}
-                      className={styles.primary}
-                    >
-                      Explorar Mercados en Vivo <Icon name="arrow" size={18} />
-                    </button>
-                  </section>
-                </div>
-
-                <div className={styles.rightColumn}>
-                  <section className={styles.panel}>
-                    <h2>
-                      <span className={styles.percent}>%</span> Comisión de
-                      Operación (2% Total)
-                    </h2>
-                    <p className={styles.commissionDescription}>
-                      Cada vez que compras o vendes acciones en NYSE o NASDAQ,
-                      se aplica una comisión fija del <strong>2.0%</strong>{' '}
-                      distribuida de forma transparente:
-                    </p>
-                    <div className={styles.split}>
-                      <span>Para la Plataforma Acciones UD:</span>
-                      <strong>60% (1.2% total)</strong>
-                    </div>
-                    <div className={styles.split}>
-                      <span>Para tu Asesor de Inversión:</span>
-                      <strong>40% (0.8% total)</strong>
-                    </div>
-                    <p className={styles.finePrint}>
-                      Sin cargos sorpresa ni cobros ocultos por apertura o
-                      mantenimiento.
-                    </p>
-                  </section>
-
-                  <section className={styles.panel}>
-                    <div className={styles.panelHeading}>
-                      <h2>Tu Asesor Bursátil</h2>
-                      <span className={styles.assigned}>Asignado</span>
-                    </div>
-                    <div className={styles.advisor}>
-                      <span>CR</span>
-                      <div>
-                        <strong>Carlos Rodríguez, CFA</strong>
-                        <small>Registro Oficial #UD-ADV-042</small>
-                        <b>★ 4.9 de 5.0 (184 propuestas exitosas)</b>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => navigateToSection('advisors')}
-                      className={styles.advisorButton}
-                    >
-                      Consultar Asesores &amp; Estrategias
-                    </button>
-                  </section>
-                </div>
-              </div>
-            </>
+            <DashboardOverviewSection
+              user={user}
+              realWallet={realWallet}
+              hasRealAccount={hasRealAccount}
+              isLoadingData={isLoadingAccount}
+              guideDismissed={guideDismissed}
+              onNavigate={navigateToSection}
+              onStartOrderForSymbol={startOrderForSymbol}
+              onOpenKycModal={() => {
+                setProfileTab('kyc');
+                setKycModalStep(2);
+                profileDialog.current?.showModal();
+              }}
+            />
           )}
 
-          {activeSection === 'markets' && (
-            <div style={{ marginTop: '0.5rem' }}>
-              <Markets />
-            </div>
-          )}
+          {activeSection === 'markets' && <Markets />}
 
           {activeSection === 'orders' && (
             <TradingTerminal initialSymbol={orderSymbol} />
           )}
 
           {activeSection === 'portfolio' && (
-            <div>
-              <div className={styles.panel} style={{ marginBottom: '1.5rem' }}>
-                <div className={styles.panelHeading}>
-                  <h2>Posiciones Activas en Mercados de EE. UU. (USD)</h2>
-                  <button
-                    type="button"
-                    onClick={() => navigateToSection('orders')}
-                    className={styles.primary}
-                    style={{ fontSize: '0.85rem', padding: '0.45rem 1rem' }}
-                  >
-                    + Nueva Orden
-                  </button>
-                </div>
-                <div className={styles.tableScroll}>
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Activo / Empresa</th>
-                        <th>Bolsa</th>
-                        <th>Títulos</th>
-                        <th>Precio Compra</th>
-                        <th>Precio Actual</th>
-                        <th>Valor Total</th>
-                        <th>Ganancia / Pérdida</th>
-                        <th>Acción</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {dashboardPreview.stocks.map((stock) => (
-                        <tr key={stock.symbol}>
-                          <td>
-                            <strong>{stock.symbol}</strong> · {stock.name}
-                          </td>
-                          <td>
-                            <span className={styles.exchange}>
-                              {stock.exchange}
-                            </span>
-                          </td>
-                          <td>
-                            {stock.symbol === 'AAPL'
-                              ? 40
-                              : stock.symbol === 'TSLA'
-                                ? 35
-                                : 55}
-                          </td>
-                          <td>{stock.price}</td>
-                          <td className={styles.price}>{stock.price}</td>
-                          <td>
-                            <strong>
-                              $
-                              {stock.symbol === 'AAPL'
-                                ? '8,969.20'
-                                : stock.symbol === 'TSLA'
-                                  ? '7,644.00'
-                                  : '11,869.00'}{' '}
-                              USD
-                            </strong>
-                          </td>
-                          <td
-                            className={
-                              stock.negative ? styles.negative : styles.positive
-                            }
-                          >
-                            {stock.change}
-                          </td>
-                          <td>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setOrderSymbol(stock.symbol);
-                                navigateToSection('orders');
-                              }}
-                              className={styles.invest}
-                            >
-                              Operar
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
+            <PortfolioDashboard onNavigateToOrder={startOrderForSymbol} />
           )}
 
           {activeSection === 'funds' && <WalletDashboard />}
 
           {activeSection === 'advisors' && (
             <div>
-              <div style={{ marginBottom: '1.25rem' }}>
-                <h2 style={{ fontSize: '1.3rem', marginBottom: '0.3rem' }}>
-                  Directorio de Comisionistas y Asesores Bursátiles
-                </h2>
-                <p
-                  style={{
-                    color: 'var(--color-text-muted)',
-                    fontSize: '0.9rem',
-                    marginBottom: '0.5rem',
-                  }}
-                >
-                  Profesionales acreditados para estructurar y supervisar tu
-                  portafolio en mercados de Estados Unidos (NYSE / NASDAQ).
-                </p>
-                <div className={styles.advisorCatalogNotice}>
-                  <strong>ℹ️ Estado de vinculación con Backend:</strong> Los
-                  comisionistas reales aprobados por el SysAdmin en{' '}
-                  <code>/admin</code> todavía no cuentan con un endpoint público{' '}
-                  <code>GET /api/v1/brokers</code> en el backend para listarse
-                  automáticamente aquí; este directorio muestra los asesores de
-                  referencia del simulador.
-                </div>
+              <div className={styles.sectionSpacing}>
+                <BrokersHub
+                  {...(user?.roles ? { userRoles: user.roles } : {})}
+                  onNavigateToOrder={startOrderForSymbol}
+                />
               </div>
-
-              <div className={styles.advisorsGrid}>
-                {advisorsData.map((adv) => (
-                  <div key={adv.id} className={styles.advisorCardDetailed}>
-                    <div className={styles.advisorCardHeader}>
-                      <div className={styles.advisorPhotoWrap}>
-                        <button
-                          type="button"
-                          className={styles.advisorPhotoBtn}
-                          onClick={() => {
-                            setSelectedAdvisor(adv);
-                            advisorDialog.current?.showModal();
-                          }}
-                          title={`Ampliar foto y ver ficha técnica de ${adv.name}`}
-                          aria-label={`Ver foto y ficha técnica de ${adv.name}`}
-                        >
-                          <Image
-                            src={adv.photo}
-                            alt={`Foto ${adv.name}`}
-                            width={56}
-                            height={56}
-                            className={styles.advisorPhotoLarge}
-                          />
-                        </button>
-                        <span
-                          className={styles.advisorPhotoZoomIcon}
-                          aria-hidden="true"
-                        >
-                          <Icon name="search" size={11} />
-                        </span>
-                      </div>
-
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.4rem',
-                            flexWrap: 'wrap',
-                          }}
-                        >
-                          <h3 style={{ margin: 0, fontSize: '1.05rem' }}>
-                            {adv.name}
-                          </h3>
-                          {adv.assigned && (
-                            <span className={styles.assigned}>Asignado</span>
-                          )}
-                        </div>
-                        <small style={{ color: 'var(--color-text-muted)' }}>
-                          {adv.license}
-                        </small>
-                        <div
-                          style={{
-                            color: '#f59e0b',
-                            fontSize: '0.85rem',
-                            fontWeight: 700,
-                            marginTop: '0.2rem',
-                          }}
-                        >
-                          ★ {adv.rating} · {adv.success} Acierto (
-                          {adv.proposals} propuestas)
-                        </div>
-                      </div>
-                    </div>
-
-                    <p
-                      style={{
-                        fontSize: '0.85rem',
-                        color: 'var(--color-text-muted)',
-                        margin: '0.5rem 0',
-                        lineHeight: 1.45,
-                      }}
-                    >
-                      {adv.bio}
-                    </p>
-
-                    <div className={styles.advisorActionList}>
-                      {adv.assigned ? (
-                        <>
-                          <button
-                            type="button"
-                            className={styles.primary}
-                            onClick={() =>
-                              alert(
-                                `Sesión de asesoría agendada con ${adv.name}. Te llegará un correo de confirmación.`,
-                              )
-                            }
-                          >
-                            Agendar Asesoría
-                          </button>
-                          <button
-                            type="button"
-                            className={styles.navButton}
-                            style={{ border: '1px solid var(--color-border)' }}
-                            onClick={() => navigateToSection('orders')}
-                          >
-                            Operar con su estrategia
-                          </button>
-                        </>
-                      ) : (
-                        <button
-                          type="button"
-                          className={styles.primary}
-                          onClick={() =>
-                            alert(
-                              `Solicitud de asignación enviada para estructurar tu portafolio con ${adv.name}.`,
-                            )
-                          }
-                        >
-                          Seleccionar como Asesor
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        className={styles.navButton}
-                        style={{
-                          border: '1px solid var(--color-border)',
-                          fontSize: '0.8rem',
-                          padding: '0.45rem 0.8rem',
-                        }}
-                        onClick={() => {
-                          setSelectedAdvisor(adv);
-                          advisorDialog.current?.showModal();
-                        }}
-                      >
-                        🔍 Ver Ficha Técnica y Foto Ampliada
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <DashboardAdvisorsGallery onNavigate={navigateToSection} />
             </div>
           )}
         </main>
       </div>
 
-      {/* Modal Rico de Perfil y KYC con Gestión Interactiva */}
-      <dialog ref={profileDialog} className={styles.profileDialog}>
-        <form method="dialog">
-          <button className={styles.modalCloseBtn} aria-label="Cerrar ventana">
-            <Icon name="close" size={16} />
-          </button>
-        </form>
-
-        <div className={styles.profileHeader}>
-          <div className={styles.profileAvatarLarge}>{userInitials}</div>
-          <div className={styles.profileNameArea}>
-            <h2>{displayName}</h2>
-            <div className={styles.profileBadges}>
-              <span className={styles.profileBadgeActive}>
-                ● Cuenta{' '}
-                {user?.account_status === 'active'
-                  ? 'Activa'
-                  : (user?.account_status ?? 'Activa')}
-              </span>
-              <span className={styles.profileBadgeRole}>
-                {user?.roles?.join(', ') || 'Inversionista Bursátil'}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div className={styles.profileTabs}>
-          <button
-            type="button"
-            className={`${styles.profileTab} ${profileTab === 'info' ? styles.profileTabActive : ''}`}
-            onClick={() => setProfileTab('info')}
-          >
-            Datos &amp; Seguridad
-          </button>
-          <button
-            type="button"
-            className={`${styles.profileTab} ${profileTab === 'edit' ? styles.profileTabActive : ''}`}
-            onClick={() => setProfileTab('edit')}
-          >
-            Editar Intereses &amp; Nivel
-          </button>
-          <button
-            type="button"
-            className={`${styles.profileTab} ${profileTab === 'kyc' ? styles.profileTabActive : ''}`}
-            onClick={() => setProfileTab('kyc')}
-          >
-            Trámite KYC {hasRealAccount ? '✓' : '· Pendiente'}
-          </button>
-        </div>
-
-        {profileTab === 'info' ? (
-          <>
-            <div className={styles.profileCardsGrid}>
-              <div className={styles.profileCard}>
-                <span className={styles.profileCardTitle}>
-                  Correo Electrónico
-                </span>
-                <span className={styles.profileCardValue}>
-                  {user?.email ?? 'correo@ejemplo.com'}
-                </span>
-              </div>
-
-              <div className={styles.profileCard}>
-                <span className={styles.profileCardTitle}>
-                  Teléfono de Contacto
-                </span>
-                <span className={styles.profileCardValue}>
-                  {user?.phone ?? '+57 300 000 0000'}
-                </span>
-              </div>
-
-              <div className={styles.profileCard}>
-                <span className={styles.profileCardTitle}>
-                  País de Residencia
-                </span>
-                <span className={styles.profileCardValue}>
-                  {user?.country ? `${user.country}` : 'Colombia'}
-                </span>
-              </div>
-
-              <div className={styles.profileCard}>
-                <span className={styles.profileCardTitle}>
-                  Nivel de Inversor
-                </span>
-                <span className={styles.profileCardValue}>
-                  {user?.investor_level === 'experienced'
-                    ? 'Con experiencia (Wall Street)'
-                    : 'Principiante (Formación)'}
-                </span>
-              </div>
-
-              <div className={styles.profileCard}>
-                <span className={styles.profileCardTitle}>
-                  Estado KYC / Identidad
-                </span>
-                <span className={styles.profileCardValue}>
-                  {kycQuery.data?.status ??
-                    user?.kyc_status ??
-                    (hasRealAccount ? 'Radicada' : 'Pendiente por radicar')}
-                </span>
-              </div>
-
-              <div className={styles.profileCard}>
-                <span className={styles.profileCardTitle}>
-                  Seguridad 2FA / MFA
-                </span>
-                <span className={styles.profileCardValue}>
-                  <span
-                    className={
-                      user?.mfa_enrolled
-                        ? styles.badgeActiveSimple
-                        : styles.badgeInactiveSimple
-                    }
-                  >
-                    {user?.mfa_enrolled ? '● Activa' : '○ Inactiva'}
-                  </span>
-                </span>
-              </div>
-            </div>
-
-            {!hasRealAccount && (
-              <div className={styles.kycInlineCallout}>
-                <span>Tu trámite KYC ante Alpaca aún no está completo.</span>
-                <button
-                  type="button"
-                  className={styles.primary}
-                  onClick={() => {
-                    setKycModalStep(2);
-                    setProfileTab('kyc');
-                  }}
-                >
-                  Completar formulario KYC →
-                </button>
-              </div>
-            )}
-
-            <div className={styles.profileInterestsSection}>
-              <span className={styles.profileCardTitle}>
-                Sectores de Interés Bursátil Registrados
-              </span>
-              <div className={styles.interestsChips}>
-                {user?.interests && user.interests.length > 0 ? (
-                  user.interests.map((interest) => (
-                    <span key={interest} className={styles.interestTag}>
-                      {interest}
-                    </span>
-                  ))
-                ) : (
-                  <span
-                    style={{
-                      fontSize: '0.84rem',
-                      color: 'var(--color-text-muted)',
-                    }}
-                  >
-                    No has seleccionado sectores de interés aún.
-                  </span>
-                )}
-              </div>
-            </div>
-
-            <p className={styles.profileBackendHint}>
-              Nota: El nombre, teléfono y país de registro actualmente son de
-              solo lectura en el backend (requiere endpoint{' '}
-              <code>PATCH /api/v1/users/me</code> para modificarse). Puedes
-              editar tu nivel e intereses o radicar tu trámite KYC en las
-              pestañas superiores.
-            </p>
-          </>
-        ) : profileTab === 'edit' ? (
-          <div className={styles.editorSection}>
-            {saveSuccess && (
-              <p className={styles.profileSuccessMessage} role="status">
-                {saveSuccess}
-              </p>
-            )}
-            {saveError && (
-              <p className={styles.profileErrorMessage} role="alert">
-                {saveError}
-              </p>
-            )}
-
-            <div className={styles.editorField}>
-              <label className={styles.editorLabel}>Nivel de Inversor</label>
-              <span className={styles.editorHelp}>
-                El nivel principiante activa las guías didácticas y filtra
-                instrumentos de alto riesgo en Wall Street.
-              </span>
-              <select
-                className={styles.editorSelect}
-                value={editableLevel}
-                onChange={(e) =>
-                  setOverrideLevel(e.target.value as 'beginner' | 'experienced')
-                }
-              >
-                <option value="beginner">
-                  Principiante (Con guías didácticas de apoyo)
-                </option>
-                <option value="experienced">
-                  Con experiencia (Operación activa sin restricciones)
-                </option>
-              </select>
-            </div>
-
-            <div className={styles.editorField}>
-              <label className={styles.editorLabel}>
-                Bolsas estadounidenses compatibles con Backend (
-                <code>PUT /api/v1/users/me/interests</code>)
-              </label>
-              <span className={styles.editorHelp}>
-                El servidor valida actualmente contra códigos de mercados o
-                sectores registrados en la base de datos:
-              </span>
-              <div
-                className={styles.chipsGrid}
-                style={{ marginBottom: '0.85rem' }}
-              >
-                {['NYSE', 'NASDAQ', 'AMEX'].map((mkt) => {
-                  const isSelected = editableInterests.includes(mkt);
-                  return (
-                    <button
-                      key={mkt}
-                      type="button"
-                      className={`${styles.chipBtn} ${isSelected ? styles.chipBtnSelected : ''}`}
-                      onClick={() => toggleInterest(mkt)}
-                    >
-                      <span>{isSelected ? '✓' : '+'}</span> {mkt}
-                    </button>
-                  );
-                })}
-              </div>
-
-              <label className={styles.editorLabel}>
-                Sectores bursátiles de interés (Catálogo)
-              </label>
-              <span className={styles.editorHelp}>
-                Seleccionados: {editableInterests.length} de 20 permitidos
-              </span>
-              <div className={styles.chipsGrid}>
-                {marketInterestsCatalog.map((cat) => {
-                  const isSelected = editableInterests.includes(cat.value);
-                  return (
-                    <button
-                      key={cat.value}
-                      type="button"
-                      className={`${styles.chipBtn} ${isSelected ? styles.chipBtnSelected : ''}`}
-                      onClick={() => toggleInterest(cat.value)}
-                    >
-                      <span>{isSelected ? '✓' : '+'}</span> {cat.value}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div style={{ marginTop: '1rem', display: 'flex', gap: '0.6rem' }}>
-              <button
-                type="button"
-                className={styles.primary}
-                disabled={savingPreferences}
-                onClick={handleSavePreferences}
-              >
-                {savingPreferences
-                  ? 'Guardando…'
-                  : 'Guardar Preferencias en Cuenta'}
-              </button>
-              <button
-                type="button"
-                className={styles.chipBtn}
-                onClick={() => setProfileTab('info')}
-              >
-                Ver datos
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className={styles.editorSection}>
-            {hasRealAccount && !kycMsg ? (
-              <div className={styles.profileSuccessMessage} role="status">
-                <strong>✓ Tu cuenta KYC ya fue radicada en Alpaca.</strong>{' '}
-                Estado actual:{' '}
-                {kycQuery.data?.status ?? user?.kyc_status ?? 'SUBMITTED'}.
-              </div>
-            ) : (
-              <form
-                className={styles.kycModalForm}
-                onSubmit={handleDashboardKycSubmit}
-                noValidate
-              >
-                {kycMsg && (
-                  <p className={styles.profileSuccessMessage} role="status">
-                    {kycMsg}
-                  </p>
-                )}
-                {kycErr && (
-                  <p className={styles.profileErrorMessage} role="alert">
-                    {kycErr}
-                  </p>
-                )}
-                <div className={styles.kycStepPills}>
-                  <span
-                    className={
-                      kycModalStep === 2 ? styles.kycStepActive : styles.kycStep
-                    }
-                  >
-                    1. Identidad y domicilio
-                  </span>
-                  <span
-                    className={
-                      kycModalStep === 3 ? styles.kycStepActive : styles.kycStep
-                    }
-                  >
-                    2. Perfil financiero
-                  </span>
-                  <span
-                    className={
-                      kycModalStep === 4 ? styles.kycStepActive : styles.kycStep
-                    }
-                  >
-                    3. Acuerdos Alpaca
-                  </span>
-                </div>
-
-                <KycFields
-                  step={kycModalStep}
-                  country={user?.country ?? 'CO'}
-                  disabled={kycBusy}
-                />
-
-                <div className={styles.kycModalActions}>
-                  {kycModalStep > 2 && (
-                    <button
-                      type="button"
-                      className={styles.chipBtn}
-                      disabled={kycBusy}
-                      onClick={() => {
-                        setKycErr('');
-                        setKycModalStep((prev) => prev - 1);
-                      }}
-                    >
-                      ← Anterior
-                    </button>
-                  )}
-                  <button
-                    type="submit"
-                    className={styles.primary}
-                    disabled={kycBusy}
-                  >
-                    {kycBusy
-                      ? 'Enviando a Alpaca…'
-                      : kycModalStep < 4
-                        ? 'Continuar →'
-                        : 'Radicar solicitud KYC'}
-                  </button>
-                </div>
-              </form>
-            )}
-          </div>
-        )}
-
-        <div className={styles.profileDialogActions}>
-          <button
-            type="button"
-            className={styles.navButton}
-            style={{
-              width: 'auto',
-              padding: '0.6rem 1.25rem',
-              color: '#ef4444',
-            }}
-            onClick={handleLogout}
-          >
-            Cerrar Sesión
-          </button>
-        </div>
-      </dialog>
-
-      {/* Modal de Detalle Técnico y Foto Ampliada del Comisionista */}
-      <dialog ref={advisorDialog} className={styles.advisorDetailDialog}>
-        <form method="dialog">
-          <button className={styles.modalCloseBtn} aria-label="Cerrar ventana">
-            <Icon name="close" size={16} />
-          </button>
-        </form>
-
-        {selectedAdvisor && (
-          <div>
-            <div className={styles.advisorModalHeader}>
-              <div className={styles.advisorModalPhoto}>
-                <Image
-                  src={selectedAdvisor.photo}
-                  alt={selectedAdvisor.name}
-                  width={96}
-                  height={96}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                />
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    flexWrap: 'wrap',
-                  }}
-                >
-                  <h3 style={{ margin: 0, fontSize: '1.25rem' }}>
-                    {selectedAdvisor.name}
-                  </h3>
-                  {selectedAdvisor.assigned && (
-                    <span className={styles.assigned}>Asesor Asignado</span>
-                  )}
-                </div>
-                <small style={{ color: 'var(--color-text-muted)' }}>
-                  {selectedAdvisor.license}
-                </small>
-                <div
-                  style={{
-                    color: '#f59e0b',
-                    fontSize: '0.9rem',
-                    fontWeight: 700,
-                    marginTop: '0.25rem',
-                  }}
-                >
-                  ★ {selectedAdvisor.rating} · Calificación auditada
-                </div>
-              </div>
-            </div>
-
-            <div className={styles.advisorStatsGrid}>
-              <div className={styles.advisorStatBox}>
-                <small>Efectividad</small>
-                <strong>{selectedAdvisor.success}</strong>
-              </div>
-              <div className={styles.advisorStatBox}>
-                <small>Propuestas</small>
-                <strong>{selectedAdvisor.proposals}</strong>
-              </div>
-              <div className={styles.advisorStatBox}>
-                <small>Mercados</small>
-                <strong style={{ fontSize: '0.9rem' }}>NYSE / NASDAQ</strong>
-              </div>
-            </div>
-
-            <div className={styles.advisorStrategyBox}>
-              <h4>Especialidad y Perfil Profesional</h4>
-              <p>{selectedAdvisor.bio}</p>
-            </div>
-
-            <div className={styles.advisorStrategyBox}>
-              <h4>Tesis y Estrategia de Inversión</h4>
-              <p>{selectedAdvisor.strategy}</p>
-              <div className={styles.advisorAssetsPills}>
-                <span
-                  style={{
-                    fontSize: '0.75rem',
-                    color: 'var(--color-text-muted)',
-                  }}
-                >
-                  Activos recomendados:
-                </span>
-                {selectedAdvisor.recommendedAssets.map((sym) => (
-                  <span key={sym} className={styles.advisorAssetPill}>
-                    {sym}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            <div
-              style={{
-                display: 'flex',
-                gap: '0.6rem',
-                justifyContent: 'flex-end',
-                marginTop: '1.25rem',
-                flexWrap: 'wrap',
-              }}
-            >
-              <button
-                type="button"
-                className={styles.navButton}
-                style={{ border: '1px solid var(--color-border)' }}
-                onClick={() => advisorDialog.current?.close()}
-              >
-                Cerrar
-              </button>
-              <button
-                type="button"
-                className={styles.primary}
-                onClick={() => {
-                  advisorDialog.current?.close();
-                  navigateToSection('orders');
-                }}
-              >
-                Operar con su estrategia en Wall Street
-              </button>
-            </div>
-          </div>
-        )}
-      </dialog>
+      <ProfileKycDialog
+        dialogRef={profileDialog}
+        user={user}
+        kycData={kycQuery.data}
+        hasRealAccount={hasRealAccount}
+        userInitials={userInitials}
+        displayName={displayName}
+        profileTab={profileTab}
+        editableLevel={editableLevel}
+        editableInterests={editableInterests}
+        savingPreferences={savingPreferences}
+        saveSuccess={saveSuccess}
+        saveError={saveError}
+        kycModalStep={kycModalStep}
+        kycBusy={kycBusy}
+        kycMsg={kycMsg}
+        kycErr={kycErr}
+        onChangeProfileTab={setProfileTab}
+        onChangeEditableLevel={setOverrideLevel}
+        onToggleInterest={toggleInterest}
+        onSavePreferences={handleSavePreferences}
+        onChangeKycStep={setKycModalStep}
+        onClearKycError={() => setKycErr('')}
+        onSubmitKyc={handleDashboardKycSubmit}
+        onLogout={handleLogout}
+      />
     </div>
   );
 }

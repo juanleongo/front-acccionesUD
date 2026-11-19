@@ -36,13 +36,16 @@ export function LoginForm({
   onRegisteredUserVerified?: () => Promise<void>;
 } = {}) {
   const router = useRouter();
-  const { setCodes: showDashboardCodes } = usePendingCodes();
+  const { codes: pendingCodes, setCodes: showDashboardCodes } =
+    usePendingCodes();
   const [isAdminLogin, setIsAdminLogin] = useState(false);
   const [emailValue, setEmailValue] = useState('');
   const [passwordValue, setPasswordValue] = useState('');
   const [challenge, setChallenge] = useState(initialChallenge);
   const [recovery, setRecovery] = useState(false);
-  const [codes, setCodes] = useState<string[] | null>(null);
+  const [verifiedCodes, setCodes] = useState<string[] | null>(null);
+  const codes = verifiedCodes ?? pendingCodes;
+  const [destination, setDestination] = useState('/dashboard');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -107,21 +110,21 @@ export function LoginForm({
           );
           return;
         }
-        if (registrationStatus && result.recovery_codes)
-          showDashboardCodes(result.recovery_codes);
-        if (onRegisteredUserVerified) {
-          await onRegisteredUserVerified();
-          return;
-        }
-        setCodes(registrationStatus ? [] : (result.recovery_codes ?? []));
         const targetPath =
           isAdminLogin ||
           result.user.email === 'admin@accionesud.com' ||
           result.user.email === 'admin@example.com'
             ? '/admin'
             : '/dashboard';
-        if (registrationStatus || !result.recovery_codes?.length)
+        setDestination(targetPath);
+        if (result.recovery_codes?.length) {
+          setCodes(result.recovery_codes);
+          showDashboardCodes(result.recovery_codes);
+        } else if (onRegisteredUserVerified) {
+          await onRegisteredUserVerified();
+        } else {
           router.replace(targetPath);
+        }
       }
     } catch (cause) {
       const status = cause instanceof ApiError && cause.metadata.status;
@@ -184,7 +187,9 @@ export function LoginForm({
         </div>
       </header>
 
-      <main className={styles.page}>
+      <main
+        className={`${styles.page} ${challenge || codes ? styles.securityPage : ''}`}
+      >
         <section className={styles.panel}>
           {!challenge && !codes && (
             <div className={styles.roleTabs}>
@@ -214,7 +219,7 @@ export function LoginForm({
           <h1>
             {codes
               ? codes.length
-                ? 'Guarda tus códigos de recuperación'
+                ? 'Tu acceso ya está protegido'
                 : 'Sesión iniciada'
               : challenge
                 ? 'Verificación en dos pasos'
@@ -238,23 +243,13 @@ export function LoginForm({
           {codes ? (
             <RecoveryCodesDisplay
               codes={codes}
-              dismissHref={
-                isAdminLogin || emailValue === 'admin@example.com'
-                  ? '/admin'
-                  : '/dashboard'
-              }
-              onDismiss={() =>
-                router.replace(
-                  isAdminLogin || emailValue === 'admin@example.com'
-                    ? '/admin'
-                    : '/dashboard',
-                )
-              }
-              dismissText={
-                isAdminLogin || emailValue === 'admin@example.com'
-                  ? 'Continuar al panel de administración'
-                  : 'Continuar al dashboard'
-              }
+              onDismiss={async () => {
+                if (onRegisteredUserVerified) await onRegisteredUserVerified();
+                else router.replace(destination);
+                showDashboardCodes(null);
+                setCodes(null);
+              }}
+              dismissText="Continuar al panel"
             />
           ) : (
             <form key={challenge ? 'verify' : 'login'} onSubmit={submit}>

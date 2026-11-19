@@ -1,5 +1,6 @@
 'use client';
 
+import { formatPersonName } from '@/lib/format-person-name';
 import { z } from 'zod';
 import { browserHttp } from '@/lib/api/client';
 import type {
@@ -92,9 +93,7 @@ export async function fetchWalletTransfers(
       tx_type: isIncoming ? 'DEPOSIT' : 'WITHDRAWAL',
       concept:
         item.description ||
-        (isIncoming
-          ? 'Depósito de Fondos (Alpaca ACH)'
-          : 'Retiro de Fondos (Alpaca ACH)'),
+        (isIncoming ? 'Depósito de fondos (ACH)' : 'Retiro de fondos (ACH)'),
       original_currency: (item.currency as CurrencyCode) || 'USD',
       original_amount: rawAmount,
       amount_usd: signedUsd,
@@ -131,7 +130,10 @@ export async function createBank(body: {
   return browserHttp.request({
     path: '/api/v1/wallet/bank-relationships',
     method: 'POST',
-    body,
+    body: {
+      ...body,
+      account_owner_name: formatPersonName(body.account_owner_name),
+    },
     response: 'json',
     parse: bankOutSchema.parse,
   });

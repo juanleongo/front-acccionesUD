@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { Icon } from '@/components/ui/Icon';
 import styles from './login.module.css';
 
 // ISO/IEC 18004 QR Code Version 1..10 (EC Level L): [totalCodewords, ecCodewordsPerBlock, numBlocks]
@@ -254,10 +255,12 @@ export function TotpQrCode({
   otpauthUri: string;
 }) {
   const [copied, setCopied] = useState(false);
-  const matrix = buildQrMatrix(
-    otpauthUri || `otpauth://totp/AccionesUD?secret=${secret}`,
+  const matrix = useMemo(
+    () =>
+      buildQrMatrix(otpauthUri || `otpauth://totp/AccionesUD?secret=${secret}`),
+    [otpauthUri, secret],
   );
-  const quietZone = 3;
+  const quietZone = 4;
   const totalSize = matrix.length + quietZone * 2;
 
   async function handleCopy() {
@@ -272,6 +275,16 @@ export function TotpQrCode({
 
   return (
     <div className={styles.enrollmentBox}>
+      <div className={styles.securityIntro}>
+        <span className={styles.qrBadge}>
+          <Icon name="shield" size={14} /> Protege tu cuenta · 2FA
+        </span>
+        <h2>Configura tu autenticador</h2>
+        <p>
+          Vincula una aplicación como Google Authenticator o Authy para
+          confirmar cada inicio de sesión.
+        </p>
+      </div>
       <div className={styles.qrLayout}>
         <div className={styles.qrFrame}>
           <svg
@@ -300,15 +313,31 @@ export function TotpQrCode({
           <span className={styles.qrCaption}>Escanear con Authenticator</span>
         </div>
 
-        <span className={styles.srOnly}>{secret}</span>
+        <div className={styles.qrDetails}>
+          <ol className={styles.setupSteps}>
+            <li>Abre tu aplicación de autenticación.</li>
+            <li>Añade una cuenta y escanea este QR.</li>
+            <li>
+              Escribe abajo el código de 6 dígitos que aparece en la aplicación.
+            </li>
+          </ol>
+          <details className={styles.manualSetup}>
+            <summary>¿No puedes escanear el QR?</summary>
+            <p>
+              Introduce esta clave en tu autenticador y selecciona códigos
+              basados en tiempo.
+            </p>
+            <code className={styles.secretCode}>{secret}</code>
 
-        <button
-          type="button"
-          onClick={handleCopy}
-          className={styles.copySecretBtn}
-        >
-          {copied ? '✓ Código copiado' : 'Copiar código de configuración'}
-        </button>
+            <button
+              type="button"
+              onClick={handleCopy}
+              className={styles.copySecretBtn}
+            >
+              {copied ? '✓ Código copiado' : 'Copiar código de configuración'}
+            </button>
+          </details>
+        </div>
       </div>
     </div>
   );

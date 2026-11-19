@@ -130,7 +130,10 @@
 .badge {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  white-space: nowrap;
   gap: 0.5rem;
+  min-height: 1.85rem;
   padding: 0.35rem 0.85rem;
   border-radius: 999px;
   border: 1px solid var(--color-accent-border);
@@ -138,6 +141,7 @@
   color: var(--color-accent-text);
   font-size: 0.75rem;
   font-weight: 700;
+  line-height: 1.25;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   margin: 0 0 0.75rem;
@@ -316,7 +320,13 @@
   min-height: 1.1rem;
 }
 
-.panel label:not(.fieldLabel) {
+.kycScope {
+  display: block;
+  width: 100%;
+}
+
+.panel label:not(.fieldLabel),
+.kycScope label:not(.fieldLabel) {
   display: grid;
   gap: 0.35rem;
   margin-bottom: 0.9rem;
@@ -327,7 +337,10 @@
 
 .panel input:not([type='checkbox']),
 .panel select,
-.panel textarea {
+.panel textarea,
+.kycScope input:not([type='checkbox']),
+.kycScope select,
+.kycScope textarea {
   width: 100%;
   min-height: 2.85rem;
   padding: 0.6rem 0.85rem;
@@ -345,13 +358,19 @@
 
 .panel input:not([type='checkbox']):hover,
 .panel select:hover,
-.panel textarea:hover {
+.panel textarea:hover,
+.kycScope input:not([type='checkbox']):hover,
+.kycScope select:hover,
+.kycScope textarea:hover {
   border-color: var(--color-primary);
 }
 
 .panel input:not([type='checkbox']):focus,
 .panel select:focus,
-.panel textarea:focus {
+.panel textarea:focus,
+.kycScope input:not([type='checkbox']):focus,
+.kycScope select:focus,
+.kycScope textarea:focus {
   border-color: var(--color-primary);
   box-shadow:
     0 0 0 3px var(--color-shield-bg),
@@ -719,13 +738,18 @@
 }
 
 .sectorCounterBadge {
-  font-size: 0.8rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  min-height: 1.75rem;
+  font-size: 0.78rem;
   font-weight: 700;
-  font-family: monospace;
+  line-height: 1.25;
   color: var(--color-accent-text);
   background: var(--color-accent-soft);
   border: 1px solid var(--color-accent-border);
-  padding: 0.2rem 0.65rem;
+  padding: 0.25rem 0.7rem;
   border-radius: 999px;
 }
 
@@ -795,7 +819,7 @@
 
 .interestCardActive .interestCheckBadge {
   background: var(--color-primary);
-  color: var(--color-background);
+  color: #ffffff;
   border-color: var(--color-primary);
 }
 
@@ -893,20 +917,38 @@
 }
 
 .serviceCardTagAccent {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: flex-start;
+  white-space: nowrap;
   font-style: normal;
-  font-family: monospace;
-  font-size: 0.75rem;
+  font-size: 0.74rem;
   font-weight: 700;
+  line-height: 1.25;
   color: var(--color-accent-text);
+  background: var(--color-accent-soft);
+  border: 1px solid var(--color-accent-border);
+  padding: 0.22rem 0.6rem;
+  border-radius: 999px;
   margin-top: auto;
 }
 
 .serviceCardTagMuted {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: flex-start;
+  white-space: nowrap;
   font-style: normal;
-  font-family: monospace;
-  font-size: 0.75rem;
+  font-size: 0.74rem;
   font-weight: 600;
+  line-height: 1.25;
   color: var(--color-text-muted);
+  background: var(--color-control);
+  border: 1px solid var(--color-border);
+  padding: 0.22rem 0.6rem;
+  border-radius: 999px;
   margin-top: auto;
 }
 
@@ -988,7 +1030,8 @@
   margin-top: 0.5rem;
 }
 
-.panel .check {
+.panel .check,
+.kycScope .check {
   display: flex;
   align-items: flex-start;
   gap: 0.75rem;
@@ -1004,7 +1047,8 @@
     box-shadow 0.15s ease;
 }
 
-.panel .check:hover {
+.panel .check:hover,
+.kycScope .check:hover {
   border-color: var(--color-primary);
 }
 
@@ -1178,6 +1222,32 @@
   letter-spacing: -0.02em;
 }
 
+.termsIntroText {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.termsDialogActions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.termsAcceptBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-button);
+  color: #ffffff;
+  border: 0;
+  border-radius: 0.75rem;
+  padding: 0.65rem 1.5rem;
+  font-size: 0.92rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
 .termsList {
   display: flex;
   flex-direction: column;
@@ -1237,12 +1307,15 @@
 .panel[data-kyc-edit='true'] .termsCheck {
   display: none;
 }
-.panel [data-kyc-fields] .grid label {
+.panel [data-kyc-fields] .grid label,
+.kycScope [data-kyc-fields] .grid label {
   display: grid;
   gap: 0.4rem;
 }
 .panel [data-kyc-fields] input:not([type='checkbox']),
-.panel [data-kyc-fields] select {
+.panel [data-kyc-fields] select,
+.kycScope [data-kyc-fields] input:not([type='checkbox']),
+.kycScope [data-kyc-fields] select {
   max-width: 100%;
   min-width: 0;
   padding: 0.78rem 0.95rem;
@@ -1286,6 +1359,14 @@
   transition:
     border-color 0.15s ease,
     box-shadow 0.15s ease;
+}
+
+.customSelectTriggerCompact {
+  min-height: 2.25rem;
+  padding: 0.4rem 0.65rem;
+  font-size: 0.84rem;
+  border-radius: 0.6rem;
+  background: var(--color-surface-raised);
 }
 
 .customSelectTrigger:hover:not(:disabled),
@@ -1339,7 +1420,9 @@
   background: var(--color-surface-raised);
 }
 
-.panel [data-kyc-fields] .customSelectSearchInput {
+.customSelectSearchInput,
+.panel [data-kyc-fields] .customSelectSearchInput,
+.kycScope [data-kyc-fields] .customSelectSearchInput {
   width: 100%;
   min-height: 2.2rem;
   padding: 0.4rem 0.7rem;
@@ -1386,16 +1469,17 @@
 
 .customDateTrigger {
   width: 100%;
+  min-height: 2.85rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.65rem;
-  padding: 0.78rem 0.95rem;
+  padding: 0.45rem 0.75rem 0.45rem 0.95rem;
   border-radius: 0.75rem;
   border: 1.5px solid var(--color-border-strong);
   background: var(--color-control);
   color: var(--color-text);
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   text-align: left;
   cursor: pointer;
   box-shadow: var(--shadow-control);
@@ -1408,6 +1492,13 @@
 .customDateTriggerOpen {
   border-color: var(--color-primary);
   box-shadow: 0 0 0 3px rgba(56, 75, 255, 0.18);
+}
+
+.customDateValue,
+.customDatePlaceholder {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .customDateValue {
@@ -1551,16 +1642,19 @@
   cursor: pointer;
 }
 
-.panel [data-kyc-fields] .fundingSources {
+.panel [data-kyc-fields] .fundingSources,
+.kycScope [data-kyc-fields] .fundingSources {
   grid-column: 1/-1;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
-  gap: 0.5rem;
+  gap: 0.55rem;
 }
-.panel [data-kyc-fields] .fundingSources label {
+.panel [data-kyc-fields] .fundingSources label,
+.kycScope [data-kyc-fields] .fundingSources label {
   display: flex;
   align-items: center;
   gap: 0.55rem;
+  margin-bottom: 0;
 }
 
 .kycAgreementsSection {
@@ -1636,6 +1730,40 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 0.6rem;
+}
+
+.stepSectionHeading {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.stitchServiceTitle {
+  font-size: 0.94rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.stitchServiceBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.25;
+  background: var(--color-shield-bg);
+  border: 1px solid var(--color-shield-border);
+  color: var(--color-primary);
+}
+
+.stitchServiceDesc {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--color-text-muted);
 }
 
 .kycReadBtn {
@@ -1813,7 +1941,8 @@
   opacity: 0.95;
 }
 
-.panel [hidden] {
+.panel [hidden],
+.kycScope [hidden] {
   display: none !important;
 }
 .stepProgress {

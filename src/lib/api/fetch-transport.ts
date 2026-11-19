@@ -1,5 +1,6 @@
 import {
   ApiError,
+  backendErrorBodySchema,
   parseRetryAfter,
   problemSchema,
   validationDetailsSchema,
@@ -10,6 +11,7 @@ import type {
   JsonRequest,
   RequestOptions,
 } from './http-port';
+import { notifySessionExpired } from './session-events';
 
 interface TransportOptions {
   origin?: string;
@@ -128,14 +130,22 @@ export function createFetchTransport(config: TransportOptions): HttpPort {
       if (!response.ok) {
         let problem;
         let invalidFields: string[] | undefined;
-        if (response.status === 422 && contentType === 'application/json') {
-          const parsed = validationDetailsSchema.safeParse(
-            await response.json().catch(() => null),
-          );
-          if (parsed.success)
-            invalidFields = parsed.data.details.errors.map(
-              (error) => error.field,
-            );
+        let serverMessage: string | undefined;
+        let serverCode: string | undefined;
+        if (contentType === 'application/json') {
+          const rawErrorJson = await response.json().catch(() => null);
+          const bodyParsed = backendErrorBodySchema.safeParse(rawErrorJson);
+          if (bodyParsed.success) serverCode = bodyParsed.data.code;
+          if (bodyParsed.success && bodyParsed.data.message) {
+            serverMessage = bodyParsed.data.message;
+          }
+          if (response.status === 422) {
+            const parsed = validationDetailsSchema.safeParse(rawErrorJson);
+            if (parsed.success)
+              invalidFields = parsed.data.details.errors.map(
+                (error) => error.field,
+              );
+          }
         }
         if (contentType === 'application/problem+json') {
           try {
@@ -148,13 +158,24 @@ export function createFetchTransport(config: TransportOptions): HttpPort {
         const retryAfterMs = parseRetryAfter(
           response.headers.get('Retry-After'),
         );
-        throw new ApiError('http', `Error HTTP ${response.status}.`, {
-          ...metadata,
-          status: response.status,
-          ...(invalidFields ? { invalidFields } : {}),
-          ...(problem ? { problem } : {}),
-          ...(retryAfterMs !== undefined ? { retryAfterMs } : {}),
-        });
+        if (
+          response.status === 401 &&
+          !options.path.startsWith('/api/v1/auth/')
+        ) {
+          notifySessionExpired(options.path);
+        }
+        throw new ApiError(
+          'http',
+          serverMessage ?? `Error HTTP ${response.status}.`,
+          {
+            ...metadata,
+            status: response.status,
+            ...(serverCode ? { code: serverCode } : {}),
+            ...(invalidFields ? { invalidFields } : {}),
+            ...(problem ? { problem } : {}),
+            ...(retryAfterMs !== undefined ? { retryAfterMs } : {}),
+          },
+        );
       }
       if (options.response === 'empty') {
         await response.body?.cancel();

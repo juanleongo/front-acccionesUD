@@ -48,7 +48,7 @@ export function PriceSlippageAlertModal({
           </div>
           <div className={styles.priceBox}>
             <span>Nuevo Precio de Mercado</span>
-            <strong style={{ color: 'var(--color-warning)' }}>
+            <strong className={styles.priceWarningText}>
               ${data.newPriceUsd.toFixed(2)} USD (
               {data.variationPct > 0 ? '+' : ''}
               {data.variationPct.toFixed(2)}%)

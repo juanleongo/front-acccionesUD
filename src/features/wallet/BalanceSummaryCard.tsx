@@ -1,5 +1,6 @@
 'use client';
 
+import { formatUsd } from './wallet-labels';
 import type { WalletBalance } from './wallet-mock';
 import styles from './wallet.module.css';
 
@@ -13,10 +14,10 @@ export function BalanceSummaryCard({ balance }: { balance: WalletBalance }) {
       <div className={styles.cardHeader}>
         <div>
           <h2 id="balance-summary-heading" className={styles.cardTitle}>
-            Billetera y Custodia Patrimonial (USD)
+            Billetera y custodia patrimonial (USD)
           </h2>
           <p className={styles.cardSubtitle}>
-            Efectivo y patrimonio reportados por la cuenta de inversión.
+            Efectivo y patrimonio reportados por tu cuenta de inversión.
           </p>
         </div>
       </div>
@@ -25,11 +26,7 @@ export function BalanceSummaryCard({ balance }: { balance: WalletBalance }) {
         <div className={`${styles.kpiBox} ${styles.kpiBoxHighlight}`}>
           <span className={styles.kpiLabel}>Efectivo retirable</span>
           <strong className={`${styles.kpiValue} ${styles.kpiValueGreen}`}>
-            $
-            {balance.available_balance_usd.toLocaleString('en-US', {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}
+            ${formatUsd(balance.available_balance_usd)}
           </strong>
           <span className={styles.kpiHint}>
             Disponible para solicitar retiros
@@ -39,11 +36,7 @@ export function BalanceSummaryCard({ balance }: { balance: WalletBalance }) {
         <div className={`${styles.kpiBox} ${styles.kpiBoxReserved}`}>
           <span className={styles.kpiLabel}>Efectivo no retirable</span>
           <strong className={`${styles.kpiValue} ${styles.kpiValueAmber}`}>
-            $
-            {balance.reserved_balance_usd.toLocaleString('en-US', {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}
+            ${formatUsd(balance.reserved_balance_usd)}
           </strong>
           <span className={styles.kpiHint}>
             Diferencia entre efectivo total y retirable
@@ -51,17 +44,10 @@ export function BalanceSummaryCard({ balance }: { balance: WalletBalance }) {
         </div>
 
         <div className={styles.kpiBox}>
-          <span className={styles.kpiLabel}>Patrimonio Total</span>
-          <strong className={styles.kpiValue}>
-            $
-            {totalEquity.toLocaleString('en-US', {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}
-          </strong>
+          <span className={styles.kpiLabel}>Patrimonio total</span>
+          <strong className={styles.kpiValue}>${formatUsd(totalEquity)}</strong>
           <span className={styles.kpiHint}>
-            Efectivo + ${balance.invested_equity_usd.toLocaleString('en-US')}{' '}
-            invertido
+            Efectivo + ${formatUsd(balance.invested_equity_usd)} invertido
           </span>
         </div>
       </div>

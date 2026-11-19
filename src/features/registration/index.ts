@@ -1,3 +1,10 @@
 export { RegistrationForm } from './RegistrationForm';
-export { KycFields, readKyc, validateBirthDateAge } from './KycFields';
+export {
+  formatKycSubmissionError,
+  KycFields,
+  readKyc,
+  validateBirthDateAge,
+} from './KycFields';
+export { CustomSelect } from './components/CustomSelect';
+export { countries } from './countries';
 export { marketInterestsCatalog, readRegistration } from './contract';

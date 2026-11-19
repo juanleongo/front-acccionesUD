@@ -65,7 +65,7 @@ export function DepositModal({
           moneda base de negociación en Wall Street.
         </p>
 
-        <form onSubmit={handleSubmit} style={{ marginTop: '1rem' }}>
+        <form onSubmit={handleSubmit} className={styles.modalForm}>
           <div className={styles.converterGrid}>
             <div className={styles.fieldGroup}>
               <label htmlFor="dep-currency" className={styles.fieldLabel}>
@@ -104,7 +104,7 @@ export function DepositModal({
             </div>
           </div>
 
-          <div className={styles.fieldGroup} style={{ marginTop: '0.75rem' }}>
+          <div className={styles.fieldGroup}>
             <label htmlFor="dep-method" className={styles.fieldLabel}>
               Pasarela / Método (Simulado / Stripe Sandbox)
             </label>
@@ -141,7 +141,7 @@ export function DepositModal({
             </div>
             <div className={styles.summaryRow}>
               <span>Total neto a acreditar en billetera:</span>
-              <strong style={{ color: '#10b981', fontSize: '1.05rem' }}>
+              <strong className={styles.summaryValueSuccess}>
                 +${netUsd.toLocaleString('en-US', { minimumFractionDigits: 2 })}{' '}
                 USD
               </strong>

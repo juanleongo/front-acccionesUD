@@ -1,0 +1,165 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background:
+    radial-gradient(
+      circle at 50% 35%,
+      rgba(56, 75, 255, 0.16),
+      rgba(6, 9, 15, 0.94) 60%
+    ),
+    #06090f;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  animation: backdropFadeIn 200ms ease-out;
+}
+
+.card {
+  position: relative;
+  width: min(100%, 29.5rem);
+  padding: 2.25rem 2rem;
+  border-radius: 1.25rem;
+  border: 1px solid var(--color-border-strong);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(56, 75, 255, 0.16), transparent 58%),
+    var(--color-surface);
+  color: var(--color-text);
+  box-shadow: 0 28px 64px -18px rgba(0, 0, 0, 0.72);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 1rem;
+  animation: cardPopIn 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.statusPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.32rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+  border: 1px solid var(--color-warning-border);
+}
+
+.statusDot {
+  width: 0.48rem;
+  height: 0.48rem;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.iconRing {
+  width: 4rem;
+  height: 4rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-shield-bg);
+  border: 1px solid var(--color-shield-border);
+  color: var(--color-primary);
+  margin-top: 0.2rem;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.45rem;
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  color: var(--color-text);
+}
+
+.message {
+  margin: 0;
+  font-size: 0.94rem;
+  line-height: 1.55;
+  color: var(--color-text-muted);
+  max-width: 24rem;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 0.65rem;
+  margin-top: 0.5rem;
+}
+
+.primaryAction,
+.secondaryAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.85rem;
+  padding: 0.72rem 1.25rem;
+  border-radius: 0.78rem;
+  font-size: 0.94rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition:
+    transform 140ms ease,
+    border-color 140ms ease,
+    background 140ms ease,
+    opacity 140ms ease;
+}
+
+.primaryAction {
+  background: var(--color-button);
+  color: var(--color-on-button);
+  border: 1px solid transparent;
+  box-shadow: 0 10px 24px -10px rgba(56, 75, 255, 0.7);
+}
+
+.primaryAction:hover {
+  transform: translateY(-1px);
+  opacity: 0.95;
+}
+
+.secondaryAction {
+  background: var(--color-control);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+}
+
+.secondaryAction:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.primaryAction:focus-visible,
+.secondaryAction:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+@keyframes backdropFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes cardPopIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}

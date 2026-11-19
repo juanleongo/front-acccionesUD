@@ -1,8 +1,35 @@
 'use client';
+
 import { useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { LoadingState } from '@/components/ui/LoadingState';
+import {
+  OrderActionConfirmForm,
+  type OrderPendingAction,
+} from './components/OrderActionConfirmForm';
+import { OrderHistoryPanels } from './components/OrderHistoryPanels';
 import { getOrder, orderAction, type OrderDetail } from './trading-api';
+import {
+  formatOrderCause,
+  formatOrderStatus,
+  formatTimeInForce,
+  getOrderStatusTone,
+} from './trading-labels';
 import styles from './trading.module.css';
+
+const TONE_CLASS_MAP = {
+  filled: styles.statusFilled,
+  open: styles.statusOpen,
+  queued: styles.statusQueued,
+  reauth: styles.statusReauth,
+  cancelled: styles.statusCancelled,
+} as const;
+
+const LEG_LABELS = {
+  take_profit: 'Take profit',
+  stop_loss: 'Stop loss',
+} as const;
+
 export function OrderDetails({
   id,
   onUpdated,
@@ -20,15 +47,14 @@ export function OrderDetails({
     retry: false,
     refetchInterval: 15000,
   });
-  const [action, setAction] = useState<
-    'cancel' | 'accept' | 'reject' | 'resume' | null
-  >(null);
+  const [action, setAction] = useState<OrderPendingAction | null>(null);
   const [reason, setReason] = useState('no_longer_needed');
   const [reasonText, setReasonText] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const flight = useRef(false);
+
   async function confirm() {
     if (!action || flight.current) return;
     flight.current = true;
@@ -49,7 +75,9 @@ export function OrderDetails({
             ? undefined
             : { decision: action },
       );
-      setNotice(`Solicitud procesada. Estado: ${result.status}.`);
+      setNotice(
+        `Solicitud procesada correctamente. Estado: ${formatOrderStatus(result.status, result.fully_filled)} (${result.status}).`,
+      );
       setAction(null);
       await query.refetch();
       onUpdated();
@@ -64,87 +92,153 @@ export function OrderDetails({
       setBusy(false);
     }
   }
+
   const order = query.data;
   const pending = order?.reauthorizations.find(
     (item) => item.decision === null,
   );
+  const tone = order
+    ? getOrderStatusTone(order.status, order.fully_filled)
+    : 'cancelled';
+
   return (
     <section className={styles.card} aria-label="Detalle de orden">
       <div className={styles.cardHeader}>
-        <h2 className={styles.cardTitle}>Detalle de orden</h2>
-        <button
-          type="button"
-          disabled={busy}
-          className={styles.btnSecondary}
-          onClick={onClose}
-        >
-          Cerrar detalle
-        </button>
-      </div>
-      {query.isPending && <p role="status">Consultando orden…</p>}
-      {query.isError && (
-        <p role="alert">
-          No se pudo consultar el detalle.{' '}
+        <div>
+          <h2 className={styles.cardTitle}>
+            Detalle de orden{order ? ` · ${order.symbol}` : ''}
+          </h2>
+          {order && (
+            <p className={styles.cardSubtitle}>
+              {order.side === 'buy' ? 'Compra' : 'Venta'} de {order.qty}{' '}
+              acciones · {formatTimeInForce(order.time_in_force)}
+            </p>
+          )}
+        </div>
+        <div className={styles.actionsRow}>
+          {order && (
+            <span className={`${styles.statusBadge} ${TONE_CLASS_MAP[tone]}`}>
+              {formatOrderStatus(order.status, order.fully_filled)}
+            </span>
+          )}
           <button
             type="button"
+            disabled={busy}
+            className={styles.btnCompact}
+            onClick={onClose}
+          >
+            Cerrar detalle
+          </button>
+        </div>
+      </div>
+
+      {query.isPending && (
+        <LoadingState mode="compact" label="Consultando orden…" />
+      )}
+
+      {query.isError && (
+        <div role="alert" className={styles.alertError}>
+          <span>No se pudo consultar el detalle.</span>
+          <button
+            type="button"
+            className={styles.btnCompact}
             onClick={() => {
               void query.refetch();
             }}
           >
             Reintentar
           </button>
-        </p>
+        </div>
       )}
+
       {order && (
         <>
-          <p>
-            {order.symbol} · {order.side === 'buy' ? 'Compra' : 'Venta'} ·{' '}
-            {order.qty} acciones · {order.status}
-          </p>
-          <p>Referencia: {order.id}</p>
-          <p>
-            Ejecutadas: {order.filled_qty} · Precio promedio:{' '}
-            {order.filled_avg_price ?? 'No disponible'} USD
-          </p>
-          <p>
-            Causa: {order.status_cause ?? '—'} · Proveedor:{' '}
-            {order.provider_status ?? '—'}
-          </p>
-          {order.scheduled_for && (
-            <p>
-              Programada para{' '}
-              {new Date(order.scheduled_for).toLocaleString('es-CO')}
-            </p>
+          <div className={styles.detailGrid}>
+            <div className={styles.detailTile}>
+              <span className={styles.detailTileLabel}>Ejecutadas</span>
+              <span className={styles.detailTileValue}>
+                {order.filled_qty} / {order.qty} acciones
+              </span>
+            </div>
+            <div className={styles.detailTile}>
+              <span className={styles.detailTileLabel}>Precio promedio</span>
+              <span className={styles.detailTileValue}>
+                {order.filled_avg_price
+                  ? `$${order.filled_avg_price} USD`
+                  : 'No disponible'}
+              </span>
+            </div>
+            <div className={styles.detailTile}>
+              <span className={styles.detailTileLabel}>Condiciones</span>
+              <span className={styles.detailTileValue}>
+                {order.limit_price
+                  ? `Límite $${order.limit_price}`
+                  : order.stop_price
+                    ? `Stop $${order.stop_price}`
+                    : order.trail_price
+                      ? `Trailing $${order.trail_price}`
+                      : order.trail_percent
+                        ? `Trailing ${order.trail_percent}%`
+                        : 'Ejecución a mercado'}
+              </span>
+            </div>
+            <div className={styles.detailTile}>
+              <span className={styles.detailTileLabel}>Estado operativo</span>
+              <span className={styles.detailTileValue}>
+                {formatOrderCause(order.status_cause ?? order.provider_status)}
+              </span>
+            </div>
+            {order.scheduled_for && (
+              <div className={styles.detailTile}>
+                <span className={styles.detailTileLabel}>Programada para</span>
+                <span className={styles.detailTileValue}>
+                  {new Date(order.scheduled_for).toLocaleString('es-CO')}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {order.legs.length > 0 && (
+            <div className={styles.detailGrid}>
+              {order.legs.map((leg) => (
+                <div key={leg.role} className={styles.detailTile}>
+                  <span className={styles.detailTileLabel}>
+                    {LEG_LABELS[leg.role]}
+                  </span>
+                  <span className={styles.detailTileValue}>
+                    ${leg.price} USD ·{' '}
+                    {leg.provider_status
+                      ? formatOrderCause(leg.provider_status)
+                      : 'Pendiente'}
+                  </span>
+                </div>
+              ))}
+            </div>
           )}
-          <p>
-            Límite: {order.limit_price ?? '—'} · Stop: {order.stop_price ?? '—'}{' '}
-            · Trailing:{' '}
-            {order.trail_price
-              ? `${order.trail_price} USD`
-              : order.trail_percent
-                ? `${order.trail_percent}%`
-                : '—'}{' '}
-            · Vigencia: {order.time_in_force.toUpperCase()}
-          </p>
-          {order.legs.map((leg) => (
-            <p key={leg.role}>
-              {leg.role}: ${leg.price} · {leg.provider_status ?? 'Pendiente'}
-            </p>
-          ))}
+
           {order.review_comments.map((comment) => (
-            <p key={comment.id}>
-              Comentario del comisionista: {comment.comment}
-            </p>
+            <div key={comment.id} className={styles.commentBox}>
+              <strong>Comentario del comisionista:</strong> {comment.comment}
+            </div>
           ))}
+
           {pending && (
             <div className={styles.orderPreview}>
-              <p>
+              <div className={styles.previewHeader}>
+                <h3 className={styles.previewTitle}>
+                  Reautorización por cambio de precio
+                </h3>
+              </div>
+              <p className={styles.cardSubtitle}>
                 Reautorización: precio anterior ${pending.previous_price} →
                 nuevo ${pending.updated_price} USD
               </p>
-              <p>Vence: {new Date(pending.deadline).toLocaleString('es-CO')}</p>
+              <p className={styles.previewNote}>
+                Vence: {new Date(pending.deadline).toLocaleString('es-CO')}
+              </p>
             </div>
           )}
+
           <div className={styles.actionsRow}>
             {!order.fully_filled &&
               !['CANCELED', 'REJECTED', 'EXPIRED', 'FAILED'].includes(
@@ -201,98 +295,34 @@ export function OrderDetails({
                 </button>
               )}
           </div>
+
           {action && (
-            <form
-              className={styles.orderPreview}
-              onSubmit={(event) => {
-                event.preventDefault();
-                void confirm();
-              }}
-            >
-              <fieldset disabled={busy} className={styles.orderFields}>
-                <p>
-                  ¿Confirmas{' '}
-                  {action === 'cancel'
-                    ? 'la solicitud de cancelación'
-                    : action === 'resume'
-                      ? 'la reanudación'
-                      : action === 'accept'
-                        ? 'la aceptación del nuevo precio'
-                        : 'el rechazo del nuevo precio'}
-                  ?
-                </p>
-                {action === 'cancel' && (
-                  <>
-                    <label className={styles.fieldGroup}>
-                      Motivo
-                      <select
-                        className={styles.select}
-                        value={reason}
-                        onChange={(e) => setReason(e.target.value)}
-                      >
-                        <option value="no_longer_needed">
-                          Ya no la necesito
-                        </option>
-                        <option value="price_changed">Cambió el precio</option>
-                        <option value="input_error">Error en los datos</option>
-                        <option value="other">Otro motivo</option>
-                      </select>
-                    </label>
-                    {reason === 'other' && (
-                      <label className={styles.fieldGroup}>
-                        Describe el motivo
-                        <input
-                          className={styles.input}
-                          required
-                          maxLength={500}
-                          value={reasonText}
-                          onChange={(e) => setReasonText(e.target.value)}
-                        />
-                      </label>
-                    )}
-                  </>
-                )}
-                <div className={styles.actionsRow}>
-                  <button type="submit" className={styles.btnPrimary}>
-                    {busy ? 'Procesando…' : 'Confirmar acción'}
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.btnSecondary}
-                    onClick={() => setAction(null)}
-                  >
-                    Volver
-                  </button>
-                </div>
-              </fieldset>
-            </form>
+            <OrderActionConfirmForm
+              action={action}
+              busy={busy}
+              reason={reason}
+              reasonText={reasonText}
+              onReasonChange={setReason}
+              onReasonTextChange={setReasonText}
+              onConfirm={confirm}
+              onCancel={() => setAction(null)}
+            />
           )}
-          <details>
-            <summary>Ejecuciones ({order.executions.length})</summary>
-            {order.executions.map((item) => (
-              <p key={item.alpaca_execution_id}>
-                {item.qty} acciones a ${item.price} ·{' '}
-                {new Date(item.executed_at).toLocaleString('es-CO')}
-              </p>
-            ))}
-          </details>
-          <details>
-            <summary>Historial de estados ({order.events.length})</summary>
-            {order.events.map((event) => (
-              <p key={event.id}>
-                {new Date(event.at).toLocaleString('es-CO')} · {event.to_status}{' '}
-                · {event.cause}
-              </p>
-            ))}
-          </details>
+
+          <OrderHistoryPanels order={order} />
         </>
       )}
+
       {error && (
-        <p role="alert" className={styles.apiError}>
+        <p role="alert" className={styles.alertError}>
           {error}
         </p>
       )}
-      {notice && <p role="status">{notice}</p>}
+      {notice && (
+        <p role="status" className={styles.alertBanner}>
+          {notice}
+        </p>
+      )}
     </section>
   );
 }

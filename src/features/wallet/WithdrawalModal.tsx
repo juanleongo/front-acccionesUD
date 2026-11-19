@@ -63,7 +63,7 @@ export function WithdrawalModal({
           saldo reservado en órdenes abiertas permanece bloqueado.
         </p>
 
-        <form onSubmit={handleSubmit} style={{ marginTop: '1rem' }}>
+        <form onSubmit={handleSubmit} className={styles.modalForm}>
           <div className={styles.fieldGroup}>
             <label htmlFor="wd-amount" className={styles.fieldLabel}>
               Monto a retirar (USD)
@@ -82,7 +82,7 @@ export function WithdrawalModal({
             />
           </div>
 
-          <div className={styles.fieldGroup} style={{ marginTop: '0.75rem' }}>
+          <div className={styles.fieldGroup}>
             <label htmlFor="wd-dest" className={styles.fieldLabel}>
               Cuenta Bancaria Destino
             </label>
@@ -104,7 +104,7 @@ export function WithdrawalModal({
           <div className={styles.summaryBox}>
             <div className={styles.summaryRow}>
               <span>Saldo disponible actual:</span>
-              <strong style={{ color: '#10b981' }}>
+              <strong className={styles.summaryValueSuccess}>
                 $
                 {availableBalanceUsd.toLocaleString('en-US', {
                   minimumFractionDigits: 2,
@@ -114,7 +114,7 @@ export function WithdrawalModal({
             </div>
             <div className={styles.summaryRow}>
               <span>Saldo reservado (intocable):</span>
-              <strong style={{ color: 'var(--color-warning)' }}>
+              <strong className={styles.summaryValueWarning}>
                 $
                 {reservedBalanceUsd.toLocaleString('en-US', {
                   minimumFractionDigits: 2,

@@ -27,7 +27,9 @@
     "api:check": "node scripts/openapi.mjs check",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check": "npm run format:check && npm run lint && npm run typecheck && npm run check:boundaries && npm run api:check && npm run test"
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm run check:boundaries && npm run api:check && npm run test",
+    "build:measure": "node scripts/measure-build.mjs",
+    "test:production": "node scripts/verify-production.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "5.106.0",

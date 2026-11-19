@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Icon } from '@/components/ui/Icon';
 import { getCurrentUser } from '@/features/dashboard/client';
+import { formatPersonName } from '@/lib/format-person-name';
 import styles from '../landing.module.css';
 
 export function Brand() {
@@ -74,7 +75,9 @@ export function Header() {
             {user ? (
               <Link href="/dashboard" className={styles.primaryButton}>
                 Ir al Dashboard (
-                {user.first_names.split(' ')[0] ?? 'Inversionista'})
+                {formatPersonName(user.first_names).split(' ')[0] ||
+                  'Inversionista'}
+                )
               </Link>
             ) : (
               <>

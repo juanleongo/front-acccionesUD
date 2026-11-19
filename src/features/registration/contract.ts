@@ -1,3 +1,4 @@
+import { formatPersonName } from '@/lib/format-person-name';
 import { z } from 'zod';
 
 export type RegistrationKind = 'investor' | 'broker';
@@ -65,8 +66,8 @@ export function readRegistration(form: FormData, kind: RegistrationKind) {
     .filter(Boolean);
   const uniqueInterests = [...new Set(interests)];
   return {
-    first_names: value('first_names').trim(),
-    last_names: value('last_names').trim(),
+    first_names: formatPersonName(value('first_names')),
+    last_names: formatPersonName(value('last_names')),
     email: value('email').trim(),
     phone: value('phone').trim(),
     country: value('country'),
