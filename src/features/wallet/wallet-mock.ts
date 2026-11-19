@@ -33,10 +33,10 @@ export interface LedgerTransaction {
   original_currency: CurrencyCode;
   original_amount: number;
   amount_usd: number;
-  fee_usd: number;
-  balance_after_usd: number;
+  fee_usd: number | null;
+  balance_after_usd: number | null;
   external_ref: string;
-  status: 'COMPLETADO' | 'RESERVADO' | 'LIQUIDADO';
+  status: string;
   created_at: string;
 }
 

@@ -1,273 +1,227 @@
 'use client';
-
 import { z } from 'zod';
 import { browserHttp } from '@/lib/api/client';
-import type {
-  OrderPreview,
-  OrderRecord,
-  OrderSide,
-  OrderStatus,
-  OrderType,
-  TimeInForce,
-} from './trading-mock';
 
-const previewOutSchema = z.object({
-  reference_price: z.string(),
-  estimated_amount: z.string(),
-  reference_commission: z.string(),
-  reference_commission_estimated: z.boolean().optional(),
-  available_buying_power: z.string(),
+const decimal = z.string().regex(/^-?\d+(?:\.\d+)?$/);
+export const orderSchema = z.object({
+  id: z.string(),
+  status: z.string(),
+  status_cause: z.string().nullable(),
+  provider_status: z.string().nullable(),
+  symbol: z.string(),
+  exchange: z.string(),
+  side: z.enum(['buy', 'sell']),
+  qty: decimal,
+  filled_qty: decimal,
+  filled_avg_price: decimal.nullable(),
+  fully_filled: z.boolean(),
+  type: z.enum(['market', 'limit', 'stop', 'stop_limit', 'trailing_stop']),
+  order_class: z.enum(['simple', 'bracket']),
+  time_in_force: z.enum(['day', 'gtc', 'ioc', 'fok']),
+  limit_price: decimal.nullable(),
+  stop_price: decimal.nullable(),
+  trail_price: decimal.nullable(),
+  trail_percent: decimal.nullable(),
+  reference_price: decimal,
+  estimated_amount: decimal,
+  created_at: z.string(),
+  scheduled_for: z.string().nullable(),
+  returned_for_changes: z.boolean(),
+});
+export const detailSchema = orderSchema.extend({
+  reference_commission: decimal,
+  legs: z.array(
+    z.object({
+      role: z.enum(['take_profit', 'stop_loss']),
+      price: decimal,
+      provider_status: z.string().nullable(),
+    }),
+  ),
+  executions: z.array(
+    z.object({
+      alpaca_execution_id: z.string(),
+      qty: decimal,
+      price: decimal,
+      executed_at: z.string(),
+    }),
+  ),
+  events: z.array(
+    z.object({
+      id: z.string(),
+      to_status: z.string(),
+      cause: z.string(),
+      at: z.string(),
+    }),
+  ),
+  reauthorizations: z.array(
+    z.object({
+      id: z.string(),
+      previous_price: decimal,
+      updated_price: decimal,
+      deadline: z.string(),
+      decision: z.string().nullable(),
+    }),
+  ),
+  review_comments: z.array(
+    z.object({ id: z.string(), comment: z.string(), at: z.string() }),
+  ),
+});
+export const previewSchema = z.object({
+  reference_price: decimal,
+  estimated_amount: decimal,
+  reference_commission: decimal,
+  available_buying_power: decimal,
   requires_extra_authorization: z.boolean(),
   authorization_method: z.enum(['none', 'totp', 'acknowledgement']),
   market_open: z.boolean(),
   scheduled_for: z.string().nullable(),
 });
-
-const orderSummarySchema = z.object({
-  id: z.string(),
-  status: z.string(),
-  created_at: z.string(),
-  symbol: z.string(),
-  exchange: z.string().optional(),
-  side: z.enum(['buy', 'sell']),
-  qty: z.string(),
-  filled_avg_price: z.string().nullable().optional(),
-  type: z.string(),
-  time_in_force: z.string(),
-  limit_price: z.string().nullable().optional(),
-  stop_price: z.string().nullable().optional(),
-  reference_price: z.string(),
-  estimated_amount: z.string(),
-});
-
-const orderPageOutSchema = z.object({
-  items: z.array(orderSummarySchema),
-  next_cursor: z.string().nullable().optional(),
-});
-
-function mapBackendStatus(status: string): OrderStatus {
-  const upper = status.toUpperCase();
-  if (upper === 'FILLED' || upper === 'EXECUTED' || upper === 'COMPLETED')
-    return 'FILLED';
-  if (
-    upper === 'SCHEDULED' ||
-    upper === 'QUEUED' ||
-    upper === 'QUEUED_OUT_OF_HOURS'
-  )
-    return 'QUEUED_OUT_OF_HOURS';
-  if (
-    upper === 'AWAITING_REAUTHORIZATION' ||
-    upper === 'REAUTHORIZATION_REQUIRED'
-  )
-    return 'REAUTHORIZATION_REQUIRED';
-  if (
-    upper === 'CANCELLED' ||
-    upper === 'CANCELED' ||
-    upper === 'REJECTED' ||
-    upper === 'EXPIRED'
-  )
-    return 'CANCELLED';
-  return 'OPEN';
-}
-
-function mapBackendType(type: string): OrderType {
-  if (type === 'limit') return 'limit';
-  if (type === 'stop' || type === 'stop_limit') return 'stop_loss';
-  if (type === 'trailing_stop') return 'take_profit';
-  return 'market';
-}
-
-function mapOrderSummaryToRecord(
-  item: z.infer<typeof orderSummarySchema>,
-): OrderRecord {
-  const tifUpper = item.time_in_force.toUpperCase();
-  const tif: TimeInForce =
-    tifUpper === 'GTC' ? 'GTC' : tifUpper === 'IOC' ? 'IOC' : 'DAY';
-  return {
-    id: item.id,
-    client_order_id: item.id.slice(0, 12),
-    symbol: item.symbol,
-    side: item.side,
-    order_type: mapBackendType(item.type),
-    time_in_force: tif,
-    quantity: Number(item.qty) || 1,
-    execution_price_usd: item.filled_avg_price
-      ? Number(item.filled_avg_price)
-      : null,
-    limit_price_usd: item.limit_price ? Number(item.limit_price) : null,
-    stop_price_usd: item.stop_price ? Number(item.stop_price) : null,
-    total_usd: Number(item.estimated_amount) || 0,
-    status: mapBackendStatus(item.status),
-    execution_source: 'Alpaca Sandbox (US)',
-    created_at: new Date(item.created_at).toLocaleString('es-CO', {
-      day: '2-digit',
-      month: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    }),
-  };
-}
-
-function buildBackendOrderPayload(params: {
+export type ApiOrder = z.infer<typeof orderSchema>;
+export type OrderDetail = z.infer<typeof detailSchema>;
+export type Preview = z.infer<typeof previewSchema>;
+export type OrderInput = {
   symbol: string;
-  side: OrderSide;
-  orderType: OrderType;
-  quantity: number;
-  timeInForce: TimeInForce;
-  limitPrice?: string | undefined;
-  stopPrice?: string | undefined;
-  scheduleIfClosed: boolean;
-  confirmed: boolean;
-}) {
-  const isBracketStop = params.orderType === 'stop_loss';
-  const isBracketTp = params.orderType === 'take_profit';
-  return {
-    symbol: params.symbol,
-    side: params.side,
-    qty: String(params.quantity),
-    type:
-      params.orderType === 'limit'
-        ? 'limit'
-        : isBracketStop
-          ? 'stop'
-          : 'market',
-    order_class: isBracketTp ? 'bracket' : 'simple',
-    time_in_force: params.timeInForce.toLowerCase(),
-    ...(params.orderType === 'limit' && params.limitPrice
-      ? { limit_price: String(Number(params.limitPrice).toFixed(2)) }
-      : {}),
-    ...(isBracketStop && params.stopPrice
-      ? { stop_price: String(Number(params.stopPrice).toFixed(2)) }
-      : {}),
-    ...(isBracketTp && params.stopPrice
-      ? {
-          take_profit: {
-            limit_price: String(Number(params.stopPrice).toFixed(2)),
-          },
-        }
-      : {}),
-    schedule_if_closed: params.scheduleIfClosed,
-    confirmed: params.confirmed,
-    high_amount_acknowledged: true,
-  };
-}
-
-export async function fetchOrdersList(
-  signal?: AbortSignal,
-): Promise<OrderRecord[]> {
-  const page = await browserHttp.request({
-    path: '/api/v1/orders',
-    method: 'GET',
-    response: 'json',
-    parse: orderPageOutSchema.parse,
-    ...(signal ? { signal } : {}),
-  });
-  return page.items.map(mapOrderSummaryToRecord);
-}
-
-export async function requestOrderPreview(params: {
-  symbol: string;
-  side: OrderSide;
-  orderType: OrderType;
-  quantity: number;
-  timeInForce: TimeInForce;
-  limitPrice?: string | undefined;
-  stopPrice?: string | undefined;
-  scheduleIfClosed: boolean;
-  ttlSeconds: number;
-}): Promise<OrderPreview> {
-  const res = await browserHttp.request({
+  side: 'buy' | 'sell';
+  qty: string;
+  type: ApiOrder['type'];
+  order_class: 'simple' | 'bracket';
+  time_in_force: ApiOrder['time_in_force'];
+  limit_price?: string;
+  stop_price?: string;
+  trail_price?: string;
+  trail_percent?: string;
+  take_profit?: { limit_price: string };
+  stop_loss?: { stop_price: string };
+  schedule_if_closed: boolean;
+  confirmed?: boolean;
+  high_amount_acknowledged?: boolean;
+  totp_code?: string;
+};
+export async function previewOrder(body: OrderInput) {
+  return browserHttp.request({
     path: '/api/v1/orders/preview',
     method: 'POST',
-    body: buildBackendOrderPayload({ ...params, confirmed: false }),
+    timeoutMs: 60_000,
+    body,
     response: 'json',
-    parse: previewOutSchema.parse,
+    parse: previewSchema.parse,
   });
-  const refPrice = Number(res.reference_price) || 0;
-  const subtotal = Number(res.estimated_amount) || refPrice * params.quantity;
-  const commission = Number(res.reference_commission) || subtotal * 0.02;
-  const platformFee = Number((commission * 0.6).toFixed(2));
-  const advisorFee = Number((commission * 0.4).toFixed(2));
-  const total =
-    params.side === 'buy' ? subtotal + commission : subtotal - commission;
-
-  return {
-    preview_id: `prv-${Date.now().toString(36)}`,
-    symbol: params.symbol,
-    side: params.side,
-    order_type: params.orderType,
-    quantity: params.quantity,
-    quoted_price_usd: refPrice,
-    limit_price_usd:
-      params.orderType === 'limit' && params.limitPrice
-        ? Number(params.limitPrice)
-        : null,
-    stop_price_usd:
-      (params.orderType === 'stop_loss' ||
-        params.orderType === 'take_profit') &&
-      params.stopPrice
-        ? Number(params.stopPrice)
-        : null,
-    subtotal_usd: subtotal,
-    platform_fee_usd: platformFee,
-    advisor_fee_usd: advisorFee,
-    total_usd: total,
-    expires_at_ms: Date.now() + params.ttlSeconds * 1000,
-    ttl_seconds: params.ttlSeconds,
-    market_open: res.market_open,
-    available_buying_power_usd: Number(res.available_buying_power) || 0,
-    from_backend: true,
-  };
 }
-
-export async function createBackendOrder(params: {
-  symbol: string;
-  side: OrderSide;
-  orderType: OrderType;
-  quantity: number;
-  timeInForce: TimeInForce;
-  limitPrice?: string | undefined;
-  stopPrice?: string | undefined;
-  scheduleIfClosed: boolean;
-  idempotencyKey: string;
-}): Promise<OrderRecord> {
-  const res = await browserHttp.request({
+export async function submitOrder(body: OrderInput, key: string) {
+  return browserHttp.request({
     path: '/api/v1/orders',
     method: 'POST',
-    headers: { 'Idempotency-Key': params.idempotencyKey },
-    body: buildBackendOrderPayload({ ...params, confirmed: true }),
+    timeoutMs: 60_000,
+    headers: { 'Idempotency-Key': key },
+    body,
     response: 'json',
-    parse: orderSummarySchema.parse,
+    parse: detailSchema.parse,
   });
-  return mapOrderSummaryToRecord(res);
 }
-
-export async function cancelBackendOrder(
-  orderId: string,
-): Promise<OrderRecord> {
-  const res = await browserHttp.request({
-    path: `/api/v1/orders/${encodeURIComponent(orderId)}/cancel`,
-    method: 'POST',
-    body: {
-      reason: 'no_longer_needed',
-      confirmed: true,
+export async function listOrders(
+  cursor = '',
+  symbol = '',
+  status = '',
+  signal?: AbortSignal,
+) {
+  return browserHttp.request({
+    path: '/api/v1/orders',
+    method: 'GET',
+    query: {
+      page_size: '20',
+      ...(cursor ? { cursor } : {}),
+      ...(symbol ? { symbol } : {}),
+      ...(status ? { status } : {}),
     },
     response: 'json',
-    parse: orderSummarySchema.parse,
+    parse: z.object({
+      items: z.array(orderSchema),
+      next_cursor: z.string().nullable(),
+    }).parse,
+    ...(signal ? { signal } : {}),
   });
-  return mapOrderSummaryToRecord(res);
 }
-
-export async function reauthorizeBackendOrder(
-  orderId: string,
-  decision: 'accept' | 'reject',
-): Promise<OrderRecord> {
-  const res = await browserHttp.request({
-    path: `/api/v1/orders/${encodeURIComponent(orderId)}/reauthorization`,
-    method: 'POST',
-    body: { decision },
+export async function getOrder(id: string, signal?: AbortSignal) {
+  return browserHttp.request({
+    path: `/api/v1/orders/${encodeURIComponent(id)}`,
+    method: 'GET',
     response: 'json',
-    parse: orderSummarySchema.parse,
+    parse: detailSchema.parse,
+    ...(signal ? { signal } : {}),
   });
-  return mapOrderSummaryToRecord(res);
+}
+export async function orderAction(
+  id: string,
+  action: 'cancel' | 'reauthorization' | 'resubmit' | 'resume',
+  body?: object,
+) {
+  return browserHttp.request({
+    path: `/api/v1/orders/${encodeURIComponent(id)}/${action}`,
+    method: 'POST',
+    timeoutMs: 60_000,
+    ...(body ? { body } : {}),
+    response: 'json',
+    parse: detailSchema.parse,
+  });
+}
+export function resubmitBody(input: OrderInput) {
+  const {
+    symbol: _symbol,
+    side: _side,
+    type: _type,
+    order_class: _class,
+    schedule_if_closed: _schedule,
+    confirmed: _confirmed,
+    ...changes
+  } = input;
+  void _symbol;
+  void _side;
+  void _type;
+  void _class;
+  void _schedule;
+  void _confirmed;
+  return changes;
+}
+export async function searchAssets(
+  q: string,
+  page: number,
+  signal?: AbortSignal,
+) {
+  return browserHttp.request({
+    path: '/api/v1/instruments/search',
+    method: 'GET',
+    query: { q, page: String(page), classification: 'tradable' },
+    response: 'json',
+    parse: z.object({
+      results: z.array(
+        z.object({
+          symbol: z.string(),
+          name: z.string(),
+          exchange: z.string(),
+        }),
+      ),
+      total: z.number(),
+      page_size: z.number(),
+    }).parse,
+    ...(signal ? { signal } : {}),
+  });
+}
+export async function getPositions(signal?: AbortSignal) {
+  return browserHttp.request({
+    path: '/api/v1/portfolio/positions',
+    method: 'GET',
+    response: 'json',
+    parse: z.object({
+      positions: z.array(
+        z.object({
+          symbol: z.string(),
+          qty: decimal,
+          reserved_qty: decimal,
+          price: decimal,
+        }),
+      ),
+      positions_as_of: z.string(),
+    }).parse,
+    ...(signal ? { signal } : {}),
+  });
 }

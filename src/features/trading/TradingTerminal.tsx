@@ -1,214 +1,203 @@
 'use client';
-
-import { useEffect, useState } from 'react';
-import { ActiveOrdersTable } from './ActiveOrdersTable';
+import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { OrderForm } from './OrderForm';
-import {
-  PriceSlippageAlertModal,
-  type SlippageAlertData,
-} from './PriceSlippageAlertModal';
-import {
-  cancelBackendOrder,
-  fetchOrdersList,
-  reauthorizeBackendOrder,
-} from './trading-api';
-import {
-  INITIAL_MOCK_ORDERS,
-  TRADING_SYMBOLS,
-  type OrderRecord,
-} from './trading-mock';
+import { ActiveOrdersTable } from './ActiveOrdersTable';
+import { OrderDetails } from './OrderDetails';
+import { listOrders, getPositions, type OrderDetail } from './trading-api';
 import styles from './trading.module.css';
-
 export function TradingTerminal({
   initialSymbol,
-}: {
-  initialSymbol?: string | undefined;
-} = {}) {
-  const [orders, setOrders] = useState<OrderRecord[]>(INITIAL_MOCK_ORDERS);
-  const [slippageAlert, setSlippageAlert] = useState<SlippageAlertData | null>(
-    null,
-  );
-  const [pendingReauthOrderId, setPendingReauthOrderId] = useState<
-    string | null
-  >(null);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    fetchOrdersList(controller.signal)
-      .then((apiOrders) => {
-        if (apiOrders.length > 0) setOrders(apiOrders);
-      })
-      .catch(() => {
-        /* Mantiene datos simulados si aún no hay conexión o cuenta KYC */
-      });
-    return () => controller.abort();
-  }, []);
-
-  function handleOrderCreated(newOrder: OrderRecord) {
-    setOrders((prev) => [newOrder, ...prev]);
+}: { initialSymbol?: string | undefined } = {}) {
+  const client = useQueryClient();
+  const [selected, setSelected] = useState<string | null>(null);
+  const [editing, setEditing] = useState<OrderDetail | undefined>();
+  const [status, setStatus] = useState('');
+  const [symbol, setSymbol] = useState('');
+  const [cursors, setCursors] = useState<string[]>(['']);
+  const cursor = cursors[cursors.length - 1] ?? '';
+  const orders = useQuery({
+    queryKey: ['orders', cursor, symbol, status],
+    queryFn: ({ signal }) => listOrders(cursor, symbol, status, signal),
+    retry: false,
+    refetchInterval: 15000,
+  });
+  const positions = useQuery({
+    queryKey: ['trading-positions'],
+    queryFn: ({ signal }) => getPositions(signal),
+    retry: false,
+    refetchInterval: 15000,
+  });
+  function refresh() {
+    void client.invalidateQueries({ queryKey: ['orders'] });
+    void client.invalidateQueries({ queryKey: ['trading-positions'] });
+    void client.invalidateQueries({ queryKey: ['wallet'] });
   }
-
-  function handleSlippageRequired(
-    alertData: SlippageAlertData,
-    pendingOrder: OrderRecord,
-  ) {
-    setOrders((prev) => [pendingOrder, ...prev]);
-    setPendingReauthOrderId(pendingOrder.id);
-    setSlippageAlert(alertData);
-  }
-
-  async function handleCancelOrder(orderId: string) {
-    try {
-      const updated = await cancelBackendOrder(orderId);
-      setOrders((prev) =>
-        prev.map((ord) => (ord.id === orderId ? updated : ord)),
-      );
-      return;
-    } catch {
-      /* Fallback local */
-    }
-    setOrders((prev) =>
-      prev.map((ord) =>
-        ord.id === orderId ? { ...ord, status: 'CANCELLED' } : ord,
-      ),
-    );
-  }
-
-  function handleOpenReauthorize(order: OrderRecord) {
-    const asset = TRADING_SYMBOLS.find((s) => s.symbol === order.symbol);
-    const originalPrice =
-      order.limit_price_usd ?? order.stop_price_usd ?? asset?.priceUsd ?? 100.0;
-    const newPrice = Number((originalPrice * 1.022).toFixed(2));
-    setPendingReauthOrderId(order.id);
-    setSlippageAlert({
-      orderId: order.id,
-      symbol: order.symbol,
-      quantity: order.quantity,
-      originalPriceUsd: originalPrice,
-      newPriceUsd: newPrice,
-      variationPct: 2.2,
-      newTotalUsd: Number((newPrice * order.quantity * 1.02).toFixed(2)),
-    });
-  }
-
-  async function handleConfirmReauthorization() {
-    if (!pendingReauthOrderId || !slippageAlert) return;
-    try {
-      const updated = await reauthorizeBackendOrder(
-        pendingReauthOrderId,
-        'accept',
-      );
-      setOrders((prev) =>
-        prev.map((ord) => (ord.id === pendingReauthOrderId ? updated : ord)),
-      );
-      setSlippageAlert(null);
-      setPendingReauthOrderId(null);
-      return;
-    } catch {
-      /* Fallback local */
-    }
-    setOrders((prev) =>
-      prev.map((ord) =>
-        ord.id === pendingReauthOrderId
-          ? {
-              ...ord,
-              status: 'FILLED',
-              execution_price_usd: slippageAlert.newPriceUsd,
-              total_usd: slippageAlert.newTotalUsd,
-            }
-          : ord,
-      ),
-    );
-    setSlippageAlert(null);
-    setPendingReauthOrderId(null);
-  }
-
-  function handleCancelSlippageModal() {
-    if (pendingReauthOrderId) {
-      void handleCancelOrder(pendingReauthOrderId);
-    }
-    setSlippageAlert(null);
-    setPendingReauthOrderId(null);
-  }
-
   return (
     <div className={styles.tradingContainer}>
       <div className={styles.terminalGrid}>
         <OrderForm
-          key={initialSymbol ?? 'default'}
+          key={editing?.id ?? initialSymbol ?? 'new'}
           initialSymbol={initialSymbol}
-          onOrderCreated={handleOrderCreated}
-          onSlippageRequired={handleSlippageRequired}
+          {...(editing ? { editing } : {})}
+          onStopEditing={() => setEditing(undefined)}
+          onOrderCreated={(order) => {
+            refresh();
+            setSelected(order.id);
+          }}
         />
-
-        <div className={styles.card}>
-          <div className={styles.cardHeader}>
-            <div>
-              <h2 className={styles.cardTitle}>
-                Cotizaciones Rápidas (Wall Street)
-              </h2>
-              <p className={styles.cardSubtitle}>
-                Precios de referencia en tiempo real (USD) vía Alpaca Data Feed.
+        <section className={styles.card}>
+          <h2 className={styles.cardTitle}>Tus posiciones</h2>
+          <p className={styles.cardSubtitle}>
+            Acciones disponibles para venta, descontando las reservas
+            reportadas.
+          </p>
+          {positions.isPending && <p>Cargando posiciones…</p>}
+          {positions.isError && (
+            <p role="alert">No se pudieron consultar las posiciones.</p>
+          )}
+          {positions.data && (
+            <>
+              <p>
+                Actualizado:{' '}
+                {new Date(positions.data.positions_as_of).toLocaleString(
+                  'es-CO',
+                )}
               </p>
-            </div>
-          </div>
-          <div className={styles.tableWrap}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>Ticker</th>
-                  <th>Bolsa</th>
-                  <th>Precio (USD)</th>
-                  <th>Var.</th>
-                </tr>
-              </thead>
-              <tbody>
-                {TRADING_SYMBOLS.map((item) => (
-                  <tr key={item.symbol}>
-                    <td>
-                      <strong>{item.symbol}</strong>
-                      <div
-                        style={{
-                          fontSize: '0.73rem',
-                          color: 'var(--color-text-muted)',
-                        }}
-                      >
-                        {item.name}
-                      </div>
-                    </td>
-                    <td>{item.exchange}</td>
-                    <td>
-                      <strong>${item.priceUsd.toFixed(2)}</strong>
-                    </td>
-                    <td>
-                      <strong
-                        style={{
-                          color: item.changePct >= 0 ? '#10b981' : '#ef4444',
-                        }}
-                      >
-                        {item.changePct >= 0 ? '+' : ''}
-                        {item.changePct.toFixed(2)}%
-                      </strong>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+              <div className={styles.tableWrap}>
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th>Instrumento</th>
+                      <th>Cantidad</th>
+                      <th>Reservada</th>
+                      <th>Disponible</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {positions.data.positions.map((position) => (
+                      <tr key={position.symbol}>
+                        <td>{position.symbol}</td>
+                        <td>{position.qty}</td>
+                        <td>{position.reserved_qty}</td>
+                        <td>
+                          {Math.max(
+                            0,
+                            Number(position.qty) -
+                              Number(position.reserved_qty),
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                    {positions.data.positions.length === 0 && (
+                      <tr>
+                        <td colSpan={4}>Todavía no tienes posiciones.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </section>
       </div>
-
-      <ActiveOrdersTable
-        orders={orders}
-        onCancelOrder={handleCancelOrder}
-        onOpenReauthorize={handleOpenReauthorize}
-      />
-
-      <PriceSlippageAlertModal
-        data={slippageAlert}
-        onReauthorize={handleConfirmReauthorization}
-        onCancel={handleCancelSlippageModal}
-      />
+      <section className={styles.card}>
+        <div className={styles.cardHeader}>
+          <h2 className={styles.cardTitle}>Órdenes y ejecuciones</h2>
+          <button
+            type="button"
+            className={styles.btnSecondary}
+            disabled={orders.isFetching}
+            onClick={refresh}
+          >
+            Actualizar
+          </button>
+        </div>
+        <div className={styles.actionsRow}>
+          <label className={styles.fieldGroup}>
+            Filtrar por símbolo
+            <input
+              className={styles.input}
+              value={symbol}
+              onChange={(e) => {
+                setSymbol(e.target.value.toUpperCase());
+                setCursors(['']);
+              }}
+            />
+          </label>
+          <label className={styles.fieldGroup}>
+            Estado
+            <select
+              className={styles.select}
+              value={status}
+              onChange={(e) => {
+                setStatus(e.target.value);
+                setCursors(['']);
+              }}
+            >
+              <option value="">Todos</option>
+              {[
+                'PENDING',
+                'SUBMITTED',
+                'BROKER_SIGNED',
+                'EXECUTING',
+                'CANCELED',
+                'REJECTED',
+                'EXPIRED',
+                'IN_REVIEW',
+                'FAILED',
+                'HELD',
+              ].map((value) => (
+                <option key={value}>{value}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+        {orders.isPending && <p role="status">Consultando órdenes…</p>}
+        {orders.isError && (
+          <p role="alert">No se pudieron consultar las órdenes.</p>
+        )}
+        {orders.data && (
+          <ActiveOrdersTable
+            orders={orders.data.items}
+            onSelect={(id) => setSelected(id)}
+          />
+        )}
+        <div className={styles.actionsRow}>
+          <button
+            type="button"
+            className={styles.btnSecondary}
+            disabled={cursors.length === 1 || orders.isFetching}
+            onClick={() => setCursors((previous) => previous.slice(0, -1))}
+          >
+            Anterior
+          </button>
+          <span>Página {cursors.length}</span>
+          <button
+            type="button"
+            className={styles.btnSecondary}
+            disabled={!orders.data?.next_cursor || orders.isFetching}
+            onClick={() => {
+              if (orders.data?.next_cursor)
+                setCursors((previous) => [
+                  ...previous,
+                  orders.data.next_cursor!,
+                ]);
+            }}
+          >
+            Siguiente
+          </button>
+        </div>
+      </section>
+      {selected && (
+        <OrderDetails
+          key={selected}
+          id={selected}
+          onUpdated={refresh}
+          onEdit={(order) => setEditing(order)}
+          onClose={() => setSelected(null)}
+        />
+      )}
     </div>
   );
 }

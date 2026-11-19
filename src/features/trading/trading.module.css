@@ -560,3 +560,40 @@
   font-size: 1.1rem;
   color: var(--color-text);
 }
+
+.orderFields {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  margin: 1rem 0;
+}
+.orderFields:disabled {
+  opacity: 0.65;
+}
+.checkRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  color: var(--color-text);
+}
+.checkRow input {
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 1rem;
+  margin-top: 0.2rem;
+}
+.orderPreview {
+  padding: 1rem;
+  background: var(--color-control);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+.apiError {
+  color: var(--color-error);
+}
+.subtleLine {
+  display: block;
+  color: var(--color-text-muted);
+}

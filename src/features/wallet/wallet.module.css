@@ -341,7 +341,59 @@
 }
 
 .errorText {
-  color: #f87171;
+  color: var(--color-error);
   font-size: 0.82rem;
   margin: 0.4rem 0 0;
+}
+
+.paymentMethods {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 1.25rem 0;
+}
+.paymentMethod {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.85rem;
+  padding: 1.25rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.paymentMethod span {
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+}
+.paymentMethod[aria-pressed='true'] {
+  border-color: var(--color-success);
+  background: var(--color-success-bg);
+}
+.paymentMethod:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 3px;
+}
+.fundingFields {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+.fundingForm {
+  margin-top: 1rem;
+}
+.fundingFields:disabled {
+  opacity: 0.65;
+}
+@media (max-width: 700px) {
+  .paymentMethods {
+    grid-template-columns: 1fr;
+  }
 }

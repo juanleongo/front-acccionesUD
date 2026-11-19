@@ -21,11 +21,10 @@ export function TransactionLedgerTable({
       <div className={styles.cardHeader}>
         <div>
           <h2 id="ledger-heading" className={styles.cardTitle}>
-            Libro Mayor Contable (Cash Ledger)
+            Historial de depósitos y retiros
           </h2>
           <p className={styles.cardSubtitle}>
-            Registro auditable de depósitos, retiros, reservas de órdenes y
-            liquidaciones en USD.
+            Transferencias de la cuenta KYC en USD.
           </p>
         </div>
       </div>
@@ -119,17 +118,19 @@ export function TransactionLedgerTable({
                         })}
                       </strong>
                     </td>
-                    <td>${tx.fee_usd.toFixed(2)}</td>
+                    <td>
+                      {tx.fee_usd === null ? '—' : `$${tx.fee_usd.toFixed(2)}`}
+                    </td>
                     <td>
                       $
-                      {tx.balance_after_usd.toLocaleString('en-US', {
+                      {tx.balance_after_usd?.toLocaleString('en-US', {
                         minimumFractionDigits: 2,
-                      })}
+                      }) ?? '—'}
                     </td>
                     <td>
                       <span
                         className={
-                          tx.status === 'RESERVADO'
+                          tx.status !== 'COMPLETE'
                             ? styles.badgeReserved
                             : styles.badgeSuccess
                         }

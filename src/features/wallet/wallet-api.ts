@@ -61,9 +61,7 @@ export async function fetchWalletBalance(
   });
   if (data.unavailable) return null;
   const totalCash = Number(data.cash ?? 0);
-  const withdrawable = Number(
-    data.cash_withdrawable ?? data.buying_power ?? totalCash,
-  );
+  const withdrawable = Number(data.cash_withdrawable ?? 0);
   const reserved = Math.max(0, Number((totalCash - withdrawable).toFixed(2)));
   const invested = Number(data.long_market_value ?? 0);
 
@@ -77,7 +75,6 @@ export async function fetchWalletBalance(
 
 export async function fetchWalletTransfers(
   signal?: AbortSignal,
-  currentBalance = 100000,
 ): Promise<LedgerTransaction[]> {
   const page = await browserHttp.request({
     path: '/api/v1/wallet/transfers',
@@ -101,10 +98,10 @@ export async function fetchWalletTransfers(
       original_currency: (item.currency as CurrencyCode) || 'USD',
       original_amount: rawAmount,
       amount_usd: signedUsd,
-      fee_usd: 0,
-      balance_after_usd: currentBalance,
+      fee_usd: null,
+      balance_after_usd: null,
       external_ref: item.alpaca_transfer_id || item.id.slice(0, 10),
-      status: item.status === 'COMPLETE' ? 'COMPLETADO' : 'RESERVADO',
+      status: item.status,
       created_at: new Date(item.created_at).toLocaleString('es-CO', {
         day: '2-digit',
         month: '2-digit',
@@ -116,58 +113,43 @@ export async function fetchWalletTransfers(
   });
 }
 
-async function ensureBankRelationshipId(): Promise<string> {
-  const existing = await browserHttp.request({
+export type BankRelationship = z.infer<typeof bankOutSchema>;
+export async function fetchBanks() {
+  return browserHttp.request({
     path: '/api/v1/wallet/bank-relationships',
     method: 'GET',
     response: 'json',
     parse: z.array(bankOutSchema).parse,
   });
-  if (existing[0]) return existing[0].id;
-  const created = await browserHttp.request({
+}
+export async function createBank(body: {
+  account_owner_name: string;
+  bank_account_type: 'CHECKING' | 'SAVINGS';
+  bank_account_number: string;
+  bank_routing_number: string;
+}) {
+  return browserHttp.request({
     path: '/api/v1/wallet/bank-relationships',
     method: 'POST',
-    body: {
-      account_owner_name: 'Inversionista Acciones UD',
-      bank_account_type: 'CHECKING',
-      bank_account_number: '123456789',
-      bank_routing_number: '021000021',
-    },
+    body,
     response: 'json',
     parse: bankOutSchema.parse,
   });
-  return created.id;
 }
-
-export async function requestBackendDeposit(amountUsd: number) {
-  const bankId = await ensureBankRelationshipId();
-  const idempotencyKey = `dep-${Date.now().toString(36)}`;
+export async function requestTransfer(
+  direction: 'deposit' | 'withdrawal',
+  bankId: string,
+  amount: string,
+  key: string,
+) {
   return browserHttp.request({
-    path: '/api/v1/wallet/deposits',
+    path:
+      direction === 'deposit'
+        ? '/api/v1/wallet/deposits'
+        : '/api/v1/wallet/withdrawals',
     method: 'POST',
-    headers: { 'Idempotency-Key': idempotencyKey },
-    body: {
-      bank_relationship_id: bankId,
-      amount: amountUsd.toFixed(2),
-      currency: 'USD',
-    },
-    response: 'json',
-    parse: transferOutSchema.parse,
-  });
-}
-
-export async function requestBackendWithdrawal(amountUsd: number) {
-  const bankId = await ensureBankRelationshipId();
-  const idempotencyKey = `wd-${Date.now().toString(36)}`;
-  return browserHttp.request({
-    path: '/api/v1/wallet/withdrawals',
-    method: 'POST',
-    headers: { 'Idempotency-Key': idempotencyKey },
-    body: {
-      bank_relationship_id: bankId,
-      amount: amountUsd.toFixed(2),
-      currency: 'USD',
-    },
+    headers: { 'Idempotency-Key': key },
+    body: { bank_relationship_id: bankId, amount, currency: 'USD' },
     response: 'json',
     parse: transferOutSchema.parse,
   });

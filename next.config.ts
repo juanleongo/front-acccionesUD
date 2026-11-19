@@ -36,6 +36,7 @@ const nextConfig: NextConfig = {
       '/api/v1/instruments/search',
       '/api/v1/admin/:path*',
       '/api/v1/broker/:path*',
+      '/api/v1/portfolio/positions',
       '/api/v1/orders',
       '/api/v1/orders/:path*',
       '/api/v1/wallet/:path*',

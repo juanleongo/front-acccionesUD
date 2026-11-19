@@ -1,529 +1,574 @@
 'use client';
-
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { ApiError } from '@/lib/api';
-import { fetchWalletBalance } from '@/features/wallet';
-import { OrderTypeSelector } from './OrderTypeSelector';
-import { PriceValidityTimer } from './PriceValidityTimer';
-import type { SlippageAlertData } from './PriceSlippageAlertModal';
-import { createBackendOrder, requestOrderPreview } from './trading-api';
 import {
-  TRADING_SYMBOLS,
-  type OrderPreview,
-  type OrderRecord,
-  type OrderSide,
-  type OrderType,
-  type TimeInForce,
-} from './trading-mock';
+  previewOrder,
+  submitOrder,
+  orderAction,
+  resubmitBody,
+  searchAssets,
+  type OrderInput,
+  type OrderDetail,
+  type Preview,
+} from './trading-api';
 import styles from './trading.module.css';
 
-const PREVIEW_TTL_SECONDS = 10;
-
+export const orderTypeLabels = {
+  market: 'Mercado',
+  limit: 'Límite / take profit simple',
+  stop: 'Stop loss',
+  stop_limit: 'Stop-limit',
+  trailing_stop: 'Trailing stop',
+};
 export function OrderForm({
   initialSymbol,
+  editing,
   onOrderCreated,
-  onSlippageRequired,
+  onStopEditing,
 }: {
   initialSymbol?: string | undefined;
-  onOrderCreated: (order: OrderRecord) => void;
-  onSlippageRequired: (
-    alert: SlippageAlertData,
-    pendingOrder: OrderRecord,
-  ) => void;
+  editing?: OrderDetail | undefined;
+  onOrderCreated: (order: OrderDetail) => void;
+  onStopEditing?: () => void;
 }) {
-  const defaultSymbol = TRADING_SYMBOLS[0]?.symbol ?? 'AAPL';
-  const [symbol, setSymbol] = useState(
-    initialSymbol && TRADING_SYMBOLS.some((s) => s.symbol === initialSymbol)
-      ? initialSymbol
-      : defaultSymbol,
-  );
-  const [side, setSide] = useState<OrderSide>('buy');
-  const [orderType, setOrderType] = useState<OrderType>('market');
-  const [quantity, setQuantity] = useState(10);
-  const [timeInForce, setTimeInForce] = useState<TimeInForce>('DAY');
-  const [limitPrice, setLimitPrice] = useState('224.00');
-  const [stopPrice, setStopPrice] = useState('215.00');
-  const [marketOpen, setMarketOpen] = useState(true);
-  const [preview, setPreview] = useState<OrderPreview | null>(null);
-  const [previewExpired, setPreviewExpired] = useState(false);
-  const [feedback, setFeedback] = useState('');
-  const [buyingPowerUsd, setBuyingPowerUsd] = useState<number | null>(null);
-  const [balanceSource, setBalanceSource] = useState<'backend' | 'preview'>(
-    'preview',
-  );
-
-  useEffect(() => {
-    const controller = new AbortController();
-    fetchWalletBalance(controller.signal)
-      .then((wallet) => {
-        if (wallet) {
-          setBuyingPowerUsd(wallet.available_balance_usd);
-          setBalanceSource('backend');
+  const [draft, setDraft] = useState<OrderInput>(() =>
+    editing
+      ? {
+          symbol: editing.symbol,
+          side: editing.side,
+          qty: editing.qty,
+          type: editing.type,
+          order_class: editing.order_class,
+          time_in_force: editing.time_in_force,
+          ...(editing.limit_price ? { limit_price: editing.limit_price } : {}),
+          ...(editing.stop_price ? { stop_price: editing.stop_price } : {}),
+          ...(editing.trail_price ? { trail_price: editing.trail_price } : {}),
+          ...(editing.trail_percent
+            ? { trail_percent: editing.trail_percent }
+            : {}),
+          ...(editing.order_class === 'bracket'
+            ? {
+                take_profit: {
+                  limit_price:
+                    editing.legs.find((l) => l.role === 'take_profit')?.price ??
+                    '',
+                },
+                stop_loss: {
+                  stop_price:
+                    editing.legs.find((l) => l.role === 'stop_loss')?.price ??
+                    '',
+                },
+              }
+            : {}),
+          schedule_if_closed: Boolean(editing.scheduled_for),
         }
-      })
-      .catch(() => {
-        setBalanceSource('preview');
-      });
-    return () => controller.abort();
-  }, []);
-
-  const selectedAsset = TRADING_SYMBOLS.find(
-    (item) => item.symbol === symbol,
-  ) ?? {
-    symbol: 'AAPL',
-    name: 'Apple Inc.',
-    exchange: 'NASDAQ' as const,
-    priceUsd: 224.23,
-    changePct: 1.42,
-  };
-
-  const generatePreview = useCallback(async () => {
-    setFeedback('');
-    setPreviewExpired(false);
-    try {
-      const apiPreview = await requestOrderPreview({
-        symbol: selectedAsset.symbol,
-        side,
-        orderType,
-        quantity,
-        timeInForce,
-        limitPrice,
-        stopPrice,
-        scheduleIfClosed: !marketOpen,
-        ttlSeconds: PREVIEW_TTL_SECONDS,
-      });
-      setPreview(apiPreview);
-      setMarketOpen(apiPreview.market_open);
-      if (apiPreview.available_buying_power_usd !== undefined) {
-        setBuyingPowerUsd(apiPreview.available_buying_power_usd);
-        setBalanceSource('backend');
-      }
-      return;
-    } catch (cause) {
-      if (cause instanceof ApiError && cause.metadata.status === 409) {
-        setFeedback(
-          'Tu cuenta aún no tiene habilitada la billetera/cuenta KYC en Alpaca. Se muestra un cálculo simulado de referencia.',
-        );
-      }
-    }
-
-    const basePrice =
-      orderType === 'limit'
-        ? parseFloat(limitPrice) || selectedAsset.priceUsd
-        : orderType === 'stop_loss' || orderType === 'take_profit'
-          ? parseFloat(stopPrice) || selectedAsset.priceUsd
-          : selectedAsset.priceUsd;
-    const subtotal = basePrice * quantity;
-    const platformFee = subtotal * 0.012;
-    const advisorFee = subtotal * 0.008;
-    const total =
-      side === 'buy'
-        ? subtotal + platformFee + advisorFee
-        : subtotal - platformFee - advisorFee;
-
-    setPreview({
-      preview_id: `prv-${Date.now().toString(36)}`,
-      symbol: selectedAsset.symbol,
-      side,
-      order_type: orderType,
-      quantity,
-      quoted_price_usd: selectedAsset.priceUsd,
-      limit_price_usd: orderType === 'limit' ? basePrice : null,
-      stop_price_usd:
-        orderType === 'stop_loss' || orderType === 'take_profit'
-          ? basePrice
-          : null,
-      subtotal_usd: subtotal,
-      platform_fee_usd: platformFee,
-      advisor_fee_usd: advisorFee,
-      total_usd: total,
-      expires_at_ms: Date.now() + PREVIEW_TTL_SECONDS * 1000,
-      ttl_seconds: PREVIEW_TTL_SECONDS,
-      market_open: marketOpen,
-    });
-  }, [
-    limitPrice,
-    marketOpen,
-    orderType,
-    quantity,
-    selectedAsset.priceUsd,
-    selectedAsset.symbol,
-    side,
-    stopPrice,
-    timeInForce,
-  ]);
-
-  function buildOrderRecord(forceReauth = false): OrderRecord {
-    const activePreview = preview!;
-    const status = forceReauth
-      ? 'REAUTHORIZATION_REQUIRED'
-      : !marketOpen
-        ? 'QUEUED_OUT_OF_HOURS'
-        : activePreview.order_type === 'market'
-          ? 'FILLED'
-          : 'OPEN';
-
-    return {
-      id: `ord-${Math.floor(1000 + Math.random() * 9000)}`,
-      client_order_id: `cli-${activePreview.symbol.toLowerCase()}-${Date.now().toString(36)}`,
-      symbol: activePreview.symbol,
-      side: activePreview.side,
-      order_type: activePreview.order_type,
-      time_in_force: timeInForce,
-      quantity: activePreview.quantity,
-      execution_price_usd:
-        status === 'FILLED' ? activePreview.quoted_price_usd : null,
-      limit_price_usd: activePreview.limit_price_usd,
-      stop_price_usd: activePreview.stop_price_usd,
-      total_usd: activePreview.total_usd,
-      status,
-      execution_source: 'Alpaca Sandbox (US)',
-      created_at:
-        new Date().toLocaleTimeString('es-CO', {
-          hour: '2-digit',
-          minute: '2-digit',
-        }) + ' ET',
-    };
+      : {
+          symbol: initialSymbol ?? '',
+          side: 'buy',
+          qty: '1',
+          type: 'market',
+          order_class: 'simple',
+          time_in_force: 'day',
+          schedule_if_closed: false,
+        },
+  );
+  const [search, setSearch] = useState(initialSymbol ?? 'A');
+  const [page, setPage] = useState(1);
+  const assets = useQuery({
+    queryKey: ['trading-assets', search, page],
+    queryFn: ({ signal }) => searchAssets(search.trim(), page, signal),
+    enabled: search.trim().length > 0 && !editing,
+    retry: false,
+  });
+  const [preview, setPreview] = useState<Preview | null>(null);
+  const [ack, setAck] = useState(false);
+  const [totp, setTotp] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const flight = useRef(false);
+  const attempt = useRef<{ fingerprint: string; key: string } | null>(null);
+  function update(changes: Partial<OrderInput>) {
+    setDraft((previous) => ({ ...previous, ...changes }));
+    setPreview(null);
+    setAck(false);
+    setTotp('');
+    setError('');
+    setNotice('');
   }
-
+  function changeType(type: OrderInput['type']) {
+    const {
+      limit_price: _l,
+      stop_price: _s,
+      trail_price: _t,
+      trail_percent: _p,
+      take_profit: _tp,
+      stop_loss: _sl,
+      ...base
+    } = draft;
+    void _l;
+    void _s;
+    void _t;
+    void _p;
+    void _tp;
+    void _sl;
+    setDraft({ ...base, type, order_class: 'simple', time_in_force: 'day' });
+    setPreview(null);
+    setAck(false);
+    setTotp('');
+  }
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
-    if (!preview || previewExpired) {
-      await generatePreview();
+    if (flight.current) return;
+    if (!draft.symbol) {
+      setError('Selecciona un instrumento.');
       return;
     }
-
-    const idempotencyKey = `idem-${preview.symbol.toLowerCase()}-${Date.now().toString(36)}`;
-    let order: OrderRecord;
-    let usedBackend = false;
+    flight.current = true;
+    setBusy(true);
+    setError('');
+    setNotice('');
     try {
-      order = await createBackendOrder({
-        symbol: preview.symbol,
-        side: preview.side,
-        orderType: preview.order_type,
-        quantity: preview.quantity,
-        timeInForce,
-        limitPrice,
-        stopPrice,
-        scheduleIfClosed: !marketOpen,
-        idempotencyKey,
-      });
-      usedBackend = true;
-    } catch (cause) {
-      const status =
-        cause instanceof ApiError ? cause.metadata.status : undefined;
-      if (status === 409 || status === 422 || status === 403) {
-        setFeedback(
-          cause instanceof ApiError
-            ? `No se pudo enviar al servidor (${status}): ${cause.message}. Completa tu KYC o verifica tu poder de compra en Depósitos & Retiros.`
-            : 'No se pudo enviar la orden al servidor. Revisa tu verificación KYC o saldo.',
-        );
+      if (!preview) {
+        setPreview(await previewOrder(draft));
         return;
       }
-      order = buildOrderRecord(false);
+      if (preview.authorization_method === 'acknowledgement' && !ack) {
+        setError('Confirma la autorización por monto elevado.');
+        return;
+      }
+      if (preview.authorization_method === 'totp' && !/^\d{6}$/.test(totp)) {
+        setError('Ingresa el código MFA de seis dígitos.');
+        return;
+      }
+      const body = {
+        ...draft,
+        confirmed: true,
+        high_amount_acknowledged: ack,
+        ...(totp ? { totp_code: totp } : {}),
+      };
+      const fingerprint = JSON.stringify({
+        ...draft,
+        high_amount_acknowledged: ack,
+      });
+      if (attempt.current?.fingerprint !== fingerprint)
+        attempt.current = { fingerprint, key: crypto.randomUUID() };
+      const result = editing
+        ? await orderAction(editing.id, 'resubmit', resubmitBody(body))
+        : await submitOrder(body, attempt.current.key);
+      setNotice(
+        `Orden registrada: ${result.id}. Estado: ${result.status}${result.fully_filled ? ' · Ejecución completa' : ''}.`,
+      );
+      setPreview(null);
+      setTotp('');
+      setAck(false);
+      attempt.current = null;
+      onOrderCreated(result);
+    } catch (cause) {
+      setError(
+        cause instanceof ApiError && cause.metadata.timeout
+          ? preview
+            ? 'El servidor no confirmó el resultado en 60 segundos. Consulta el historial antes de volver a enviar. Reintentar sin cambiar los datos reutiliza la clave de la orden para evitar duplicados.'
+            : 'La vista previa no respondió en 60 segundos. Esta consulta no envía órdenes. Puedes volver a consultar la vista previa.'
+          : cause instanceof Error
+            ? cause.message
+            : 'No se pudo procesar la orden.',
+      );
+    } finally {
+      flight.current = false;
+      setBusy(false);
     }
-
-    onOrderCreated(order);
-    if (usedBackend) {
-      fetchWalletBalance()
-        .then((wallet) => {
-          if (wallet) setBuyingPowerUsd(wallet.available_balance_usd);
-        })
-        .catch(() => {});
-    }
-    setFeedback(
-      order.status === 'QUEUED_OUT_OF_HOURS'
-        ? `Orden ${order.id} encolada fuera de horario para la apertura de Wall Street.`
-        : `Orden ${order.id} (${order.symbol}) enviada con Idempotency-Key (${idempotencyKey})${usedBackend ? ' · Registrada en Alpaca Backend' : ' · Simulación local'}.`,
-    );
-    setPreview(null);
   }
-
-  function handleSimulateSlippage() {
-    if (!preview) return;
-    const newPrice = Number((preview.quoted_price_usd * 1.024).toFixed(2));
-    const newSubtotal = newPrice * preview.quantity;
-    const newTotal = newSubtotal * 1.02;
-    const pendingOrder = buildOrderRecord(true);
-    onSlippageRequired(
-      {
-        orderId: pendingOrder.id,
-        symbol: preview.symbol,
-        quantity: preview.quantity,
-        originalPriceUsd: preview.quoted_price_usd,
-        newPriceUsd: newPrice,
-        variationPct: 2.4,
-        newTotalUsd: newTotal,
-      },
-      pendingOrder,
-    );
-    setPreview(null);
-  }
-
   return (
-    <section className={styles.card} aria-labelledby="order-form-heading">
-      <div className={styles.cardHeader}>
-        <div>
-          <h2 id="order-form-heading" className={styles.cardTitle}>
-            Terminal de Órdenes · ExecutionRouter
-          </h2>
-          <p className={styles.cardSubtitle}>
-            Envío de órdenes hacia Alpaca Broker Sandbox (NYSE / NASDAQ) en
-            dólares estadounidenses (USD).
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => {
-            setMarketOpen((prev) => !prev);
-            setPreview(null);
-          }}
-          className={
-            marketOpen ? styles.marketBadgeOpen : styles.marketBadgeClosed
-          }
-          title="Alternar simulación de horario bursátil"
-        >
-          <span className={styles.dotPulse} />
-          {marketOpen
-            ? 'Mercado Abierto · Ejecución Directa'
-            : 'Fuera de Horario · Encolamiento'}
-        </button>
-      </div>
-
-      {feedback && (
-        <div className={styles.alertBanner} role="status">
-          {feedback}
-        </div>
-      )}
-
-      <div className={styles.buyingPowerBanner}>
-        <div>
-          <span className={styles.buyingPowerLabel}>
-            Poder de compra disponible en tu cuenta
-          </span>
-          <small className={styles.buyingPowerSource}>
-            {balanceSource === 'backend'
-              ? '● Sincronizado con Billetera Alpaca (GET /api/v1/wallet/balances)'
-              : '○ Modo referencia (Completa KYC o deposita fondos para sincronizar saldo real)'}
-          </small>
-        </div>
-        <strong className={styles.buyingPowerAmount}>
-          {buyingPowerUsd !== null
-            ? `$${buyingPowerUsd.toLocaleString('en-US', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })} USD`
-            : 'Sin cuenta KYC vinculada'}
-        </strong>
-      </div>
-
+    <section className={styles.card}>
+      <h2 className={styles.cardTitle}>
+        {editing ? 'Corregir orden devuelta' : 'Comprar y vender'}
+      </h2>
+      <p className={styles.cardSubtitle}>
+        Órdenes en USD · Alpaca sandbox. La vista previa es una estimación; la
+        ejecución depende del mercado.
+      </p>
       <form onSubmit={handleSubmit}>
-        <div className={styles.sideToggle} role="group" aria-label="Sentido">
-          <button
-            type="button"
-            onClick={() => {
-              setSide('buy');
-              setPreview(null);
-            }}
-            className={`${styles.sideBtn} ${side === 'buy' ? styles.sideBtnBuyActive : ''}`}
-          >
-            Comprar (Buy)
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setSide('sell');
-              setPreview(null);
-            }}
-            className={`${styles.sideBtn} ${side === 'sell' ? styles.sideBtnSellActive : ''}`}
-          >
-            Vender (Sell)
-          </button>
-        </div>
-
-        <OrderTypeSelector
-          value={orderType}
-          onChange={(nextType) => {
-            setOrderType(nextType);
-            setPreview(null);
-          }}
-        />
-
-        <div className={styles.formGrid}>
-          <div className={`${styles.fieldGroup} ${styles.fieldFull}`}>
-            <label htmlFor="trading-symbol" className={styles.fieldLabel}>
-              Activo Financiero (Wall Street)
-            </label>
+        <fieldset className={styles.orderFields} disabled={busy}>
+          {!editing && (
+            <>
+              <label className={styles.fieldGroup}>
+                Filtrar instrumentos
+                <input
+                  className={styles.input}
+                  value={search}
+                  maxLength={50}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setPage(1);
+                  }}
+                />
+              </label>
+              {assets.isError && (
+                <p role="alert">No se pudieron consultar los instrumentos.</p>
+              )}
+              <label className={styles.fieldGroup}>
+                Instrumento
+                <select
+                  className={styles.select}
+                  required
+                  value={draft.symbol}
+                  onChange={(e) => update({ symbol: e.target.value })}
+                >
+                  <option value="">Selecciona un instrumento</option>
+                  {draft.symbol &&
+                    !assets.data?.results.some(
+                      (a) => a.symbol === draft.symbol,
+                    ) && <option value={draft.symbol}>{draft.symbol}</option>}
+                  {assets.data?.results.map((asset) => (
+                    <option key={asset.symbol} value={asset.symbol}>
+                      {asset.symbol} · {asset.name} ({asset.exchange})
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className={styles.actionsRow}>
+                <button
+                  type="button"
+                  className={styles.btnSecondary}
+                  disabled={page === 1 || assets.isFetching}
+                  onClick={() => setPage(page - 1)}
+                >
+                  Anterior
+                </button>
+                <span>Página {page}</span>
+                <button
+                  type="button"
+                  className={styles.btnSecondary}
+                  disabled={
+                    assets.isFetching ||
+                    !assets.data ||
+                    page * assets.data.page_size >= assets.data.total
+                  }
+                  onClick={() => setPage(page + 1)}
+                >
+                  Siguiente
+                </button>
+              </div>
+            </>
+          )}
+          {editing && (
+            <p>
+              {draft.symbol} · {draft.side === 'buy' ? 'Compra' : 'Venta'}
+            </p>
+          )}
+          <label className={styles.fieldGroup}>
+            Operación
             <select
-              id="trading-symbol"
               className={styles.select}
-              value={symbol}
-              onChange={(e) => {
-                const nextSym = e.target.value;
-                setSymbol(nextSym);
-                const found = TRADING_SYMBOLS.find((s) => s.symbol === nextSym);
-                if (found) {
-                  setLimitPrice(found.priceUsd.toFixed(2));
-                  setStopPrice((found.priceUsd * 0.96).toFixed(2));
-                }
-                setPreview(null);
-              }}
+              disabled={Boolean(editing) || draft.order_class === 'bracket'}
+              value={draft.side}
+              onChange={(e) =>
+                update({ side: e.target.value as 'buy' | 'sell' })
+              }
             >
-              {TRADING_SYMBOLS.map((item) => (
-                <option key={item.symbol} value={item.symbol}>
-                  {item.symbol} · {item.name} ({item.exchange}) — $
-                  {item.priceUsd.toFixed(2)} USD
+              <option value="buy">Comprar</option>
+              <option value="sell">Vender</option>
+            </select>
+          </label>
+          <label className={styles.fieldGroup}>
+            Tipo de orden
+            <select
+              className={styles.select}
+              disabled={Boolean(editing)}
+              value={draft.type}
+              onChange={(e) => changeType(e.target.value as OrderInput['type'])}
+            >
+              {Object.entries(orderTypeLabels).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
                 </option>
               ))}
             </select>
-          </div>
-
-          <div className={styles.fieldGroup}>
-            <label htmlFor="trading-qty" className={styles.fieldLabel}>
-              Cantidad (Títulos)
-            </label>
+          </label>
+          <label className={styles.fieldGroup}>
+            Cantidad de acciones
             <input
-              id="trading-qty"
-              type="number"
-              min={1}
-              max={10000}
               className={styles.input}
-              value={quantity}
-              onChange={(e) => {
-                setQuantity(Math.max(1, parseInt(e.target.value, 10) || 1));
-                setPreview(null);
-              }}
+              required
+              type="number"
+              min={
+                draft.order_class === 'bracket' ||
+                draft.type === 'trailing_stop'
+                  ? '1'
+                  : '0.000000001'
+              }
+              step={
+                draft.order_class === 'bracket' ||
+                draft.type === 'trailing_stop'
+                  ? '1'
+                  : '0.000000001'
+              }
+              value={draft.qty}
+              onChange={(e) => update({ qty: e.target.value })}
             />
-          </div>
-
-          <div className={styles.fieldGroup}>
-            <label htmlFor="trading-tif" className={styles.fieldLabel}>
-              Vigencia (Time in Force)
-            </label>
+          </label>
+          <label className={styles.fieldGroup}>
+            Vigencia
             <select
-              id="trading-tif"
               className={styles.select}
-              value={timeInForce}
-              onChange={(e) => setTimeInForce(e.target.value as TimeInForce)}
+              value={draft.time_in_force}
+              onChange={(e) =>
+                update({
+                  time_in_force: e.target.value as OrderInput['time_in_force'],
+                })
+              }
             >
-              <option value="DAY">DAY (Válida hoy)</option>
-              <option value="GTC">GTC (Hasta cancelar)</option>
-              <option value="IOC">IOC (Inmediata o cancelar)</option>
+              <option value="day">DAY · Durante la sesión</option>
+              <option value="gtc">GTC · Hasta cancelación</option>
+              {draft.type !== 'trailing_stop' &&
+                draft.order_class !== 'bracket' && (
+                  <>
+                    <option value="ioc">IOC · Inmediata o cancelar</option>
+                    <option value="fok">FOK · Completa o cancelar</option>
+                  </>
+                )}
             </select>
-          </div>
-
-          {orderType === 'limit' && (
-            <div className={`${styles.fieldGroup} ${styles.fieldFull}`}>
-              <label htmlFor="trading-limit" className={styles.fieldLabel}>
-                Precio Límite (USD)
-              </label>
+          </label>
+          {(draft.type === 'limit' || draft.type === 'stop_limit') && (
+            <label className={styles.fieldGroup}>
+              Precio límite (USD)
               <input
-                id="trading-limit"
-                type="number"
-                step="0.01"
-                min="0.01"
                 className={styles.input}
-                value={limitPrice}
-                onChange={(e) => {
-                  setLimitPrice(e.target.value);
-                  setPreview(null);
-                }}
+                type="number"
+                required
+                min="0.0001"
+                step="0.0001"
+                value={draft.limit_price ?? ''}
+                onChange={(e) => update({ limit_price: e.target.value })}
               />
-            </div>
+            </label>
           )}
-
-          {(orderType === 'stop_loss' || orderType === 'take_profit') && (
-            <div className={`${styles.fieldGroup} ${styles.fieldFull}`}>
-              <label htmlFor="trading-stop" className={styles.fieldLabel}>
-                {orderType === 'stop_loss'
-                  ? 'Precio de Disparo Stop Loss (USD)'
-                  : 'Precio Objetivo Take Profit (USD)'}
-              </label>
+          {(draft.type === 'stop' || draft.type === 'stop_limit') && (
+            <label className={styles.fieldGroup}>
+              Precio de activación stop (USD)
               <input
-                id="trading-stop"
-                type="number"
-                step="0.01"
-                min="0.01"
                 className={styles.input}
-                value={stopPrice}
-                onChange={(e) => {
-                  setStopPrice(e.target.value);
-                  setPreview(null);
-                }}
+                type="number"
+                required
+                min="0.0001"
+                step="0.0001"
+                value={draft.stop_price ?? ''}
+                onChange={(e) => update({ stop_price: e.target.value })}
               />
-            </div>
+            </label>
           )}
-        </div>
-
-        {preview && (
-          <>
-            <PriceValidityTimer
-              key={preview.preview_id}
-              expiresAtMs={preview.expires_at_ms}
-              ttlSeconds={preview.ttl_seconds}
-              onRefresh={generatePreview}
-              onExpire={() => setPreviewExpired(true)}
-            />
-
-            <div className={styles.previewBox}>
-              <div className={styles.summaryRow}>
-                <span>
-                  Preview ID: <code>{preview.preview_id}</code>
-                </span>
-                <strong>${preview.quoted_price_usd.toFixed(2)} USD</strong>
-              </div>
-              <div className={styles.summaryRow}>
-                <span>Subtotal ({preview.quantity} acciones):</span>
-                <strong>${preview.subtotal_usd.toFixed(2)} USD</strong>
-              </div>
-              <div className={styles.summaryRow}>
-                <span>Comisión Plataforma (1.2%):</span>
-                <strong>${preview.platform_fee_usd.toFixed(2)} USD</strong>
-              </div>
-              <div className={styles.summaryRow}>
-                <span>Comisión Asesor (0.8%):</span>
-                <strong>${preview.advisor_fee_usd.toFixed(2)} USD</strong>
-              </div>
-              <div className={`${styles.summaryRow} ${styles.summaryTotal}`}>
-                <span>
-                  {side === 'buy'
-                    ? 'Total Estimado a Debitar:'
-                    : 'Total Neto Estimado a Recibir:'}
-                </span>
-                <strong>${preview.total_usd.toFixed(2)} USD</strong>
-              </div>
-            </div>
-          </>
-        )}
-
-        <div className={styles.actionsRow}>
-          {!preview || previewExpired ? (
-            <button
-              type="button"
-              onClick={generatePreview}
-              className={styles.btnPrimary}
-            >
-              Calcular Preview (Vigencia 10s)
-            </button>
-          ) : (
+          {draft.type === 'trailing_stop' && (
             <>
-              <button type="submit" className={styles.btnPrimary}>
-                {side === 'buy'
-                  ? `Confirmar Compra (${symbol})`
-                  : `Confirmar Venta (${symbol})`}
-              </button>
-              <button
-                type="button"
-                onClick={handleSimulateSlippage}
-                className={styles.btnSecondary}
-                title="Simula una variación brusca de precio para probar el modal de reautorización"
-              >
-                Simular Slippage (+2.4%)
-              </button>
+              <label className={styles.fieldGroup}>
+                Distancia del trailing
+                <select
+                  className={styles.select}
+                  value={draft.trail_price !== undefined ? 'price' : 'percent'}
+                  onChange={(e) => {
+                    const {
+                      trail_price: _p,
+                      trail_percent: _t,
+                      ...rest
+                    } = draft;
+                    void _p;
+                    void _t;
+                    setDraft({
+                      ...rest,
+                      ...(e.target.value === 'price'
+                        ? { trail_price: '' }
+                        : { trail_percent: '' }),
+                    });
+                    setPreview(null);
+                  }}
+                >
+                  <option value="percent">Porcentaje</option>
+                  <option value="price">USD</option>
+                </select>
+              </label>
+              <label className={styles.fieldGroup}>
+                Distancia
+                <input
+                  className={styles.input}
+                  type="number"
+                  required
+                  min={draft.trail_price !== undefined ? '0.0001' : '0.1'}
+                  max={draft.trail_price !== undefined ? undefined : '50'}
+                  step="0.0001"
+                  value={draft.trail_price ?? draft.trail_percent ?? ''}
+                  onChange={(e) =>
+                    update(
+                      draft.trail_price !== undefined
+                        ? { trail_price: e.target.value }
+                        : { trail_percent: e.target.value },
+                    )
+                  }
+                />
+              </label>
             </>
           )}
-        </div>
+          {!editing && (draft.type === 'market' || draft.type === 'limit') && (
+            <label className={styles.checkRow}>
+              <input
+                type="checkbox"
+                checked={draft.order_class === 'bracket'}
+                onChange={(e) => {
+                  const { take_profit: _tp, stop_loss: _sl, ...base } = draft;
+                  void _tp;
+                  void _sl;
+                  setDraft({
+                    ...base,
+                    side: e.target.checked ? 'buy' : base.side,
+                    order_class: e.target.checked ? 'bracket' : 'simple',
+                    time_in_force: 'day',
+                    ...(e.target.checked
+                      ? {
+                          take_profit: { limit_price: '' },
+                          stop_loss: { stop_price: '' },
+                        }
+                      : {}),
+                  });
+                  setPreview(null);
+                  setAck(false);
+                  setTotp('');
+                }}
+              />
+              Compra bracket: take profit y stop loss
+            </label>
+          )}
+          {draft.order_class === 'bracket' && (
+            <>
+              <label className={styles.fieldGroup}>
+                Take profit (USD)
+                <input
+                  className={styles.input}
+                  required
+                  type="number"
+                  min="0.0001"
+                  step="0.0001"
+                  value={draft.take_profit?.limit_price ?? ''}
+                  onChange={(e) =>
+                    update({ take_profit: { limit_price: e.target.value } })
+                  }
+                />
+              </label>
+              <label className={styles.fieldGroup}>
+                Stop loss (USD)
+                <input
+                  className={styles.input}
+                  required
+                  type="number"
+                  min="0.0001"
+                  step="0.0001"
+                  value={draft.stop_loss?.stop_price ?? ''}
+                  onChange={(e) =>
+                    update({ stop_loss: { stop_price: e.target.value } })
+                  }
+                />
+              </label>
+            </>
+          )}
+          <label className={styles.checkRow}>
+            <input
+              type="checkbox"
+              disabled={Boolean(editing)}
+              checked={draft.schedule_if_closed}
+              onChange={(e) => update({ schedule_if_closed: e.target.checked })}
+            />
+            Programar para la próxima apertura si el mercado está cerrado
+          </label>
+          {preview && (
+            <div
+              className={styles.orderPreview}
+              aria-label="Vista previa de la orden"
+            >
+              <p>Precio de referencia: ${preview.reference_price} USD</p>
+              <p>Importe estimado: ${preview.estimated_amount} USD</p>
+              <p>
+                Comisión de referencia estimada: ${preview.reference_commission}{' '}
+                USD
+              </p>
+              <p>
+                Poder de compra disponible: ${preview.available_buying_power}{' '}
+                USD
+              </p>
+              <p>
+                Mercado {preview.market_open ? 'abierto' : 'cerrado'}
+                {preview.scheduled_for
+                  ? ` · Programada: ${new Date(preview.scheduled_for).toLocaleString('es-CO')}`
+                  : ''}
+              </p>
+              {preview.authorization_method === 'acknowledgement' && (
+                <label className={styles.checkRow}>
+                  <input
+                    type="checkbox"
+                    required
+                    checked={ack}
+                    onChange={(e) => setAck(e.target.checked)}
+                  />
+                  Autorizo expresamente esta operación de monto elevado
+                </label>
+              )}
+              {preview.authorization_method === 'totp' && (
+                <label className={styles.fieldGroup}>
+                  Código MFA
+                  <input
+                    className={styles.input}
+                    required
+                    inputMode="numeric"
+                    pattern="[0-9]{6}"
+                    maxLength={6}
+                    autoComplete="one-time-code"
+                    value={totp}
+                    onChange={(e) => setTotp(e.target.value)}
+                  />
+                </label>
+              )}
+              <p>Confirma los datos antes de enviar la orden.</p>
+            </div>
+          )}
+          <div className={styles.actionsRow}>
+            <button type="submit" className={styles.btnPrimary}>
+              {busy
+                ? 'Procesando…'
+                : preview
+                  ? editing
+                    ? 'Confirmar corrección y reenviar'
+                    : 'Confirmar y enviar orden'
+                  : 'Consultar vista previa'}
+            </button>
+            {preview && (
+              <button
+                type="button"
+                className={styles.btnSecondary}
+                onClick={() => {
+                  setPreview(null);
+                  setAck(false);
+                  setTotp('');
+                }}
+              >
+                Volver a revisar
+              </button>
+            )}
+            {editing && (
+              <button
+                type="button"
+                className={styles.btnSecondary}
+                onClick={onStopEditing}
+              >
+                Salir de la corrección
+              </button>
+            )}
+          </div>
+        </fieldset>
       </form>
+      {error && (
+        <p role="alert" className={styles.apiError}>
+          {error}
+        </p>
+      )}
+      {notice && <p role="status">{notice}</p>}
     </section>
   );
 }
