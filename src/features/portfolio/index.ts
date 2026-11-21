@@ -7,3 +7,5 @@ export type {
   PortfolioRiskProfile,
   PortfolioStatistics,
 } from './portfolio-mock';
+
+export { fetchPortfolioPositions } from './portfolio-api';

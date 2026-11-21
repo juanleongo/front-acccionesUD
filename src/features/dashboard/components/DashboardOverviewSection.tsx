@@ -1,5 +1,7 @@
 'use client';
 
+import { useQuery } from '@tanstack/react-query';
+import { fetchPortfolioPositions } from '@/features/portfolio';
 import { formatPersonName } from '@/lib/format-person-name';
 import { Icon } from '@/components/ui/Icon';
 import { LoadingState } from '@/components/ui/LoadingState';
@@ -40,6 +42,33 @@ export function DashboardOverviewSection({
   onStartOrderForSymbol,
   onOpenKycModal,
 }: DashboardOverviewSectionProps) {
+  const positions = useQuery({
+    queryKey: ['portfolio', 'positions'],
+    queryFn: ({ signal }) => fetchPortfolioPositions(signal),
+    enabled: hasRealAccount,
+    retry: false,
+    refetchInterval: 30000,
+  });
+  const stocks = [...(positions.data?.positions ?? [])]
+    .sort((a, b) => Number(b.market_value) - Number(a.market_value))
+    .slice(0, 5)
+    .map((position) => {
+      const pnl = Number(position.unrealized_pnl);
+      const cost = Number(position.cost_basis);
+      const pct =
+        cost > 0
+          ? `${((pnl / cost) * 100).toLocaleString('es-CO', { maximumFractionDigits: 2, minimumFractionDigits: 2 })}%`
+          : '—';
+      return {
+        symbol: position.symbol,
+        name: position.symbol,
+        sector: `${position.qty} acciones · ${position.sector ?? 'Sector no informado'}`,
+        exchange: position.exchange,
+        price: formatUsdValue(Number(position.price)) + ' USD',
+        negative: pnl < 0,
+        change: `${pnl > 0 ? '+' : ''}${pct} (${pnl > 0 ? '+' : ''}${formatUsdValue(pnl)})`,
+      };
+    });
   if (isLoadingData) {
     return (
       <LoadingState
@@ -213,7 +242,7 @@ export function DashboardOverviewSection({
             <div className={styles.panelHeading}>
               <h2>
                 <Icon name="trend" size={18} /> Tus Inversiones Activas ·
-                Principales Acciones de Wall Street
+                Principales posiciones de tu portafolio
               </h2>
               <button
                 type="button"
@@ -230,12 +259,46 @@ export function DashboardOverviewSection({
                     <th>Activo</th>
                     <th>Bolsa</th>
                     <th>Precio (USD)</th>
-                    <th>Variación 24h</th>
+                    <th>Ganancia / pérdida</th>
                     <th>Operación</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {dashboardPreview.stocks.map((stock) => (
+                  {!hasRealAccount ? (
+                    <tr>
+                      <td colSpan={5}>
+                        Vincula tu cuenta KYC para consultar tus inversiones.
+                      </td>
+                    </tr>
+                  ) : positions.isPending ? (
+                    <tr>
+                      <td colSpan={5} role="status">
+                        Consultando tus inversiones…
+                      </td>
+                    </tr>
+                  ) : positions.isError && !positions.data ? (
+                    <tr>
+                      <td colSpan={5} role="alert">
+                        No se pudieron cargar tus inversiones.{' '}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            void positions.refetch();
+                          }}
+                        >
+                          Reintentar
+                        </button>
+                      </td>
+                    </tr>
+                  ) : stocks.length === 0 ? (
+                    <tr>
+                      <td colSpan={5}>
+                        Todavía no tienes posiciones abiertas. Tus compras
+                        aparecerán cuando se ejecuten.
+                      </td>
+                    </tr>
+                  ) : null}
+                  {stocks.map((stock) => (
                     <tr key={stock.symbol}>
                       <td>
                         <div className={styles.company}>
@@ -273,6 +336,24 @@ export function DashboardOverviewSection({
                 </tbody>
               </table>
             </div>
+            {positions.data && (
+              <p className={styles.investmentSummaryNote}>
+                Hasta 5 posiciones, ordenadas por valor de mercado.
+                Ganancia/pérdida no realizada frente al costo invertido.
+                Actualizado:{' '}
+                {new Date(positions.data.positions_as_of).toLocaleString(
+                  'es-CO',
+                  { timeZone: 'America/Bogota' },
+                )}{' '}
+                (Colombia).
+              </p>
+            )}
+            {positions.isError && positions.data && (
+              <p role="alert">
+                No se pudo actualizar. Se conserva la última información
+                recibida.
+              </p>
+            )}
           </section>
 
           <section className={styles.portfolio}>

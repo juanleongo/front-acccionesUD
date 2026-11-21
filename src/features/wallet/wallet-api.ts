@@ -76,15 +76,28 @@ export async function fetchWalletBalance(
 
 export async function fetchWalletTransfers(
   signal?: AbortSignal,
-): Promise<LedgerTransaction[]> {
+  filters: {
+    from?: string;
+    to?: string;
+    direction?: string;
+    cursor?: string;
+  } = {},
+): Promise<{ items: LedgerTransaction[]; next_cursor: string | null }> {
   const page = await browserHttp.request({
     path: '/api/v1/wallet/transfers',
+    query: {
+      page_size: '10',
+      ...(filters.from ? { from: filters.from + 'T00:00:00-05:00' } : {}),
+      ...(filters.to ? { to: filters.to + 'T23:59:59.999999-05:00' } : {}),
+      ...(filters.direction ? { direction: filters.direction } : {}),
+      ...(filters.cursor ? { cursor: filters.cursor } : {}),
+    },
     method: 'GET',
     response: 'json',
     parse: transferPageSchema.parse,
     ...(signal ? { signal } : {}),
   });
-  return page.items.map((item) => {
+  const items: LedgerTransaction[] = page.items.map((item) => {
     const rawAmount = Number(item.amount) || 0;
     const isIncoming = item.direction === 'INCOMING';
     const signedUsd = isIncoming ? rawAmount : -rawAmount;
@@ -102,6 +115,7 @@ export async function fetchWalletTransfers(
       external_ref: item.alpaca_transfer_id || item.id.slice(0, 10),
       status: item.status,
       created_at: new Date(item.created_at).toLocaleString('es-CO', {
+        timeZone: 'America/Bogota',
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',
@@ -110,6 +124,7 @@ export async function fetchWalletTransfers(
       }),
     };
   });
+  return { items, next_cursor: page.next_cursor ?? null };
 }
 
 export type BankRelationship = z.infer<typeof bankOutSchema>;

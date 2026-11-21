@@ -7,7 +7,6 @@ import {
 } from '../portfolio-formatters';
 import type {
   PortfolioExecution,
-  PortfolioPositionsData,
   PortfolioReportSummary,
 } from '../portfolio-mock';
 import styles from '../portfolio.module.css';
@@ -30,7 +29,7 @@ export function PortfolioExecutionsTab({
           </h3>
           <p className={styles.panelDesc}>
             Registro de órdenes liquidadas en Wall Street y desglose de comisión
-            operativa (2%).
+            reportada por la API.
           </p>
         </div>
         <div className={styles.filterRow}>
@@ -54,7 +53,7 @@ export function PortfolioExecutionsTab({
               <th>Operación</th>
               <th>Cantidad</th>
               <th>Precio Liquidación</th>
-              <th>Comisión (2%)</th>
+              <th>Comisión</th>
               <th>Tipo de Liquidación</th>
             </tr>
           </thead>
@@ -89,7 +88,7 @@ export function PortfolioExecutionsTab({
                   <span className={styles.exchangeBadge}>
                     {ex.commission_source === 'official'
                       ? 'Confirmada'
-                      : 'Estimada (2%)'}
+                      : 'Estimada'}
                   </span>
                 </td>
               </tr>
@@ -104,7 +103,6 @@ export function PortfolioExecutionsTab({
 export function PortfolioReportsTab({
   reports,
   selectedReport,
-  positionsData,
   periodFrom,
   periodTo,
   onPeriodFromChange,
@@ -114,7 +112,6 @@ export function PortfolioReportsTab({
 }: {
   reports: PortfolioReportSummary[];
   selectedReport: PortfolioReportSummary | null;
-  positionsData: PortfolioPositionsData;
   periodFrom: string;
   periodTo: string;
   onPeriodFromChange: (val: string) => void;
@@ -220,8 +217,7 @@ export function PortfolioReportsTab({
                 <span className={styles.factorScore}>
                   {formatPortfolioUsd(
                     String(
-                      selectedReport.content?.market_value ??
-                        positionsData.totals.market_value,
+                      selectedReport.content?.market_value ?? 'No disponible',
                     ),
                   )}
                 </span>
@@ -231,8 +227,7 @@ export function PortfolioReportsTab({
                 <span className={styles.factorScore}>
                   {formatPortfolioUsd(
                     String(
-                      selectedReport.content?.cost_basis ??
-                        positionsData.totals.cost_basis,
+                      selectedReport.content?.cost_basis ?? 'No disponible',
                     ),
                   )}
                 </span>
@@ -242,8 +237,7 @@ export function PortfolioReportsTab({
                 <span className={styles.factorScore}>
                   {formatPortfolioUsd(
                     String(
-                      selectedReport.content?.unrealized_pnl ??
-                        positionsData.totals.unrealized_pnl,
+                      selectedReport.content?.unrealized_pnl ?? 'No disponible',
                     ),
                   )}
                 </span>

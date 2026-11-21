@@ -123,12 +123,16 @@ export async function listOrders(
   symbol = '',
   status = '',
   signal?: AbortSignal,
+  fromDate = '',
+  toDate = '',
 ) {
   return browserHttp.request({
     path: '/api/v1/orders',
     method: 'GET',
     query: {
-      page_size: '20',
+      page_size: '10',
+      ...(fromDate ? { from: `${fromDate}T00:00:00-05:00` } : {}),
+      ...(toDate ? { to: `${toDate}T23:59:59.999999-05:00` } : {}),
       ...(cursor ? { cursor } : {}),
       ...(symbol ? { symbol } : {}),
       ...(status ? { status } : {}),

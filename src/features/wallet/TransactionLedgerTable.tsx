@@ -1,12 +1,13 @@
 'use client';
 
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { fetchWalletTransfers } from './wallet-api';
 import {
   formatTransferStatus,
   formatUsd,
   getTransferStatusTone,
 } from './wallet-labels';
-import type { LedgerTransaction, LedgerTxType } from './wallet-mock';
 import styles from './wallet.module.css';
 
 const TONE_BADGE_MAP = {
@@ -15,17 +16,30 @@ const TONE_BADGE_MAP = {
   error: styles.badgeError,
 } as const;
 
-export function TransactionLedgerTable({
-  transactions,
-}: {
-  transactions: LedgerTransaction[];
-}) {
-  const [filterType, setFilterType] = useState<'ALL' | LedgerTxType>('ALL');
-
-  const filtered = transactions.filter((tx) => {
-    if (filterType === 'ALL') return true;
-    return tx.tx_type === filterType;
+export function TransactionLedgerTable() {
+  const [filterType, setFilterType] = useState('ALL');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
+  const [cursors, setCursors] = useState(['']);
+  const invalid = Boolean(from && to && from > to);
+  const query = useQuery({
+    queryKey: ['wallet', 'transfers', filterType, from, to, cursors.at(-1)],
+    queryFn: ({ signal }) =>
+      fetchWalletTransfers(signal, {
+        from,
+        to,
+        direction:
+          filterType === 'DEPOSIT'
+            ? 'INCOMING'
+            : filterType === 'WITHDRAWAL'
+              ? 'OUTGOING'
+              : '',
+        cursor: cursors.at(-1) ?? '',
+      }),
+    enabled: !invalid,
+    retry: false,
   });
+  const filtered = invalid ? [] : (query.data?.items ?? []);
 
   return (
     <section className={styles.card} aria-labelledby="ledger-heading">
@@ -43,17 +57,18 @@ export function TransactionLedgerTable({
       <div className={styles.filterRow}>
         {(
           [
-            { id: 'ALL', label: `Todos (${transactions.length})` },
+            { id: 'ALL', label: 'Todos' },
             { id: 'DEPOSIT', label: 'Depósitos' },
             { id: 'WITHDRAWAL', label: 'Retiros' },
-            { id: 'ORDER_RESERVATION', label: 'Reservas' },
-            { id: 'TRADE_SETTLEMENT', label: 'Liquidaciones' },
           ] as const
         ).map((tab) => (
           <button
             key={tab.id}
             type="button"
-            onClick={() => setFilterType(tab.id)}
+            onClick={() => {
+              setFilterType(tab.id);
+              setCursors(['']);
+            }}
             className={`${styles.filterPill} ${filterType === tab.id ? styles.filterPillActive : ''}`}
           >
             {tab.label}
@@ -61,6 +76,68 @@ export function TransactionLedgerTable({
         ))}
       </div>
 
+      <div className={styles.filterRow}>
+        <label className={styles.fieldGroup}>
+          Desde
+          <input
+            type="date"
+            className={styles.input}
+            value={from}
+            max={to || undefined}
+            onChange={(e) => {
+              setFrom(e.target.value);
+              setCursors(['']);
+            }}
+          />
+        </label>
+        <label className={styles.fieldGroup}>
+          Hasta
+          <input
+            type="date"
+            className={styles.input}
+            value={to}
+            min={from || undefined}
+            onChange={(e) => {
+              setTo(e.target.value);
+              setCursors(['']);
+            }}
+          />
+        </label>
+        <button
+          type="button"
+          className={styles.btnCompact}
+          disabled={!from && !to}
+          onClick={() => {
+            setFrom('');
+            setTo('');
+            setCursors(['']);
+          }}
+        >
+          Limpiar fechas
+        </button>
+      </div>
+      <p className={styles.cardSubtitle}>
+        Fechas de registro en hora de Colombia (UTC−5), ambos días incluidos.
+      </p>
+      {invalid && (
+        <p role="alert" className={styles.errorText}>
+          Desde no puede ser posterior a Hasta.
+        </p>
+      )}
+      {query.isFetching && <p role="status">Consultando movimientos…</p>}
+      {query.isError && (
+        <p role="alert" className={styles.errorText}>
+          No se pudo consultar el historial.{' '}
+          <button
+            type="button"
+            onClick={() => {
+              void query.refetch();
+            }}
+          >
+            Reintentar
+          </button>
+        </p>
+      )}
       <div className={styles.tableWrap}>
         <table className={styles.table}>
           <thead>
@@ -78,7 +155,11 @@ export function TransactionLedgerTable({
             {filtered.length === 0 ? (
               <tr>
                 <td colSpan={7} className={styles.emptyCell}>
-                  No existen movimientos para el filtro seleccionado.
+                  {query.isFetching
+                    ? 'Cargando…'
+                    : query.isError || invalid
+                      ? 'Sin datos disponibles para esta consulta.'
+                      : 'No existen movimientos para el filtro seleccionado.'}
                 </td>
               </tr>
             ) : (
@@ -132,6 +213,28 @@ export function TransactionLedgerTable({
             )}
           </tbody>
         </table>
+      </div>
+      <div className={styles.filterRow}>
+        <button
+          type="button"
+          className={styles.btnCompact}
+          disabled={invalid || query.isFetching || cursors.length === 1}
+          onClick={() => setCursors((previous) => previous.slice(0, -1))}
+        >
+          Anterior
+        </button>
+        <span>Página {cursors.length} · Máximo 10 movimientos</span>
+        <button
+          type="button"
+          className={styles.btnCompact}
+          disabled={invalid || query.isFetching || !query.data?.next_cursor}
+          onClick={() => {
+            const next = query.data?.next_cursor;
+            if (next) setCursors((previous) => [...previous, next]);
+          }}
+        >
+          Siguiente
+        </button>
       </div>
     </section>
   );

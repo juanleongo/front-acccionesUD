@@ -19,12 +19,17 @@ export function TradingTerminal({
   const [editing, setEditing] = useState<OrderDetail | undefined>();
   const [status, setStatus] = useState('');
   const [symbol, setSymbol] = useState('');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+  const invalidDates = Boolean(fromDate && toDate && fromDate > toDate);
   const [cursors, setCursors] = useState<string[]>(['']);
   const cursor = cursors[cursors.length - 1] ?? '';
 
   const orders = useQuery({
-    queryKey: ['orders', cursor, symbol, status],
-    queryFn: ({ signal }) => listOrders(cursor, symbol, status, signal),
+    queryKey: ['orders', cursor, symbol, status, fromDate, toDate],
+    queryFn: ({ signal }) =>
+      listOrders(cursor, symbol, status, signal, fromDate, toDate),
+    enabled: !invalidDates,
     retry: false,
     refetchInterval: 15000,
   });
@@ -75,7 +80,7 @@ export function TradingTerminal({
           <button
             type="button"
             className={styles.btnCompact}
-            disabled={orders.isFetching}
+            disabled={invalidDates || orders.isFetching}
             onClick={refresh}
           >
             Actualizar
@@ -113,9 +118,56 @@ export function TradingTerminal({
               ))}
             </select>
           </label>
+          <label className={styles.fieldGroup}>
+            Desde
+            <input
+              className={styles.input}
+              type="date"
+              value={fromDate}
+              max={toDate || undefined}
+              onChange={(e) => {
+                setFromDate(e.target.value);
+                setCursors(['']);
+              }}
+            />
+          </label>
+          <label className={styles.fieldGroup}>
+            Hasta
+            <input
+              className={styles.input}
+              type="date"
+              value={toDate}
+              min={fromDate || undefined}
+              onChange={(e) => {
+                setToDate(e.target.value);
+                setCursors(['']);
+              }}
+            />
+          </label>
+          <button
+            type="button"
+            className={styles.btnCompact}
+            disabled={!fromDate && !toDate}
+            onClick={() => {
+              setFromDate('');
+              setToDate('');
+              setCursors(['']);
+            }}
+          >
+            Limpiar fechas
+          </button>
         </div>
+        <p className={styles.cardSubtitle}>
+          Fecha de creación de la orden · Hora de Colombia (UTC−5). Incluye
+          ambos días.
+        </p>
+        {invalidDates && (
+          <p role="alert" className={styles.alertError}>
+            La fecha Desde no puede ser posterior a Hasta.
+          </p>
+        )}
 
-        {orders.isPending && (
+        {!invalidDates && orders.isPending && (
           <LoadingState
             mode="compact"
             label="Consultando órdenes…"
@@ -129,7 +181,7 @@ export function TradingTerminal({
           </p>
         )}
 
-        {orders.data && (
+        {!invalidDates && orders.data && (
           <ActiveOrdersTable
             orders={orders.data.items}
             onSelect={(id) => setSelected(id)}
@@ -140,16 +192,20 @@ export function TradingTerminal({
           <button
             type="button"
             className={styles.btnCompact}
-            disabled={cursors.length === 1 || orders.isFetching}
+            disabled={invalidDates || cursors.length === 1 || orders.isFetching}
             onClick={() => setCursors((previous) => previous.slice(0, -1))}
           >
             Anterior
           </button>
-          <span className={styles.pageLabel}>Página {cursors.length}</span>
+          <span className={styles.pageLabel}>
+            Página {cursors.length} · Máximo 10 órdenes
+          </span>
           <button
             type="button"
             className={styles.btnCompact}
-            disabled={!orders.data?.next_cursor || orders.isFetching}
+            disabled={
+              invalidDates || !orders.data?.next_cursor || orders.isFetching
+            }
             onClick={() => {
               if (orders.data?.next_cursor)
                 setCursors((previous) => [

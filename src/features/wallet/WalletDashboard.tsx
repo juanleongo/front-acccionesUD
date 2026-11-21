@@ -1,28 +1,25 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { ApiError } from '@/lib/api';
 import { BalanceSummaryCard } from './BalanceSummaryCard';
 import { FundingPanel } from './FundingPanel';
 import { TransactionLedgerTable } from './TransactionLedgerTable';
-import { fetchWalletBalance, fetchWalletTransfers } from './wallet-api';
+import { fetchWalletBalance } from './wallet-api';
 import styles from './wallet.module.css';
 
 export function WalletDashboard() {
+  const client = useQueryClient();
   const query = useQuery({
     queryKey: ['wallet', 'funding'],
     queryFn: async ({ signal }) => {
-      const [balance, transactions] = await Promise.all([
-        fetchWalletBalance(signal),
-        fetchWalletTransfers(signal),
-      ]);
-      return { balance, transactions };
+      const balance = await fetchWalletBalance(signal);
+      return { balance };
     },
     retry: false,
   });
   const balance = query.isError ? null : (query.data?.balance ?? null);
-  const transactions = query.isError ? [] : (query.data?.transactions ?? []);
   const loading = query.isFetching;
   const isSessionExpired =
     query.error instanceof ApiError && query.error.metadata.status === 401;
@@ -34,7 +31,10 @@ export function WalletDashboard() {
         : '';
 
   async function refresh() {
-    await query.refetch();
+    await Promise.all([
+      query.refetch(),
+      client.invalidateQueries({ queryKey: ['wallet', 'transfers'] }),
+    ]);
   }
 
   return (
@@ -76,7 +76,7 @@ export function WalletDashboard() {
         onRefresh={refresh}
         available={balance?.available_balance_usd ?? null}
       />
-      <TransactionLedgerTable transactions={transactions} />
+      <TransactionLedgerTable />
     </div>
   );
 }

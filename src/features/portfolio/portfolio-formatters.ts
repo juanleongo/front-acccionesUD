@@ -12,7 +12,7 @@ export const ownerRoleLabels: Record<string, string> = {
 
 export function formatPortfolioUsd(val: string | number): string {
   const num = typeof val === 'number' ? val : Number(val);
-  if (!Number.isFinite(num)) return '$0.00 USD';
+  if (!Number.isFinite(num)) return 'No disponible';
   return `$${num.toLocaleString('en-US', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
