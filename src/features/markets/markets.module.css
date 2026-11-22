@@ -1,11 +1,14 @@
 .panel {
-  background: var(--color-surface);
+  width: 100%;
+  max-width: var(--container-max-workspace);
+  margin-inline: auto;
+  background: var(--color-card-gradient);
   color: var(--color-text);
-  border: 1.5px solid var(--color-border-strong);
-  border-radius: 1.25rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-2xl);
   padding: clamp(1rem, 3vw, 2rem);
   min-width: 0;
-  box-shadow: var(--shadow-market);
+  box-shadow: var(--shadow-card-elevated);
 }
 
 .marketTopBar {
@@ -13,22 +16,25 @@
   flex-wrap: wrap;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 1rem;
+  gap: var(--space-4);
+  padding-bottom: var(--space-4);
   margin-bottom: 1.25rem;
+  border-bottom: 1px solid var(--color-divider);
 }
 
 .marketTopBar h2 {
   margin: 0.2rem 0 0;
-  font-size: 1.45rem;
+  font-size: clamp(1.25rem, 2.4vw, 1.55rem);
   font-weight: 800;
-  letter-spacing: -0.02em;
+  letter-spacing: var(--letter-spacing-tight);
+  color: var(--color-text);
 }
 
 .sectionKicker {
   display: block;
-  font-size: 0.72rem;
+  font-size: var(--font-size-xs);
   font-weight: 800;
-  letter-spacing: 0.06em;
+  letter-spacing: var(--letter-spacing-label);
   text-transform: uppercase;
   color: var(--color-primary);
 }
@@ -37,43 +43,66 @@
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
-  min-width: 14rem;
+  min-width: 0;
+  flex: 0 1 20rem;
+  width: min(100%, 20rem);
+}
+
+.marketPickerLabel label {
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: var(--color-text-muted);
 }
 
 .panel section {
-  margin: 1.75rem 0;
+  margin: 1.5rem 0;
 }
 
-.panel label {
-  display: grid;
-  gap: 0.4rem;
-  width: fit-content;
-  max-width: 100%;
-  font-size: 0.88rem;
+.dateFilterLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+  flex: 1 1 9.5rem;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+.dateInput {
+  width: 100%;
+  min-width: 0;
+  min-height: var(--size-control-min);
+  padding: 0.55rem 0.85rem;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-sm);
   font-weight: 600;
   color: var(--color-text);
+  background: var(--color-control);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-control);
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
 }
 
-.panel input,
-.panel select,
-.panel button {
-  padding: 0.65rem 0.9rem;
-  font: inherit;
-  color: var(--color-text);
-  background: var(--color-control);
-  border: 1.5px solid var(--color-border-strong);
-  border-radius: 0.65rem;
-  max-width: 100%;
-  box-shadow: var(--shadow-control);
+.dateInput:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-focus-ring), var(--shadow-control);
 }
 
 .clockCard {
-  background: var(--color-surface-raised);
-  border: 1.5px solid var(--color-border-strong);
-  border-radius: 1.1rem;
-  padding: 1.35rem;
+  background: var(--color-card-gradient);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: clamp(1rem, 2.5vw, 1.4rem);
   margin: 1.5rem 0;
-  box-shadow: var(--shadow-control);
+  box-shadow: var(--shadow-card);
+  min-width: 0;
 }
 
 .clockHeader {
@@ -86,7 +115,7 @@
 }
 
 .clockCard h3 {
-  font-size: 1.1rem;
+  font-size: var(--font-size-lg);
   font-weight: 800;
   margin: 0.2rem 0 0;
   color: var(--color-text);
@@ -94,41 +123,45 @@
 
 .clockStatsGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
   gap: 0.85rem;
 }
 
 .clockStatItem {
-  background: var(--color-control);
+  background: var(--color-surface-elevated);
   border: 1px solid var(--color-border);
-  border-radius: 0.75rem;
-  padding: 0.8rem 1rem;
+  border-radius: var(--radius-lg);
+  padding: 0.85rem 1rem;
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  box-shadow: var(--shadow-sm);
 }
 
 .clockStatLabel {
-  font-size: 0.76rem;
-  font-weight: 600;
-  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  color: var(--color-text-subtle);
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: var(--letter-spacing-label);
 }
 
 .clockStatValue {
-  font-size: 0.95rem;
+  font-size: var(--font-size-md);
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
   color: var(--color-text);
 }
 
 .scheduleCard {
-  background: var(--color-surface-raised);
-  border: 1.5px solid var(--color-border-strong);
-  border-radius: 1.1rem;
-  padding: 1.35rem;
+  background: var(--color-card-gradient);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: clamp(1rem, 2.5vw, 1.4rem);
   margin: 1.5rem 0 0;
-  box-shadow: var(--shadow-control);
+  box-shadow: var(--shadow-card);
+  min-width: 0;
 }
 
 .scheduleHeader {
@@ -141,32 +174,92 @@
 }
 
 .scheduleHeader h3 {
-  font-size: 1.15rem;
+  font-size: var(--font-size-lg);
   font-weight: 800;
   margin: 0.2rem 0 0;
-}
-
-.dateFilterLabel {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  min-width: 10.5rem;
+  color: var(--color-text);
 }
 
 .dayStatusBanner {
   display: flex;
   align-items: center;
   gap: 0.65rem;
-  padding: 0.75rem 1rem;
-  border-radius: 0.8rem;
+  padding: 0.78rem 1rem;
+  border-radius: var(--radius-lg);
   margin-bottom: 1rem;
-  font-size: 0.9rem;
+  font-size: var(--font-size-sm);
   border: 1px solid var(--color-border);
+}
+
+.dayStatusText {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  margin: 0;
+  color: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 40rem) {
+  .scheduleHeader .filters {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+  }
+  .panel .calendarTable {
+    display: block;
+  }
+  .calendarTable caption {
+    display: block;
+  }
+  .calendarTable thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .calendarTable tbody {
+    display: grid;
+    gap: 0.65rem;
+    padding: 0.65rem;
+  }
+  .calendarTable tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-raised);
+  }
+  .panel .calendarTable td,
+  .panel .calendarTable tbody th[scope='row'] {
+    padding: 0;
+    border: 0;
+    min-width: 0;
+    font-size: var(--font-size-xs);
+  }
+  .calendarTable .sessionTrackCell {
+    grid-column: 1 / -1;
+  }
+  .calendarTable td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 0.25rem;
+    color: var(--color-text-subtle);
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+  }
+  .calendarTable .sessionBadge {
+    max-width: 100%;
+    white-space: normal;
+  }
 }
 
 .dayStatusOpen {
   background: var(--color-success-bg);
-  border-color: rgba(16, 185, 129, 0.35);
+  border-color: var(--color-success-border);
   color: var(--color-success);
 }
 
@@ -191,17 +284,40 @@
   justify-content: space-between;
   gap: 0.75rem;
   padding: 0.85rem 1rem;
-  border-radius: 0.75rem;
+  border-radius: var(--radius-lg);
   background: var(--color-error-surface);
   color: var(--color-error);
-  border: 1px solid var(--color-error);
+  border: 1px solid var(--color-error-border);
+  font-size: var(--font-size-sm);
   font-weight: 600;
 }
 
+.alertBox p {
+  margin: 0;
+  color: inherit;
+}
+
 .retryBtn {
-  padding: 0.45rem 0.9rem !important;
-  font-weight: 700 !important;
+  min-height: 2.35rem;
+  padding: 0.45rem 0.95rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-control);
+  color: var(--color-text);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
   cursor: pointer;
+  box-shadow: var(--shadow-control);
+  transition:
+    border-color var(--transition-fast),
+    color var(--transition-fast),
+    background-color var(--transition-fast);
+}
+
+.retryBtn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: var(--color-surface-elevated);
 }
 
 .kindCell {
@@ -224,12 +340,12 @@
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  color: #03c187;
-  background: rgba(3, 193, 135, 0.12);
-  border: 1px solid rgba(3, 193, 135, 0.3);
-  padding: 0.2rem 0.6rem;
-  border-radius: 999px;
-  font-size: 0.75rem;
+  color: var(--color-success);
+  background: var(--color-success-bg);
+  border: 1px solid var(--color-success-border);
+  padding: 0.25rem 0.7rem;
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-xs);
   font-weight: 700;
   text-transform: uppercase;
 }
@@ -241,9 +357,9 @@
   color: var(--color-warning);
   background: var(--color-warning-bg);
   border: 1px solid var(--color-warning-border);
-  padding: 0.2rem 0.6rem;
-  border-radius: 999px;
-  font-size: 0.75rem;
+  padding: 0.25rem 0.7rem;
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-xs);
   font-weight: 700;
   text-transform: uppercase;
 }
@@ -254,14 +370,19 @@
   flex-wrap: wrap;
   align-items: flex-end;
   margin: 0;
+  min-width: 0;
 }
 
 .scroll {
+  width: 100%;
+  max-width: 100%;
   max-height: 28rem;
   overflow: auto;
+  -webkit-overflow-scrolling: touch;
   border: 1px solid var(--color-border);
-  border-radius: 0.75rem;
+  border-radius: var(--radius-lg);
   background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
 }
 
 .axis {
@@ -273,14 +394,15 @@
   gap: 1rem;
   font-size: 0.72rem;
   font-weight: 500;
-  color: var(--color-text-muted);
+  color: var(--color-text-subtle);
 }
 
 .track,
 .inactive {
   display: block;
+  min-width: 8.5rem;
   background: var(--color-control);
-  border-radius: 0.35rem;
+  border-radius: var(--radius-sm);
 }
 
 .track {
@@ -299,14 +421,14 @@
   position: absolute;
   top: 15%;
   height: 70%;
-  border-radius: 0.25rem;
-  background: var(--color-primary);
+  border-radius: var(--radius-sm);
+  background: var(--color-button);
 }
 
 .inactive {
   text-align: center;
   font-size: 0.8rem;
-  padding: 0.15rem;
+  padding: 0.2rem 0.45rem;
   color: var(--color-text-muted);
 }
 
@@ -314,10 +436,8 @@
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  font-size: 0.88rem;
-  border-radius: 0.85rem;
-  overflow: hidden;
-  border: 1px solid var(--color-border);
+  font-size: var(--font-size-sm);
+  font-variant-numeric: tabular-nums;
 }
 
 .panel caption {
@@ -326,22 +446,21 @@
   font-weight: 700;
   color: var(--color-primary);
   padding: 0.75rem 1rem;
-  background: var(--color-control);
+  background: var(--color-surface-elevated);
   border-bottom: 1px solid var(--color-border);
   letter-spacing: 0.02em;
 }
 
 .panel thead th {
-  padding: 0.85rem 1rem;
-  background: var(--color-surface-raised, rgba(255, 255, 255, 0.06));
-  color: var(--color-text);
+  padding: 0.82rem 1rem;
+  background: var(--color-surface-raised);
+  color: var(--color-text-subtle);
   font-weight: 700;
-  font-size: 0.75rem;
+  font-size: var(--font-size-xs);
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  border-bottom: 2px solid var(--color-border);
+  letter-spacing: var(--letter-spacing-label);
+  border-bottom: 1px solid var(--color-border);
   text-align: left;
-  white-space: nowrap;
 }
 
 .panel thead th.thSchedule {
@@ -355,19 +474,20 @@
 
 .panel tbody th[scope='row'] {
   font-family: monospace;
-  font-size: 0.85rem;
-  font-weight: 600;
+  font-size: 0.84rem;
+  font-weight: 700;
   color: var(--color-text);
   background: transparent;
   padding: 0.75rem 1rem;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border-subtle);
   text-align: left;
+  white-space: nowrap;
 }
 
 .panel td {
   padding: 0.75rem 1rem;
   text-align: left;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border-subtle);
   color: var(--color-text);
 }
 
@@ -378,16 +498,106 @@
 
 .panel tbody tr:hover td,
 .panel tbody tr:hover th {
-  background: var(--color-surface-raised, rgba(255, 255, 255, 0.03));
+  background: var(--color-surface-hover);
 }
 
 .emptyNotice {
   margin: 0.75rem 0 0;
-  padding: 1.25rem 1rem;
-  border-radius: 0.75rem;
-  background: var(--color-control);
-  border: 1px solid var(--color-border);
+  padding: 1.5rem 1rem;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-raised);
+  border: 1px dashed var(--color-border-strong);
   color: var(--color-text-muted);
   text-align: center;
-  font-size: 0.9rem;
+  font-size: var(--font-size-sm);
+}
+
+@media (max-width: 48rem) {
+  .marketPickerLabel {
+    flex-basis: 100%;
+    width: 100%;
+  }
+}
+
+.sessionBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--color-text-muted);
+  background: var(--color-surface-raised);
+}
+.sessionBadge::before {
+  content: '';
+  width: 0.4rem;
+  height: 0.4rem;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: currentColor;
+}
+.panel tbody tr[data-kind='trading_day'] .sessionBadge {
+  color: var(--color-success);
+  border-color: var(--color-success-border);
+  background: var(--color-success-bg);
+}
+.panel tbody tr[data-kind='holiday'] .sessionBadge {
+  color: var(--color-warning);
+  border-color: var(--color-warning-border);
+  background: var(--color-warning-bg);
+}
+
+.panel {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+}
+.marketTopBar {
+  padding: clamp(1rem, 2.5vw, 1.5rem);
+  border: 1px solid var(--color-primary-border);
+  border-radius: var(--radius-xl);
+  background: var(--color-card-accent-gradient);
+  align-items: center;
+}
+.marketIntro {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  flex: 1 1 24rem;
+  min-width: 0;
+}
+.marketIntroIcon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 3.25rem;
+  height: 3.25rem;
+  border: 1px solid var(--color-primary-border);
+  border-radius: var(--radius-lg);
+  color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+.marketDescription {
+  margin: 0.6rem 0 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  line-height: 1.65;
+  max-width: 40rem;
+}
+.marketPickerLabel {
+  flex-basis: 18rem;
+}
+@media (max-width: 40rem) {
+  .marketIntroIcon {
+    display: none;
+  }
+  .marketPickerLabel {
+    flex: 1 1 100%;
+    width: 100%;
+  }
 }

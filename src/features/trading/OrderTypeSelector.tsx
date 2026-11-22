@@ -1,6 +1,7 @@
 'use client';
 
-import { ORDER_TYPE_META, type OrderType } from './trading-mock';
+import { useLocale } from '@/lib/i18n';
+import { getOrderTypeMeta, type OrderType } from './trading-mock';
 import styles from './trading.module.css';
 
 const ORDER_TYPES: OrderType[] = [
@@ -17,14 +18,15 @@ export function OrderTypeSelector({
   value: OrderType;
   onChange: (type: OrderType) => void;
 }) {
+  const { locale, tx } = useLocale();
   return (
     <div
       className={styles.orderTypesGrid}
       role="radiogroup"
-      aria-label="Modalidad de orden"
+      aria-label={tx('Modalidad de orden', 'Order type')}
     >
       {ORDER_TYPES.map((type) => {
-        const meta = ORDER_TYPE_META[type];
+        const meta = getOrderTypeMeta(type, locale);
         const active = value === type;
         return (
           <button

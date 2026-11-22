@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useState } from 'react';
+import { useId } from 'react';
 import styles from './loading.module.css';
 
 export interface LoadingStateProps {
@@ -15,23 +15,6 @@ export function LoadingState({
   mode = 'card',
 }: LoadingStateProps) {
   const gradientId = useId();
-  const [percent, setPercent] = useState(18);
-
-  useEffect(() => {
-    const timer = window.setInterval(() => {
-      setPercent((prev) => {
-        if (prev >= 94) return 94;
-        if (prev < 55) return Math.min(94, prev + 9);
-        if (prev < 80) return Math.min(94, prev + 4);
-        return Math.min(94, prev + 2);
-      });
-    }, 180);
-    return () => window.clearInterval(timer);
-  }, []);
-
-  const radius = 32;
-  const circumference = 2 * Math.PI * radius;
-  const dashOffset = circumference * (1 - percent / 100);
   const isCompact = mode === 'compact';
 
   return (
@@ -53,24 +36,16 @@ export function LoadingState({
               <stop offset="100%" stopColor="var(--color-accent)" />
             </linearGradient>
           </defs>
-          <circle className={styles.ringTrack} cx="40" cy="40" r={radius} />
+          <circle className={styles.ringTrack} cx="40" cy="40" r={32} />
           <circle
             className={styles.ringProgress}
             cx="40"
             cy="40"
-            r={radius}
+            r={32}
             stroke={`url(#${gradientId})`}
-            strokeDasharray={circumference}
-            strokeDashoffset={dashOffset}
+            strokeDasharray="145 202"
           />
         </svg>
-        <span
-          className={`${styles.percentLabel} ${
-            isCompact ? styles.percentCompact : styles.percentLarge
-          }`}
-        >
-          {percent}%
-        </span>
       </div>
 
       <div className={styles.textGroup}>

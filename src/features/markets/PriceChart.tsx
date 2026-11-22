@@ -2,34 +2,42 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
+import { CustomSelect } from '@/components/ui/CustomSelect';
 import { LoadingState } from '@/components/ui/LoadingState';
-import { ApiError } from '@/lib/api';
+import { ApiError, QUERY_STALE_TIMES, queryKeys } from '@/lib/api';
+import {
+  formatDecimalNumber,
+  formatMarketDateTime,
+  formatPercent,
+} from '@/lib/formatters';
+import { useLocale } from '@/lib/i18n';
 import {
   history,
   periods,
   candleFrames,
+  candleFramesEn,
   type CandleFrame,
   type Period,
 } from './history';
-import { CandleSeries } from './CandleSeries';
+import { FinancialChart } from './chart/FinancialChart';
+import {
+  formatChartTime,
+  sessionDate,
+  type ChartMode,
+} from './chart/chart-data';
 import styles from './price.module.css';
-import { PriceSeries } from './PriceSeries';
 import { getInstruments } from './api';
 
-const percent = new Intl.NumberFormat('es-CO', {
-  style: 'percent',
-  signDisplay: 'exceptZero',
-  maximumFractionDigits: 2,
-  minimumFractionDigits: 2,
-});
-
 export function PriceChart({ exchange }: { exchange: string }) {
+  const { locale, tx } = useLocale();
+  const frameLabels = locale === 'en' ? candleFramesEn : candleFrames;
   const [letter, setLetter] = useState('A');
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState('');
   const catalog = useQuery({
-    queryKey: ['instrument-options', exchange, letter, page],
+    queryKey: queryKeys.instruments.options(exchange, letter, page),
     queryFn: ({ signal }) => getInstruments(exchange, letter, page, signal),
+    staleTime: QUERY_STALE_TIMES.catalog,
   });
   const options = catalog.data?.results ?? [];
   const symbol =
@@ -70,13 +78,14 @@ export function PriceChart({ exchange }: { exchange: string }) {
   }
 
   const [period, setPeriod] = useState<Period>('1M');
-  const [chartType, setChartType] = useState('line');
+  const [chartType, setChartType] = useState<ChartMode>('candles');
   const [frame, setFrame] = useState<CandleFrame | 'auto'>('auto');
   const timeframe = frame === 'auto' ? periods[period].frame : frame;
   const query = useQuery({
-    queryKey: ['price-history', symbol, period, timeframe],
+    queryKey: queryKeys.instruments.priceHistory(symbol, period, timeframe),
     enabled: Boolean(symbol) && !catalog.error,
     queryFn: ({ signal }) => history(symbol, period, signal, timeframe),
+    staleTime: QUERY_STALE_TIMES.realtime,
   });
   const points = query.data?.points ?? [];
   const first = points[0],
@@ -97,192 +106,299 @@ export function PriceChart({ exchange }: { exchange: string }) {
     >
       <header className={styles.head}>
         <div className={styles.titleArea}>
-          <h2>
-            {symbol ? 'Gráfico de precios de ' + symbol : 'Gráfico de precios'}
-          </h2>
-          <p>
-            {!catalog.error && !query.error && change !== null && (
-              <strong>{percent.format(change)}</strong>
-            )}{' '}
-            {periods[period].label}
-          </p>
-        </div>
-
-        <div className={styles.filterInputs}>
-          <label className={styles.field}>
-            <span>Tipo de gráfico</span>
-            <select
-              value={chartType}
-              onChange={(e) => setChartType(e.target.value)}
-            >
-              <option value="line">Línea / área</option>
-              <option value="candles">Velas japonesas</option>
-            </select>
-          </label>
-          <label className={styles.field}>
-            <span>Duración de cada vela</span>
-            <select
-              value={frame}
-              onChange={(e) => setFrame(e.target.value as CandleFrame | 'auto')}
-            >
-              <option value="auto">
-                Automática ({candleFrames[periods[period].frame]})
-              </option>
-              {Object.entries(candleFrames).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-        <div className={styles.toolbar}>
-          <div className={styles.filterInputs}>
-            <label className={`${styles.field} ${styles.letterField}`}>
-              <span>Filtro de nombre o símbolo</span>
-              <select
-                value={letter}
-                onChange={(e) => {
-                  setLetter(e.target.value);
-                  setPage(1);
-                  setSelected('');
-                }}
-              >
-                {Array.from('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-/').map(
-                  (c) => (
-                    <option key={c}>{c}</option>
-                  ),
-                )}
-              </select>
-            </label>
-
-            <label className={`${styles.field} ${styles.instrumentField}`}>
-              <span>Instrumento</span>
-              <select
-                aria-label="Instrumento"
-                value={symbol}
-                disabled={!symbol || Boolean(catalog.error)}
-                onChange={(e) => setSelected(e.target.value)}
-              >
-                {!symbol && <option value="">Selecciona un instrumento</option>}
-                {options.map((item) => (
-                  <option value={item.symbol} key={item.symbol}>
-                    {item.symbol} · {item.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+          <div>
+            <span className={styles.chartEyebrow}>
+              {exchange} · {tx('Histórico de precios', 'Price history')}
+            </span>
+            <h2>
+              {symbol
+                ? `${tx('Gráfico de precios de', 'Price chart for')} ${symbol}`
+                : tx('Gráfico de precios', 'Price chart')}
+            </h2>
+            <p>{options.find((item) => item.symbol === symbol)?.name}</p>
           </div>
-
-          <div className={styles.paginationArea}>
-            {options.length > 0 && (
-              <div
-                className={styles.pages}
-                role="navigation"
-                aria-label="Paginación de instrumentos"
-              >
-                <button
-                  type="button"
-                  className={styles.pageButton}
-                  disabled={!canGoPrev || isFetchingAny}
-                  onClick={handlePrevInstrument}
-                  aria-label="Instrumento anterior"
-                >
-                  ← Anterior
-                </button>
-                <span
-                  className={styles.pageIndicator}
-                  title={
-                    totalPages > 1
-                      ? `Instrumento ${currentIndex + 1} de ${options.length} (Lote ${page} de ${totalPages})`
-                      : `Instrumento ${currentIndex + 1} de ${options.length}`
-                  }
-                >
-                  <span className={styles.pageCurrent}>{currentIndex + 1}</span>
-                  <span className={styles.pageDivider}>/</span>
-                  <span className={styles.pageTotal}>{options.length}</span>
-                  {totalPages > 1 ? (
-                    <small className={styles.pageBatchBadge}>
-                      · Lote {page}/{totalPages}
-                    </small>
-                  ) : null}
-                </span>
-                <button
-                  type="button"
-                  className={styles.pageButton}
-                  disabled={!canGoNext || isFetchingAny}
-                  onClick={handleNextInstrument}
-                  aria-label="Siguiente instrumento"
-                >
-                  Siguiente →
-                </button>
-              </div>
+          <div className={styles.performance}>
+            {last && !query.error && (
+              <span className={styles.lastClose}>
+                {formatDecimalNumber(last.close, locale, 8)}{' '}
+                {query.data?.currency}
+                <small>
+                  {tx('Último cierre disponible', 'Last available close')}
+                </small>
+              </span>
             )}
+            {!catalog.error && !query.error && change !== null && (
+              <strong>{formatPercent(change, locale)}</strong>
+            )}{' '}
+            {locale === 'en' ? periods[period].labelEn : periods[period].label}
+          </div>
+        </div>
+
+        <div className={styles.chartControls}>
+          <div className={styles.filterInputs}>
+            <div className={styles.field}>
+              <label htmlFor="price-chart-type">
+                {tx('Tipo de gráfico', 'Chart type')}
+              </label>
+              <CustomSelect
+                id="price-chart-type"
+                value={chartType}
+                onChange={(value) => setChartType(value as ChartMode)}
+                options={[
+                  { value: 'line', label: tx('Línea', 'Line') },
+                  { value: 'area', label: tx('Área', 'Area') },
+                  {
+                    value: 'candles',
+                    label: tx('Velas japonesas', 'Candlesticks'),
+                  },
+                ]}
+              />
+            </div>
+            <div className={styles.field}>
+              <label htmlFor="price-candle-frame">
+                {tx('Intervalo de precios', 'Price interval')}
+              </label>
+              <CustomSelect
+                id="price-candle-frame"
+                value={frame}
+                onChange={(val) => setFrame(val as CandleFrame | 'auto')}
+                options={[
+                  {
+                    value: 'auto',
+                    label: `${tx('Automática', 'Auto')} (${frameLabels[periods[period].frame]})`,
+                  },
+                  ...Object.entries(frameLabels).map(([value, label]) => ({
+                    value,
+                    label,
+                  })),
+                ]}
+              />
+            </div>
+          </div>
+          <div className={styles.toolbar}>
+            <div className={styles.filterInputs}>
+              <div className={`${styles.field} ${styles.letterField}`}>
+                <label htmlFor="price-letter-filter">
+                  {tx('Explorar por letra', 'Browse by letter')}
+                </label>
+                <CustomSelect
+                  id="price-letter-filter"
+                  searchable
+                  searchPlaceholder={tx('Letra…', 'Letter…')}
+                  value={letter}
+                  onChange={(val) => {
+                    setLetter(val);
+                    setPage(1);
+                    setSelected('');
+                  }}
+                  options={Array.from(
+                    'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-/',
+                  ).map((c) => ({
+                    value: c,
+                    label: c,
+                  }))}
+                />
+              </div>
+
+              <div className={`${styles.field} ${styles.instrumentField}`}>
+                <label htmlFor="price-instrument-select">
+                  {tx('Instrumento', 'Instrument')}
+                </label>
+                <CustomSelect
+                  id="price-instrument-select"
+                  ariaLabel={tx('Instrumento', 'Instrument')}
+                  searchable
+                  searchPlaceholder={tx(
+                    'Filtrar en esta página…',
+                    'Filter this page…',
+                  )}
+                  placeholder={tx(
+                    'Selecciona un instrumento',
+                    'Select an instrument',
+                  )}
+                  value={symbol}
+                  disabled={!symbol || Boolean(catalog.error)}
+                  onChange={setSelected}
+                  options={
+                    !symbol
+                      ? [
+                          {
+                            value: '',
+                            label: tx(
+                              'Selecciona un instrumento',
+                              'Select an instrument',
+                            ),
+                          },
+                        ]
+                      : options.map((item) => ({
+                          value: item.symbol,
+                          label: `${item.symbol} · ${item.name}`,
+                        }))
+                  }
+                />
+              </div>
+            </div>
+
+            <div className={styles.paginationArea}>
+              {options.length > 0 && (
+                <div
+                  className={styles.pages}
+                  role="navigation"
+                  aria-label={tx(
+                    'Paginación de instrumentos',
+                    'Instrument pagination',
+                  )}
+                >
+                  <button
+                    type="button"
+                    className={styles.pageButton}
+                    disabled={!canGoPrev || isFetchingAny}
+                    onClick={handlePrevInstrument}
+                    aria-label={tx(
+                      'Instrumento anterior',
+                      'Previous instrument',
+                    )}
+                  >
+                    {tx('← Anterior', '← Previous')}
+                  </button>
+                  <span
+                    className={styles.pageIndicator}
+                    title={
+                      totalPages > 1
+                        ? `${tx('Instrumento', 'Instrument')} ${currentIndex + 1} ${tx('de', 'of')} ${options.length} (${tx('Lote', 'Batch')} ${page} ${tx('de', 'of')} ${totalPages})`
+                        : `${tx('Instrumento', 'Instrument')} ${currentIndex + 1} ${tx('de', 'of')} ${options.length}`
+                    }
+                  >
+                    <span className={styles.pageCurrent}>
+                      {currentIndex + 1}
+                    </span>
+                    <span className={styles.pageDivider}>/</span>
+                    <span className={styles.pageTotal}>{options.length}</span>
+                    {totalPages > 1 ? (
+                      <small className={styles.pageBatchBadge}>
+                        · {tx('Lote', 'Batch')} {page}/{totalPages}
+                      </small>
+                    ) : null}
+                  </span>
+                  <button
+                    type="button"
+                    className={styles.pageButton}
+                    disabled={!canGoNext || isFetchingAny}
+                    onClick={handleNextInstrument}
+                    aria-label={tx('Siguiente instrumento', 'Next instrument')}
+                  >
+                    {tx('Siguiente →', 'Next →')}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </header>
 
       {isFetchingAny && !catalog.isPending && !query.isPending && (
-        <LoadingState mode="compact" label="Actualizando datos de mercado…" />
+        <LoadingState
+          mode="compact"
+          label={tx(
+            'Actualizando datos de mercado…',
+            'Refreshing market data…',
+          )}
+        />
       )}
 
       <div className={styles.plot}>
         {catalog.error ? (
-          <p role="alert">
-            No se pudo cargar la lista de instrumentos.{' '}
-            <button onClick={() => catalog.refetch()}>Reintentar</button>
+          <p className={styles.plotAlert} role="alert">
+            <span>
+              {tx(
+                'No se pudo cargar la lista de instrumentos.',
+                'Could not load the instrument list.',
+              )}
+            </span>
+            <button
+              type="button"
+              className={styles.retryInlineBtn}
+              onClick={() => catalog.refetch()}
+            >
+              {tx('Reintentar', 'Retry')}
+            </button>
           </p>
         ) : catalog.isPending ? (
           <LoadingState
-            label={`Cargando instrumentos de ${exchange}…`}
-            detail="Consultando el catálogo bursátil disponible."
+            label={`${tx('Cargando instrumentos de', 'Loading instruments for')} ${exchange}…`}
+            detail={tx(
+              'Consultando el catálogo bursátil disponible.',
+              'Fetching available tradable instruments.',
+            )}
           />
         ) : !symbol ? (
-          <p>
-            Sin instrumentos para este filtro en {exchange}. Selecciona otra
-            letra o mercado.
+          <p className={styles.plotEmpty}>
+            {tx(
+              `Sin instrumentos para este filtro en ${exchange}. Selecciona otra letra o mercado.`,
+              `No instruments matched this filter on ${exchange}. Select another letter or exchange.`,
+            )}
           </p>
         ) : query.error ? (
-          <p role="alert">
-            {status === 401 ? (
-              <Link href="/login">Inicia sesión para consultar precios.</Link>
-            ) : status === 403 ? (
-              'Tu cuenta no tiene permiso para consultar precios.'
-            ) : status === 404 ? (
-              'El instrumento no está en el catálogo.'
-            ) : (
-              'No se pudo cargar el histórico.'
-            )}{' '}
-            <button onClick={() => query.refetch()}>Reintentar</button>
+          <p className={styles.plotAlert} role="alert">
+            <span>
+              {status === 401 ? (
+                <Link href="/login">
+                  {tx(
+                    'Inicia sesión para consultar precios.',
+                    'Sign in to view live quotes.',
+                  )}
+                </Link>
+              ) : status === 403 ? (
+                tx(
+                  'Tu cuenta no tiene permiso para consultar precios.',
+                  'Your account lacks permission to view market prices.',
+                )
+              ) : status === 404 ? (
+                tx(
+                  'El instrumento no está en el catálogo.',
+                  'This instrument is not in the catalog.',
+                )
+              ) : (
+                tx(
+                  'No se pudo cargar el histórico.',
+                  'Could not load price history.',
+                )
+              )}
+            </span>
+            <button
+              type="button"
+              className={styles.retryInlineBtn}
+              onClick={() => query.refetch()}
+            >
+              {tx('Reintentar', 'Retry')}
+            </button>
           </p>
         ) : query.isPending ? (
           <LoadingState
-            label={`Consultando precios históricos de ${symbol}…`}
-            detail={`Sincronizando cierres para el período ${periods[period].label.toLowerCase()}.`}
+            label={`${tx('Consultando precios históricos de', 'Loading historical prices for')} ${symbol}…`}
+            detail={`${tx('Sincronizando cierres para el período', 'Syncing price bars for')} ${(locale === 'en' ? periods[period].labelEn : periods[period].label).toLowerCase()}.`}
           />
         ) : query.data && points.length > 0 ? (
-          chartType === 'candles' ? (
-            <CandleSeries
-              key={symbol + period + timeframe}
-              candles={query.data.points}
-              currency={query.data.currency}
-              label={'Velas japonesas de ' + symbol}
-            />
-          ) : (
-            <PriceSeries
-              key={symbol + period + timeframe}
-              points={query.data.points}
-              currency={query.data.currency}
-              label={'Evolución de ' + symbol + ' · ' + periods[period].label}
-            />
-          )
+          <FinancialChart
+            points={query.data.points}
+            mode={chartType}
+            timeframe={timeframe}
+            datasetKey={`${symbol}:${period}:${timeframe}`}
+            currency={query.data.currency}
+            label={`${tx('Histórico de', 'Price history for')} ${symbol}`}
+          />
         ) : (
-          <p>Sin precios disponibles para este período.</p>
+          <p className={styles.plotEmpty}>
+            {tx(
+              'Sin precios disponibles para este período.',
+              'No price bars available for this period.',
+            )}
+          </p>
         )}
       </div>
       <div
         role="group"
-        aria-label="Período del gráfico"
+        aria-label={tx('Período del gráfico', 'Chart period')}
         className={styles.periods}
       >
         {(Object.keys(periods) as Period[]).map((value) => (
@@ -297,15 +413,17 @@ export function PriceChart({ exchange }: { exchange: string }) {
         ))}
       </div>
       {last && query.data && !catalog.error && !query.error && (
-        <footer>
-          Último cierre:{' '}
-          {last.price.toLocaleString('es-CO', { maximumFractionDigits: 8 })}{' '}
-          {query.data.currency} ·{' '}
-          {new Date(last.time).toLocaleDateString('es-CO', {
-            timeZone: 'America/New_York',
-          })}{' '}
-          · Fuente API: {query.data.source.toUpperCase()}
-          {query.data.delayed && ' · Datos diferidos'}
+        <footer className={styles.cardFooter}>
+          {tx('Último cierre:', 'Last close:')}{' '}
+          {formatDecimalNumber(last.price, locale, 8)} {query.data.currency} ·{' '}
+          {timeframe === '1Day'
+            ? formatChartTime(sessionDate(last.time), locale, false)
+            : formatMarketDateTime(last.time, locale, {
+                includeTime: false,
+                timeZone: 'America/New_York',
+              })}{' '}
+          · {tx('Fuente API:', 'API Source:')} {query.data.source.toUpperCase()}
+          {query.data.delayed && tx(' · Datos diferidos', ' · Delayed data')}
         </footer>
       )}
     </article>

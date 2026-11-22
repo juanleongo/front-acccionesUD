@@ -1,7 +1,9 @@
 'use client';
 
 import type { FormEvent } from 'react';
+import { CustomSelect } from '@/components/ui/CustomSelect';
 import { Icon } from '@/components/ui/Icon';
+import { useLocale } from '@/lib/i18n';
 import type { ScheduleOverride } from '../admin-api';
 import styles from '../admin.module.css';
 
@@ -46,65 +48,108 @@ export function AdminMarketsSection({
   onCreateOverride,
   onDeleteOverride,
 }: AdminMarketsSectionProps) {
+  const { tx } = useLocale();
   return (
     <div>
       <div className={styles.pageHeader}>
-        <h1>Supervisión de Horarios y Calendario Bursátil (Wall Street)</h1>
+        <span className={styles.pageEyebrow}>
+          {tx(
+            'Bolsas EE. UU. · América/New_York',
+            'US Exchanges · America/New_York',
+          )}
+        </span>
+        <h1>
+          {tx(
+            'Supervisión de Horarios y Calendario Bursátil (Wall Street)',
+            'Market Hours & Trading Calendar Supervision (Wall Street)',
+          )}
+        </h1>
         <p>
-          Consulta y configura los horarios de operación, los días festivos y
-          los cierres anticipados de los mercados de Estados Unidos.
+          {tx(
+            'Consulta y configura los horarios de operación, los días festivos y los cierres anticipados de los mercados de Estados Unidos.',
+            'Inspect and configure default operating hours, holidays, and early closes across US exchanges.',
+          )}
         </p>
       </div>
 
       {/* Horario por defecto */}
       <div className={styles.tableCard}>
         <div className={styles.tableHeader}>
-          <h2>Horario Estándar de Negociación</h2>
+          <h2>
+            {tx('Horario Estándar de Negociación', 'Standard Trading Schedule')}
+          </h2>
           <span className={styles.headerMeta}>
-            Zona Horaria: Eastern Standard Time (EST / New York)
+            {tx(
+              'Zona Horaria: Eastern Standard Time (EST / New York)',
+              'Time Zone: Eastern Standard Time (EST / New York)',
+            )}
           </span>
         </div>
 
-        <form onSubmit={onSaveSchedule}>
+        <form onSubmit={onSaveSchedule} noValidate>
           <div className={styles.formGrid}>
             <div className={styles.formField}>
-              <label>Mercado Objetivo</label>
-              <select
+              <label htmlFor="admin-market-target">
+                {tx('Mercado Objetivo', 'Target Exchange')}
+              </label>
+              <CustomSelect
+                id="admin-market-target"
                 value={selectedMarket}
-                onChange={(e) => onChangeMarket(e.target.value)}
-              >
-                <option value="NYSE">NYSE (New York Stock Exchange)</option>
-                <option value="NASDAQ">NASDAQ Stock Market</option>
-                <option value="AMEX">NYSE American (AMEX)</option>
-              </select>
+                onChange={onChangeMarket}
+                options={[
+                  { value: 'NYSE', label: 'NYSE (New York Stock Exchange)' },
+                  { value: 'NASDAQ', label: 'NASDAQ Stock Market' },
+                  { value: 'AMEX', label: 'NYSE American (AMEX)' },
+                ]}
+              />
             </div>
 
             <div className={styles.formField}>
-              <label>Hora de Apertura (EST)</label>
+              <label htmlFor="admin-market-open">
+                {tx('Hora de Apertura (EST)', 'Opening Time (EST)')}
+              </label>
               <input
+                id="admin-market-open"
                 type="time"
                 value={openTime}
                 onChange={(e) => onChangeOpenTime(e.target.value)}
                 required
               />
-              <small>Campana de apertura habitual: 09:30 AM</small>
+              <small>
+                {tx(
+                  'Campana de apertura habitual: 09:30 AM',
+                  'Regular opening bell: 09:30 AM',
+                )}
+              </small>
             </div>
 
             <div className={styles.formField}>
-              <label>Hora de Cierre (EST)</label>
+              <label htmlFor="admin-market-close">
+                {tx('Hora de Cierre (EST)', 'Closing Time (EST)')}
+              </label>
               <input
+                id="admin-market-close"
                 type="time"
                 value={closeTime}
                 onChange={(e) => onChangeCloseTime(e.target.value)}
                 required
               />
-              <small>Campana de cierre habitual: 04:00 PM (16:00)</small>
+              <small>
+                {tx(
+                  'Campana de cierre habitual: 04:00 PM (16:00)',
+                  'Regular closing bell: 04:00 PM (16:00)',
+                )}
+              </small>
             </div>
           </div>
 
           <div className={styles.formActions}>
             <button type="submit" className={styles.btnPrimary}>
-              <Icon name="check" size={14} /> Guardar Horario Estándar para{' '}
+              <Icon name="check" size={14} />{' '}
+              {tx(
+                'Guardar Horario Estándar para',
+                'Save Standard Schedule for',
+              )}{' '}
               {selectedMarket}
             </button>
           </div>
@@ -115,15 +160,28 @@ export function AdminMarketsSection({
       <div className={styles.tableCard}>
         <div className={styles.tableHeader}>
           <h2>
-            Excepciones de Calendario Bursátil (Feriados y Cierres Anticipados)
+            {tx(
+              'Excepciones de Calendario Bursátil (Feriados y Cierres Anticipados)',
+              'Trading Calendar Overrides (Holidays & Early Closes)',
+            )}
           </h2>
+          <span className={styles.headerMeta}>
+            {overrides.length} {tx('registros', 'overrides')}
+          </span>
         </div>
 
-        <form onSubmit={onCreateOverride} className={styles.overrideForm}>
+        <form
+          onSubmit={onCreateOverride}
+          className={styles.overrideForm}
+          noValidate
+        >
           <div className={styles.formGrid}>
             <div className={styles.formField}>
-              <label>Fecha de la Excepción</label>
+              <label htmlFor="admin-override-date">
+                {tx('Fecha de la Excepción', 'Override Date')}
+              </label>
               <input
+                id="admin-override-date"
                 type="date"
                 value={newOverrideDate}
                 onChange={(e) => onChangeOverrideDate(e.target.value)}
@@ -132,35 +190,51 @@ export function AdminMarketsSection({
             </div>
 
             <div className={styles.formField}>
-              <label>Tipo de Excepción</label>
-              <select
+              <label htmlFor="admin-override-type">
+                {tx('Tipo de Excepción', 'Override Type')}
+              </label>
+              <CustomSelect
+                id="admin-override-type"
                 value={newOverrideClosed ? 'closed' : 'early'}
-                onChange={(e) =>
-                  onChangeOverrideClosed(e.target.value === 'closed')
-                }
-              >
-                <option value="closed">
-                  Mercado Totalmente Cerrado (Feriado Oficial)
-                </option>
-                <option value="early">
-                  Cierre Anticipado (Early Close a la 1:00 PM EST)
-                </option>
-              </select>
+                onChange={(val) => onChangeOverrideClosed(val === 'closed')}
+                options={[
+                  {
+                    value: 'closed',
+                    label: tx(
+                      'Mercado Totalmente Cerrado (Feriado Oficial)',
+                      'Market Fully Closed (Official Holiday)',
+                    ),
+                  },
+                  {
+                    value: 'early',
+                    label: tx(
+                      'Cierre Anticipado (Early Close a la 1:00 PM EST)',
+                      'Early Close (1:00 PM EST)',
+                    ),
+                  },
+                ]}
+              />
             </div>
 
             {!newOverrideClosed && (
               <>
                 <div className={styles.formField}>
-                  <label>Hora Apertura</label>
+                  <label htmlFor="admin-override-open">
+                    {tx('Hora Apertura', 'Open Time')}
+                  </label>
                   <input
+                    id="admin-override-open"
                     type="time"
                     value={newOverrideOpenTime}
                     onChange={(e) => onChangeOverrideOpenTime(e.target.value)}
                   />
                 </div>
                 <div className={styles.formField}>
-                  <label>Hora Cierre</label>
+                  <label htmlFor="admin-override-close">
+                    {tx('Hora Cierre', 'Close Time')}
+                  </label>
                   <input
+                    id="admin-override-close"
                     type="time"
                     value={newOverrideCloseTime}
                     onChange={(e) => onChangeOverrideCloseTime(e.target.value)}
@@ -172,7 +246,10 @@ export function AdminMarketsSection({
 
           <div className={styles.formActions}>
             <button type="submit" className={styles.btnSecondary}>
-              + Agregar Excepción al Calendario
+              {tx(
+                '+ Agregar Excepción al Calendario',
+                '+ Add Calendar Override',
+              )}
             </button>
           </div>
         </form>
@@ -181,34 +258,34 @@ export function AdminMarketsSection({
           <table className={styles.adminTable}>
             <thead>
               <tr>
-                <th>Mercado</th>
-                <th>Fecha Programada</th>
-                <th>Estado de la Bolsa</th>
-                <th>Horario Aplicable</th>
-                <th>Acción</th>
+                <th>{tx('Mercado', 'Exchange')}</th>
+                <th>{tx('Fecha Programada', 'Scheduled Date')}</th>
+                <th>{tx('Estado de la Bolsa', 'Market Status')}</th>
+                <th>{tx('Horario Aplicable', 'Effective Hours')}</th>
+                <th>{tx('Acción', 'Action')}</th>
               </tr>
             </thead>
             <tbody>
               {overrides.map((ov) => (
                 <tr key={ov.id}>
                   <td>
-                    <strong>{ov.market}</strong>
+                    <span className={styles.roleCode}>{ov.market}</span>
                   </td>
                   <td>{ov.date}</td>
                   <td>
                     {ov.closed ? (
                       <span className={styles.statusPending}>
-                        Bolsa Cerrada
+                        {tx('Bolsa Cerrada', 'Market Closed')}
                       </span>
                     ) : (
                       <span className={styles.statusActive}>
-                        Cierre Anticipado
+                        {tx('Cierre Anticipado', 'Early Close')}
                       </span>
                     )}
                   </td>
                   <td>
                     {ov.closed
-                      ? 'Sin operaciones'
+                      ? tx('Sin operaciones', 'No trading')
                       : `${ov.open_time} - ${ov.close_time} EST`}
                   </td>
                   <td>
@@ -217,11 +294,21 @@ export function AdminMarketsSection({
                       className={styles.btnDanger}
                       onClick={() => onDeleteOverride(ov.id)}
                     >
-                      Eliminar
+                      {tx('Eliminar', 'Remove')}
                     </button>
                   </td>
                 </tr>
               ))}
+              {overrides.length === 0 && (
+                <tr>
+                  <td colSpan={5} className={styles.emptyRow}>
+                    {tx(
+                      'No hay excepciones de calendario registradas actualmente.',
+                      'No calendar overrides are currently scheduled.',
+                    )}
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

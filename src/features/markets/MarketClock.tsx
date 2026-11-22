@@ -1,15 +1,19 @@
 'use client';
 import { useQuery } from '@tanstack/react-query';
 import { LoadingState } from '@/components/ui/LoadingState';
+import { QUERY_STALE_TIMES, queryKeys } from '@/lib/api';
+import { useLocale } from '@/lib/i18n';
 import { getClock, tz } from './api';
 import { formatInstant } from './marketDates';
 import { Problem } from './MarketProblem';
 import styles from './markets.module.css';
 
 export function MarketClock() {
+  const { locale, tx } = useLocale();
   const clock = useQuery({
-    queryKey: ['markets', 'clock', tz],
+    queryKey: queryKeys.markets.clock(tz),
     queryFn: ({ signal }) => getClock(signal),
+    staleTime: QUERY_STALE_TIMES.realtime,
     refetchInterval: 60000,
   });
   return (
@@ -17,9 +21,9 @@ export function MarketClock() {
       <div className={styles.clockHeader}>
         <div>
           <span className={styles.sectionKicker}>
-            SINCRONIZACIÓN WALL STREET · {tz}
+            {tx('SINCRONIZACIÓN WALL STREET', 'WALL STREET SYNC')} · {tz}
           </span>
-          <h3>Reloj bursátil en vivo</h3>
+          <h3>{tx('Reloj bursátil en vivo', 'Live market clock')}</h3>
         </div>
         {clock.data && !clock.error && (
           <span
@@ -27,7 +31,10 @@ export function MarketClock() {
               clock.data.is_open ? styles.badgeOpen : styles.badgeClosed
             }
           >
-            ● {clock.data.is_open ? 'Mercado Abierto' : 'Mercado Cerrado'}
+            ●{' '}
+            {clock.data.is_open
+              ? tx('Mercado Abierto', 'Market Open')
+              : tx('Mercado Cerrado', 'Market Closed')}
           </span>
         )}
       </div>
@@ -36,29 +43,38 @@ export function MarketClock() {
       ) : clock.data ? (
         <div className={styles.clockStatsGrid}>
           <div className={styles.clockStatItem}>
-            <span className={styles.clockStatLabel}>Última actualización</span>
+            <span className={styles.clockStatLabel}>
+              {tx('Última actualización', 'Last update')}
+            </span>
             <strong className={styles.clockStatValue}>
-              {formatInstant(clock.data.timestamp)}
+              {formatInstant(clock.data.timestamp, locale)}
             </strong>
           </div>
           <div className={styles.clockStatItem}>
-            <span className={styles.clockStatLabel}>Próxima apertura</span>
+            <span className={styles.clockStatLabel}>
+              {tx('Próxima apertura', 'Next market open')}
+            </span>
             <strong className={styles.clockStatValue}>
-              {formatInstant(clock.data.next_open)}
+              {formatInstant(clock.data.next_open, locale)}
             </strong>
           </div>
           <div className={styles.clockStatItem}>
-            <span className={styles.clockStatLabel}>Próximo cierre</span>
+            <span className={styles.clockStatLabel}>
+              {tx('Próximo cierre', 'Next market close')}
+            </span>
             <strong className={styles.clockStatValue}>
-              {formatInstant(clock.data.next_close)}
+              {formatInstant(clock.data.next_close, locale)}
             </strong>
           </div>
         </div>
       ) : (
         <LoadingState
           mode="compact"
-          label="Consultando reloj bursátil…"
-          detail="Sincronizando horario oficial de negociación."
+          label={tx('Consultando reloj bursátil…', 'Loading market clock…')}
+          detail={tx(
+            'Sincronizando horario oficial de negociación.',
+            'Syncing official trading hours.',
+          )}
         />
       )}
     </div>

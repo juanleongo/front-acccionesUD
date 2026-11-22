@@ -1,10 +1,12 @@
 'use client';
 
 import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { CustomSelect } from '@/components/ui/CustomSelect';
 import { Icon } from '@/components/ui/Icon';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { ApiError } from '@/lib/api';
 import { formatPersonName } from '@/lib/format-person-name';
+import { useLocale } from '@/lib/i18n';
 import {
   formatBankLinkError,
   isValidAchRoutingNumber,
@@ -24,9 +26,24 @@ import {
 import styles from './wallet.module.css';
 
 const DEPOSIT_METHODS = [
-  'PSE / Transferencia Colombia',
-  'Tarjeta débito / crédito',
-  'Transferencia internacional',
+  {
+    key: 'pse',
+    es: 'PSE / Transferencia Colombia',
+    en: 'PSE / Colombia Transfer',
+    icon: 'coin',
+  },
+  {
+    key: 'card',
+    es: 'Tarjeta débito / crédito',
+    en: 'Debit / credit card',
+    icon: 'wallet',
+  },
+  {
+    key: 'wire',
+    es: 'Transferencia internacional',
+    en: 'International wire',
+    icon: 'globe',
+  },
 ] as const;
 
 export function FundingPanel({
@@ -36,10 +53,14 @@ export function FundingPanel({
   onRefresh: () => Promise<void>;
   available: number | null;
 }) {
+  const { locale, tx } = useLocale();
   const [direction, setDirection] = useState<'deposit' | 'withdrawal'>(
     'deposit',
   );
-  const [method, setMethod] = useState<string>(DEPOSIT_METHODS[0]);
+  const [methodKey, setMethodKey] = useState<string>(DEPOSIT_METHODS[0].key);
+  const activeMethod =
+    DEPOSIT_METHODS.find((item) => item.key === methodKey) ??
+    DEPOSIT_METHODS[0];
   const [banks, setBanks] = useState<BankRelationship[]>([]);
   const [loadingBanks, setLoadingBanks] = useState(true);
   const approvedBanks = banks.filter((bank) => bank.status === 'APPROVED');
@@ -47,6 +68,7 @@ export function FundingPanel({
   const [amount, setAmount] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [banksFetchError, setBanksFetchError] = useState(false);
   const [notice, setNotice] = useState('');
   const [owner, setOwner] = useState('');
   const [account, setAccount] = useState('');
@@ -59,6 +81,7 @@ export function FundingPanel({
 
   async function loadBanks() {
     setLoadingBanks(true);
+    setBanksFetchError(false);
     try {
       const result = await fetchBanks();
       setBanks(result);
@@ -84,10 +107,9 @@ export function FundingPanel({
         if (
           active &&
           !(failure instanceof ApiError && failure.metadata.status === 401)
-        )
-          setError(
-            'No se pudieron consultar las cuentas bancarias. Verifica tu sesión y el estado de tu verificación de identidad.',
-          );
+        ) {
+          setBanksFetchError(true);
+        }
       })
       .finally(() => {
         if (active) setLoadingBanks(false);
@@ -97,9 +119,19 @@ export function FundingPanel({
     };
   }, []);
 
+  const displayedError =
+    error ||
+    (banksFetchError
+      ? tx(
+          'No se pudieron consultar las cuentas bancarias. Verifica tu sesión y el estado de tu verificación de identidad.',
+          'Could not load linked bank accounts. Verify your session and identity verification status.',
+        )
+      : '');
+
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (inFlight.current) return;
+    setBanksFetchError(false);
     setError('');
     setNotice('');
     if (
@@ -107,13 +139,23 @@ export function FundingPanel({
       !Number.isFinite(Number(amount)) ||
       Number(amount) < 1
     ) {
-      setError('Ingresa un monto de al menos 1 USD con máximo dos decimales.');
+      setError(
+        tx(
+          'Ingresa un monto de al menos 1 USD con máximo dos decimales.',
+          'Enter an amount of at least 1 USD with up to two decimal places.',
+        ),
+      );
       return;
     }
     if (
       !banks.some((bank) => bank.id === bankId && bank.status === 'APPROVED')
     ) {
-      setError('Selecciona una cuenta bancaria aprobada.');
+      setError(
+        tx(
+          'Selecciona una cuenta bancaria aprobada.',
+          'Select an approved bank account.',
+        ),
+      );
       return;
     }
     if (
@@ -121,7 +163,10 @@ export function FundingPanel({
       (available === null || Number(amount) > available)
     ) {
       setError(
-        'El monto supera el saldo retirable o el saldo todavía no está disponible.',
+        tx(
+          'El monto supera el saldo retirable o el saldo todavía no está disponible.',
+          'Amount exceeds withdrawable balance or balance is not available yet.',
+        ),
       );
       return;
     }
@@ -139,7 +184,10 @@ export function FundingPanel({
         attempt.current.key,
       );
       setNotice(
-        `Solicitud registrada correctamente. Estado: ${formatTransferStatus(transfer.status)} (${transfer.status}).`,
+        tx(
+          `Solicitud registrada correctamente. Estado: ${formatTransferStatus(transfer.status, locale)} (${transfer.status}).`,
+          `Request submitted successfully. Status: ${formatTransferStatus(transfer.status, locale)} (${transfer.status}).`,
+        ),
       );
       setAmount('');
       attempt.current = null;
@@ -148,7 +196,10 @@ export function FundingPanel({
       setError(
         failure instanceof Error
           ? failure.message
-          : 'No se pudo confirmar la operación.',
+          : tx(
+              'No se pudo confirmar la operación.',
+              'Could not confirm the transfer.',
+            ),
       );
     } finally {
       inFlight.current = false;
@@ -159,30 +210,43 @@ export function FundingPanel({
   async function linkBank(event: FormEvent) {
     event.preventDefault();
     if (inFlight.current) return;
+    setBanksFetchError(false);
     setError('');
     const normalizedOwner = formatPersonName(owner);
     setOwner(normalizedOwner);
     if (!normalizedOwner) {
       setError(
-        'Escribe el nombre completo del titular, tal como aparece en tu cuenta verificada.',
+        tx(
+          'Escribe el nombre completo del titular, tal como aparece en tu cuenta verificada.',
+          'Enter the account holder’s full name as registered on your verified account.',
+        ),
       );
       return;
     }
     if (!/^[0-9]{4,17}$/.test(account)) {
       setError(
-        'El número de cuenta debe tener entre 4 y 17 dígitos, sin espacios ni guiones.',
+        tx(
+          'El número de cuenta debe tener entre 4 y 17 dígitos, sin espacios ni guiones.',
+          'Account number must contain 4 to 17 digits without spaces or hyphens.',
+        ),
       );
       return;
     }
     if (!/^[0-9]{9}$/.test(routing)) {
       setError(
-        'El código bancario ACH (routing number) debe tener exactamente 9 dígitos.',
+        tx(
+          'El código bancario ACH (routing number) debe tener exactamente 9 dígitos.',
+          'ACH routing number must contain exactly 9 digits.',
+        ),
       );
       return;
     }
     if (!isValidAchRoutingNumber(routing)) {
       setError(
-        'El código bancario no es un routing number ABA válido. Revisa los 9 dígitos con tu banco de prueba de Estados Unidos; no uses un código colombiano, PSE o SWIFT.',
+        tx(
+          'El código bancario no es un routing number ABA válido. Revisa los 9 dígitos con tu banco de prueba de Estados Unidos; no uses un código colombiano, PSE o SWIFT.',
+          'The routing number is not a valid US ABA routing number. Check the 9 digits with your US test bank; do not use Colombian, PSE, or SWIFT codes.',
+        ),
       );
       return;
     }
@@ -198,13 +262,16 @@ export function FundingPanel({
         bank_routing_number: routing,
       });
       setNotice(
-        `Cuenta vinculada correctamente. Estado: ${formatBankStatus(bank.status)}. Actualiza las cuentas para consultar su aprobación.`,
+        tx(
+          `Cuenta vinculada correctamente. Estado: ${formatBankStatus(bank.status, locale)}. Actualiza las cuentas para consultar su aprobación.`,
+          `Account linked successfully. Status: ${formatBankStatus(bank.status, locale)}. Refresh accounts to check approval.`,
+        ),
       );
       setAccount('');
       setRouting('');
       await loadBanks();
     } catch (failure) {
-      setError(formatBankLinkError(failure));
+      setError(formatBankLinkError(failure, locale));
     } finally {
       inFlight.current = false;
       setBusy(false);
@@ -212,21 +279,35 @@ export function FundingPanel({
   }
 
   return (
-    <section className={styles.card} aria-label="Depósitos y retiros">
+    <section
+      className={styles.card}
+      aria-label={tx('Depósitos y retiros', 'Deposits and withdrawals')}
+    >
       <div className={styles.cardHeader}>
         <div>
           <h2 className={styles.cardTitle}>
             {direction === 'deposit'
-              ? 'Selecciona tu método de depósito'
-              : 'Retirar a tu cuenta bancaria'}
+              ? tx(
+                  'Selecciona tu método de depósito',
+                  'Select your deposit method',
+                )
+              : tx(
+                  'Retirar a tu cuenta bancaria',
+                  'Withdraw to your bank account',
+                )}
           </h2>
           <p className={styles.cardSubtitle}>
-            Simulación con fondos de prueba en USD mediante transferencia ACH.
-            No se realizan cargos reales a tarjetas ni PSE.
+            {tx(
+              'Simulación con fondos de prueba en USD mediante transferencia ACH. No se realizan cargos reales a tarjetas ni PSE.',
+              'Simulated USD test funding via ACH transfer. No real charges are made to cards or bank accounts.',
+            )}
           </p>
         </div>
 
-        <div className={styles.filterRow} aria-label="Tipo de operación">
+        <div
+          className={styles.filterRow}
+          aria-label={tx('Tipo de operación', 'Operation type')}
+        >
           {(['deposit', 'withdrawal'] as const).map((value) => (
             <button
               key={value}
@@ -236,11 +317,14 @@ export function FundingPanel({
               className={`${styles.filterPill} ${direction === value ? styles.filterPillActive : ''}`}
               onClick={() => {
                 setDirection(value);
+                setBanksFetchError(false);
                 setError('');
                 setNotice('');
               }}
             >
-              {value === 'deposit' ? 'Depositar fondos' : 'Retirar fondos'}
+              {value === 'deposit'
+                ? tx('Depositar fondos', 'Deposit funds')
+                : tx('Retirar fondos', 'Withdraw funds')}
             </button>
           ))}
         </div>
@@ -248,20 +332,20 @@ export function FundingPanel({
 
       {direction === 'deposit' && (
         <div className={styles.paymentMethods}>
-          {DEPOSIT_METHODS.map((label, index) => (
+          {DEPOSIT_METHODS.map((item) => (
             <button
               type="button"
-              key={label}
+              key={item.key}
               disabled={busy}
-              aria-pressed={method === label}
+              aria-pressed={methodKey === item.key}
               className={styles.paymentMethod}
-              onClick={() => setMethod(label)}
+              onClick={() => setMethodKey(item.key)}
             >
-              <Icon
-                name={index === 0 ? 'coin' : index === 1 ? 'wallet' : 'globe'}
-              />
-              <strong>{label}</strong>
-              <span>Depósito simulado · USD</span>
+              <Icon name={item.icon} />
+              <strong>{tx(item.es, item.en)}</strong>
+              <span>
+                {tx('Depósito simulado · USD', 'Simulated deposit · USD')}
+              </span>
             </button>
           ))}
         </div>
@@ -282,7 +366,10 @@ export function FundingPanel({
       />
 
       {loadingBanks && (
-        <LoadingState mode="compact" label="Consultando cuentas vinculadas…" />
+        <LoadingState
+          mode="compact"
+          label={tx('Consultando cuentas vinculadas…', 'Loading linked banks…')}
+        />
       )}
       {!loadingBanks && approvedBanks.length === 0 && (
         <div className={styles.bankEmpty}>
@@ -290,13 +377,25 @@ export function FundingPanel({
           <div>
             <strong>
               {banks.length
-                ? 'Tu cuenta está pendiente de aprobación'
-                : 'Primero vincula una cuenta bancaria'}
+                ? tx(
+                    'Tu cuenta está pendiente de aprobación',
+                    'Your bank account is pending approval',
+                  )
+                : tx(
+                    'Primero vincula una cuenta bancaria',
+                    'Link a bank account first',
+                  )}
             </strong>
             <p>
               {banks.length
-                ? 'Cuando esté aprobada podrás seleccionarla para depositar o retirar fondos.'
-                : 'Completa el formulario de arriba para habilitar depósitos y retiros de prueba.'}
+                ? tx(
+                    'Cuando esté aprobada podrás seleccionarla para depositar o retirar fondos.',
+                    'Once approved, you can select it to deposit or withdraw funds.',
+                  )
+                : tx(
+                    'Completa el formulario de arriba para habilitar depósitos y retiros de prueba.',
+                    'Complete the form above to enable test deposits and withdrawals.',
+                  )}
             </p>
           </div>
           <button
@@ -305,16 +404,19 @@ export function FundingPanel({
             onClick={() => {
               void loadBanks().catch(() =>
                 setError(
-                  'No se pudieron actualizar las cuentas. Inténtalo de nuevo.',
+                  tx(
+                    'No se pudieron actualizar las cuentas. Inténtalo de nuevo.',
+                    'Could not refresh bank accounts. Try again.',
+                  ),
                 ),
               );
             }}
           >
-            Actualizar cuentas
+            {tx('Actualizar cuentas', 'Refresh accounts')}
           </button>
         </div>
       )}
-      <form onSubmit={submit} className={styles.fundingForm}>
+      <form onSubmit={submit} className={styles.fundingForm} noValidate>
         <fieldset
           disabled={busy || loadingBanks || approvedBanks.length === 0}
           className={styles.fundingFields}
@@ -322,28 +424,35 @@ export function FundingPanel({
           <div className={styles.formGrid}>
             <div className={styles.fieldGroup}>
               <label htmlFor="funding-bank" className={styles.fieldLabel}>
-                Cuenta bancaria vinculada
+                {tx('Cuenta bancaria vinculada', 'Linked bank account')}
               </label>
               <div className={styles.selectActionRow}>
-                <select
+                <CustomSelect
                   id="funding-bank"
-                  className={styles.select}
                   value={bankId}
-                  onChange={(event) => setBankId(event.target.value)}
+                  onChange={setBankId}
                   required
-                >
-                  <option value="">Selecciona una cuenta aprobada</option>
-                  {approvedBanks.map((bank) => (
-                    <option
-                      key={bank.id}
-                      value={bank.id}
-                      disabled={bank.status !== 'APPROVED'}
-                    >
-                      {formatPersonName(bank.owner_name)} · ****
-                      {bank.account_last4} · {formatBankStatus(bank.status)}
-                    </option>
-                  ))}
-                </select>
+                  disabled={busy || loadingBanks || approvedBanks.length === 0}
+                  placeholder={tx(
+                    'Selecciona una cuenta aprobada',
+                    'Select an approved account',
+                  )}
+                  searchable={approvedBanks.length > 5}
+                  options={[
+                    {
+                      value: '',
+                      label: tx(
+                        'Selecciona una cuenta aprobada',
+                        'Select an approved account',
+                      ),
+                    },
+                    ...approvedBanks.map((bank) => ({
+                      value: bank.id,
+                      disabled: bank.status !== 'APPROVED',
+                      label: `${formatPersonName(bank.owner_name)} · ****${bank.account_last4} · ${formatBankStatus(bank.status, locale)}`,
+                    })),
+                  ]}
+                />
                 <button
                   type="button"
                   className={styles.btnCompact}
@@ -353,27 +462,32 @@ export function FundingPanel({
                         failure instanceof ApiError &&
                         failure.metadata.status === 401
                       )) {
-                        setError('No se pudieron actualizar las cuentas.');
+                        setError(
+                          tx(
+                            'No se pudieron actualizar las cuentas.',
+                            'Could not refresh bank accounts.',
+                          ),
+                        );
                       }
                     });
                   }}
                 >
-                  Actualizar cuentas
+                  {tx('Actualizar cuentas', 'Refresh accounts')}
                 </button>
               </div>
             </div>
 
             <div className={styles.fieldGroup}>
               <label htmlFor="funding-amount" className={styles.fieldLabel}>
-                Monto en USD
+                {tx('Monto en USD', 'Amount (USD)')}
               </label>
               <input
                 id="funding-amount"
-                className={styles.input}
+                className={`${styles.input} ${styles.tabularNum}`}
                 type="number"
                 min="1"
                 step="0.01"
-                placeholder="Ej. 100.00"
+                placeholder={tx('Ej. 100.00', 'E.g. 100.00')}
                 required
                 value={amount}
                 onChange={(event) => setAmount(event.target.value)}
@@ -381,11 +495,11 @@ export function FundingPanel({
             </div>
           </div>
 
-          <p className={styles.noteHelper}>
+          <p className={`${styles.noteHelper} ${styles.tabularNum}`}>
             {direction === 'deposit'
-              ? `Método seleccionado: ${method}.`
-              : `Saldo retirable: ${available === null ? 'No disponible' : `$${formatUsd(available)} USD`}.`}{' '}
-            Sin conversión de moneda.
+              ? `${tx('Método seleccionado:', 'Selected method:')} ${tx(activeMethod.es, activeMethod.en)}.`
+              : `${tx('Saldo retirable:', 'Withdrawable cash:')} ${available === null ? tx('No disponible', 'Unavailable') : `$${formatUsd(available)} USD`}.`}{' '}
+            {tx('Sin conversión de moneda.', 'No currency conversion.')}
           </p>
 
           <div className={styles.actionsRow}>
@@ -395,21 +509,21 @@ export function FundingPanel({
               disabled={!bankId}
             >
               {busy
-                ? 'Procesando…'
+                ? tx('Procesando…', 'Processing…')
                 : direction === 'deposit'
-                  ? 'Confirmar depósito de prueba'
-                  : 'Confirmar retiro de prueba'}
+                  ? tx('Confirmar depósito de prueba', 'Confirm test deposit')
+                  : tx('Confirmar retiro de prueba', 'Confirm test withdrawal')}
             </button>
           </div>
         </fieldset>
       </form>
 
-      {error && (
+      {displayedError && (
         <div role="alert" className={styles.fundingError}>
           <Icon name="shield" size={20} />
           <div>
-            <strong>Revisa la solicitud</strong>
-            <p>{error}</p>
+            <strong>{tx('Revisa la solicitud', 'Check your request')}</strong>
+            <p>{displayedError}</p>
           </div>
         </div>
       )}

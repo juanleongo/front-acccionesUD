@@ -1,5 +1,6 @@
 'use client';
 
+import { useLocale } from '@/lib/i18n';
 import styles from '../registration.module.css';
 
 export interface RegistrationStepperProps {
@@ -8,14 +9,19 @@ export interface RegistrationStepperProps {
 }
 
 export function RegistrationStepper({ steps, step }: RegistrationStepperProps) {
+  const { tx } = useLocale();
   return (
-    <div className={styles.stepperCard} aria-label="Pasos del registro">
+    <div
+      className={styles.stepperCard}
+      aria-label={tx('Pasos del registro', 'Registration steps')}
+    >
       <p className={styles.srOnly} aria-live="polite">
-        Paso {step + 1} de {steps.length} · {steps[step]}
+        {tx('Paso', 'Step')} {step + 1} {tx('de', 'of')} {steps.length} ·{' '}
+        {steps[step]}
       </p>
       <progress
         className={styles.srOnly}
-        aria-label="Progreso del registro"
+        aria-label={tx('Progreso del registro', 'Registration progress')}
         value={step + 1}
         max={steps.length}
       />

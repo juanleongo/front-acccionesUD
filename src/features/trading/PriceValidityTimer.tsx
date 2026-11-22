@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useLocale } from '@/lib/i18n';
 import styles from './trading.module.css';
 
 export function PriceValidityTimer({
@@ -14,6 +15,13 @@ export function PriceValidityTimer({
   onRefresh: () => void;
   onExpire?: () => void;
 }) {
+  const { tx } = useLocale();
+  const onExpireRef = useRef(onExpire);
+
+  useEffect(() => {
+    onExpireRef.current = onExpire;
+  }, [onExpire]);
+
   const [remainingMs, setRemainingMs] = useState(() =>
     Math.max(0, expiresAtMs - Date.now()),
   );
@@ -24,11 +32,11 @@ export function PriceValidityTimer({
       setRemainingMs(next);
       if (next === 0) {
         window.clearInterval(interval);
-        onExpire?.();
+        onExpireRef.current?.();
       }
     }, 200);
     return () => window.clearInterval(interval);
-  }, [expiresAtMs, onExpire]);
+  }, [expiresAtMs]);
 
   const remainingSeconds = Math.ceil(remainingMs / 1000);
   const progressPct = Math.min(
@@ -41,13 +49,16 @@ export function PriceValidityTimer({
   return (
     <div className={styles.timerBox} role="status" aria-live="polite">
       <div className={styles.timerHeader}>
-        <span>
+        <span className={styles.tabularNum}>
           {expired
-            ? '⏱ Cotización de preview expirada'
-            : `⏱ Vigencia del preview de precio: ${remainingSeconds}s`}
+            ? tx('Cotización de preview expirada', 'Preview quote expired')
+            : tx(
+                `Vigencia del preview de precio: ${remainingSeconds}s`,
+                `Quote preview valid for: ${remainingSeconds}s`,
+              )}
         </span>
-        <button type="button" onClick={onRefresh} className={styles.filterPill}>
-          ↻ Refrescar cotización
+        <button type="button" onClick={onRefresh} className={styles.btnCompact}>
+          {tx('Refrescar cotización', 'Refresh quote')}
         </button>
       </div>
       <div className={styles.timerTrack} aria-hidden="true">

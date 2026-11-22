@@ -14,7 +14,7 @@ export function subscribeSessionExpired(
 
 /** Notifica que una petición autenticada recibió 401 (sesión cerrada o expirada). */
 export function notifySessionExpired(path: string): void {
-  for (const listener of listeners) {
+  for (const listener of [...listeners]) {
     try {
       listener(path);
     } catch {

@@ -1,5 +1,7 @@
 'use client';
 
+import { CustomSelect } from '@/components/ui/CustomSelect';
+import { useLocale } from '@/lib/i18n';
 import type { OrderInput } from '../trading-api';
 import styles from '../trading.module.css';
 
@@ -12,13 +14,16 @@ export function OrderParametersFields({
   onUpdate: (changes: Partial<OrderInput>) => void;
   onSwitchTrailMode: (mode: 'price' | 'percent') => void;
 }) {
+  const { tx } = useLocale();
   return (
     <>
       {(draft.type === 'limit' || draft.type === 'stop_limit') && (
         <label className={styles.fieldGroup}>
-          Precio límite (USD)
+          <span className={styles.fieldLabel}>
+            {tx('Precio límite (USD)', 'Limit price (USD)')}
+          </span>
           <input
-            className={styles.input}
+            className={`${styles.input} ${styles.tabularNum}`}
             type="number"
             required
             min="0.0001"
@@ -31,9 +36,11 @@ export function OrderParametersFields({
 
       {(draft.type === 'stop' || draft.type === 'stop_limit') && (
         <label className={styles.fieldGroup}>
-          Precio de activación stop (USD)
+          <span className={styles.fieldLabel}>
+            {tx('Precio de activación stop (USD)', 'Stop trigger price (USD)')}
+          </span>
           <input
-            className={styles.input}
+            className={`${styles.input} ${styles.tabularNum}`}
             type="number"
             required
             min="0.0001"
@@ -46,24 +53,27 @@ export function OrderParametersFields({
 
       {draft.type === 'trailing_stop' && (
         <>
-          <label className={styles.fieldGroup}>
-            Distancia del trailing
-            <select
-              className={styles.select}
+          <div className={styles.fieldGroup}>
+            <label htmlFor="order-trailing-mode" className={styles.fieldLabel}>
+              {tx('Distancia del trailing', 'Trailing distance type')}
+            </label>
+            <CustomSelect
+              id="order-trailing-mode"
               value={draft.trail_price !== undefined ? 'price' : 'percent'}
-              onChange={(e) =>
-                onSwitchTrailMode(e.target.value as 'price' | 'percent')
-              }
-            >
-              <option value="percent">Porcentaje</option>
-              <option value="price">USD</option>
-            </select>
-          </label>
+              onChange={(val) => onSwitchTrailMode(val as 'price' | 'percent')}
+              options={[
+                { value: 'percent', label: tx('Porcentaje', 'Percentage') },
+                { value: 'price', label: 'USD' },
+              ]}
+            />
+          </div>
 
           <label className={styles.fieldGroup}>
-            Distancia
+            <span className={styles.fieldLabel}>
+              {tx('Distancia', 'Distance')}
+            </span>
             <input
-              className={styles.input}
+              className={`${styles.input} ${styles.tabularNum}`}
               type="number"
               required
               min={draft.trail_price !== undefined ? '0.0001' : '0.1'}
@@ -85,9 +95,9 @@ export function OrderParametersFields({
       {draft.order_class === 'bracket' && (
         <>
           <label className={styles.fieldGroup}>
-            Take profit (USD)
+            <span className={styles.fieldLabel}>Take profit (USD)</span>
             <input
-              className={styles.input}
+              className={`${styles.input} ${styles.tabularNum}`}
               required
               type="number"
               min="0.0001"
@@ -100,9 +110,9 @@ export function OrderParametersFields({
           </label>
 
           <label className={styles.fieldGroup}>
-            Stop loss (USD)
+            <span className={styles.fieldLabel}>Stop loss (USD)</span>
             <input
-              className={styles.input}
+              className={`${styles.input} ${styles.tabularNum}`}
               required
               type="number"
               min="0.0001"

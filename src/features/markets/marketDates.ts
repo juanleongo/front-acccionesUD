@@ -1,10 +1,7 @@
+import { formatMarketDateTime } from '@/lib/formatters';
+import type { Locale } from '@/lib/i18n/locale';
 import { tz } from './api';
 
-const instantFormatter = new Intl.DateTimeFormat('es-CO', {
-  timeZone: tz,
-  dateStyle: 'short',
-  timeStyle: 'short',
-});
 export const localDay = new Intl.DateTimeFormat('en-CA', {
   timeZone: tz,
   year: 'numeric',
@@ -17,6 +14,8 @@ export const localTime = new Intl.DateTimeFormat('en-GB', {
   minute: '2-digit',
   hourCycle: 'h23',
 });
-export const formatInstant = (value: string | null) =>
-  value ? instantFormatter.format(new Date(value)) : '—';
+export const formatInstant = (value: string | null, locale: Locale = 'es') =>
+  value
+    ? formatMarketDateTime(value, locale, { includeTime: true, timeZone: tz })
+    : '—';
 export const today = () => localDay.format(new Date());

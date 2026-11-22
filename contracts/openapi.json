@@ -4754,6 +4754,161 @@
           }
         }
       }
+    },
+    "/api/v1/public/market-explorer": {
+      "get": {
+        "tags": [
+          "Public market explorer"
+        ],
+        "summary": "Explore",
+        "operationId": "explore_api_v1_public_market_explorer_get",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 50,
+              "default": "",
+              "title": "Q"
+            }
+          },
+          {
+            "name": "exchange",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 16
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Exchange"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 10000,
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicPageOut"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/public/instruments/{symbol}/logo": {
+      "get": {
+        "tags": [
+          "Public market explorer"
+        ],
+        "summary": "Logo",
+        "operationId": "logo_api_v1_public_instruments__symbol__logo_get",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Symbol"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              },
+              "image/png": {}
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -4801,7 +4956,7 @@
               {
                 "type": "number",
                 "maximum": 999999999.99,
-                "exclusiveMinimum": 0.0
+                "exclusiveMinimum": 0
               },
               {
                 "type": "string"
@@ -6284,8 +6439,8 @@
           },
           "daily_order_limit": {
             "type": "integer",
-            "maximum": 1000.0,
-            "minimum": 1.0,
+            "maximum": 1000,
+            "minimum": 1,
             "title": "Daily Order Limit"
           },
           "high_order_threshold_usd": {
@@ -6293,7 +6448,7 @@
               {
                 "type": "number",
                 "maximum": 999999999.99,
-                "exclusiveMinimum": 0.0
+                "exclusiveMinimum": 0
               },
               {
                 "type": "string"
@@ -6330,8 +6485,8 @@
           },
           "daily_order_limit": {
             "type": "integer",
-            "maximum": 1000.0,
-            "minimum": 1.0,
+            "maximum": 1000,
+            "minimum": 1,
             "title": "Daily Order Limit"
           },
           "high_order_threshold_usd": {
@@ -6417,7 +6572,7 @@
               {
                 "type": "number",
                 "maximum": 999999999.99,
-                "minimum": 0.0
+                "minimum": 0
               },
               {
                 "type": "string"
@@ -7541,6 +7696,211 @@
           "symbol"
         ],
         "title": "WatchlistSymbolIn"
+      },
+      "PublicPageOut": {
+        "properties": {
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/PublicAssetOut"
+            },
+            "type": "array",
+            "title": "Results"
+          },
+          "markets": {
+            "items": {
+              "$ref": "#/components/schemas/MarketOut"
+            },
+            "type": "array",
+            "title": "Markets"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size",
+            "default": 6
+          },
+          "retrieved_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Retrieved At"
+          },
+          "market_open": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Market Open"
+          },
+          "quotes_unavailable": {
+            "type": "boolean",
+            "title": "Quotes Unavailable"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source",
+            "default": "alpaca"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency",
+            "default": "USD"
+          }
+        },
+        "type": "object",
+        "required": [
+          "results",
+          "markets",
+          "total",
+          "page",
+          "retrieved_at",
+          "market_open",
+          "quotes_unavailable"
+        ],
+        "title": "PublicPageOut"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "PublicAssetOut": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "exchange": {
+            "type": "string",
+            "title": "Exchange"
+          },
+          "tradable": {
+            "type": "boolean",
+            "title": "Tradable"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price"
+          },
+          "change_ratio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Ratio"
+          },
+          "as_of": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          },
+          "feed": {
+            "type": "string",
+            "title": "Feed"
+          },
+          "is_delayed": {
+            "type": "boolean",
+            "title": "Is Delayed"
+          },
+          "is_stale": {
+            "type": "boolean",
+            "title": "Is Stale"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "name",
+          "exchange",
+          "tradable",
+          "price",
+          "change_ratio",
+          "as_of",
+          "feed",
+          "is_delayed",
+          "is_stale"
+        ],
+        "title": "PublicAssetOut"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
       }
     },
     "securitySchemes": {

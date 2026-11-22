@@ -1,9 +1,11 @@
 'use client';
 
 import type { FormEvent } from 'react';
+import { CustomSelect } from '@/components/ui/CustomSelect';
 import { Icon } from '@/components/ui/Icon';
 import { countries } from '@/features/registration';
 import { formatPersonName } from '@/lib/format-person-name';
+import { useLocale } from '@/lib/i18n';
 import type { AdminCreateAdminIn } from '../admin-api';
 import styles from '../admin.module.css';
 
@@ -20,25 +22,46 @@ export function AdminCreateAdminSection({
   onResetForm,
   onSubmit,
 }: AdminCreateAdminSectionProps) {
+  const { tx } = useLocale();
   return (
     <div>
       <div className={styles.pageHeader}>
-        <h1>Crear administrador</h1>
+        <span className={styles.pageEyebrow}>
+          {tx('Gestión de Privilegios', 'Privilege Management')}
+        </span>
+        <h1>{tx('Crear administrador', 'Create Administrator')}</h1>
         <p>
-          Registra una cuenta con acceso a las herramientas de administración.
+          {tx(
+            'Registra una cuenta con acceso a las herramientas de administración.',
+            'Register an account with access to administration tools.',
+          )}
         </p>
       </div>
 
       <div className={`${styles.tableCard} ${styles.cardNarrow}`}>
-        <form onSubmit={onSubmit}>
+        <div className={styles.tableHeader}>
+          <h2>
+            {tx(
+              'Datos de la Nueva Cuenta Administrativa',
+              'New Administrative Account Details',
+            )}
+          </h2>
+          <span className={styles.headerMeta}>
+            {tx('Acceso inmediato RBAC', 'Immediate RBAC access')}
+          </span>
+        </div>
+
+        <form onSubmit={onSubmit} noValidate>
           <div className={styles.formGrid}>
             <div className={styles.formField}>
-              <label htmlFor="admin-first_names">Nombres Completos</label>
+              <label htmlFor="admin-first_names">
+                {tx('Nombres Completos', 'First Name(s)')}
+              </label>
               <input
                 type="text"
                 id="admin-first_names"
                 value={newAdmin.first_names}
-                placeholder="Ej. Juan Andrés"
+                placeholder={tx('Ej. Juan Andrés', 'E.g. John')}
                 onBlur={() =>
                   onChangeNewAdmin({
                     ...newAdmin,
@@ -56,12 +79,14 @@ export function AdminCreateAdminSection({
             </div>
 
             <div className={styles.formField}>
-              <label htmlFor="admin-last_names">Apellidos Completos</label>
+              <label htmlFor="admin-last_names">
+                {tx('Apellidos Completos', 'Last Name(s)')}
+              </label>
               <input
                 type="text"
                 id="admin-last_names"
                 value={newAdmin.last_names}
-                placeholder="Ej. Gómez Silva"
+                placeholder={tx('Ej. Gómez Silva', 'E.g. Smith')}
                 onBlur={() =>
                   onChangeNewAdmin({
                     ...newAdmin,
@@ -80,7 +105,10 @@ export function AdminCreateAdminSection({
 
             <div className={styles.formField}>
               <label htmlFor="admin-email">
-                Correo Electrónico Institucional
+                {tx(
+                  'Correo Electrónico Institucional',
+                  'Institutional Email Address',
+                )}
               </label>
               <input
                 type="email"
@@ -95,7 +123,9 @@ export function AdminCreateAdminSection({
             </div>
 
             <div className={styles.formField}>
-              <label htmlFor="admin-phone">Teléfono con Indicativo</label>
+              <label htmlFor="admin-phone">
+                {tx('Teléfono con Indicativo', 'Phone with Country Code')}
+              </label>
               <input
                 type="tel"
                 id="admin-phone"
@@ -109,33 +139,41 @@ export function AdminCreateAdminSection({
             </div>
 
             <div className={styles.formField}>
-              <label htmlFor="admin-country">País</label>
-              <select
+              <label htmlFor="admin-country">{tx('País', 'Country')}</label>
+              <CustomSelect
                 id="admin-country"
-                value={newAdmin.country}
-                onChange={(e) =>
-                  onChangeNewAdmin({ ...newAdmin, country: e.target.value })
-                }
                 required
-              >
-                {countries.map((country) => (
-                  <option key={country.code} value={country.code}>
-                    {country.name}
-                  </option>
-                ))}
-              </select>
-              <small>Selecciona el país de residencia.</small>
+                searchable
+                searchPlaceholder={tx('Buscar país…', 'Search country…')}
+                value={newAdmin.country}
+                onChange={(val) =>
+                  onChangeNewAdmin({ ...newAdmin, country: val })
+                }
+                options={countries.map((country) => ({
+                  value: country.code,
+                  label: country.name,
+                }))}
+              />
+              <small>
+                {tx(
+                  'Selecciona el país de residencia.',
+                  'Select the country of residence.',
+                )}
+              </small>
             </div>
 
             <div className={styles.formField}>
               <label htmlFor="admin-password">
-                Contraseña (Mínimo 8 caracteres)
+                {tx(
+                  'Contraseña (Mínimo 8 caracteres)',
+                  'Password (Minimum 8 characters)',
+                )}
               </label>
               <input
                 type="password"
                 id="admin-password"
                 value={newAdmin.password}
-                placeholder="Contraseña segura"
+                placeholder={tx('Contraseña segura', 'Strong password')}
                 onChange={(e) =>
                   onChangeNewAdmin({ ...newAdmin, password: e.target.value })
                 }
@@ -146,14 +184,18 @@ export function AdminCreateAdminSection({
 
           <div className={styles.formActions}>
             <button type="submit" className={styles.btnPrimary}>
-              <Icon name="lock" size={14} /> Registrar Administrador Delegado
+              <Icon name="lock" size={14} />{' '}
+              {tx(
+                'Registrar Administrador Delegado',
+                'Register Delegated Administrator',
+              )}
             </button>
             <button
               type="button"
               className={styles.btnSecondary}
               onClick={onResetForm}
             >
-              Limpiar Formulario
+              {tx('Limpiar Formulario', 'Reset Form')}
             </button>
           </div>
         </form>

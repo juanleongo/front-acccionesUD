@@ -1,6 +1,8 @@
 'use client';
 
 import { LoadingState } from '@/components/ui/LoadingState';
+import { formatDecimalNumber, formatMarketDateTime } from '@/lib/formatters';
+import { useLocale } from '@/lib/i18n';
 import styles from '../trading.module.css';
 
 export interface PositionRow {
@@ -21,29 +23,42 @@ export function PositionsCard({
   isPending: boolean;
   isError: boolean;
 }) {
+  const { locale, tx } = useLocale();
   return (
     <section className={styles.card}>
       <div className={styles.cardHeader}>
         <div>
-          <h2 className={styles.cardTitle}>Tus posiciones</h2>
+          <h2 className={styles.cardTitle}>
+            {tx('Tus posiciones', 'Your positions')}
+          </h2>
           <p className={styles.cardSubtitle}>
-            Acciones disponibles para venta, descontando las reservas activas.
+            {tx(
+              'Acciones disponibles para venta, descontando las reservas activas.',
+              'Shares available to sell, excluding active holds.',
+            )}
           </p>
         </div>
         {positionsAsOf && (
           <span className={styles.badgeTimestamp}>
-            Actualizado: {new Date(positionsAsOf).toLocaleString('es-CO')}
+            {tx('Actualizado:', 'Updated:')}{' '}
+            {formatMarketDateTime(positionsAsOf, locale)}
           </span>
         )}
       </div>
 
       {isPending && (
-        <LoadingState mode="compact" label="Cargando posiciones…" />
+        <LoadingState
+          mode="compact"
+          label={tx('Cargando posiciones…', 'Loading positions…')}
+        />
       )}
 
       {isError && (
         <p role="alert" className={styles.alertError}>
-          No se pudieron consultar las posiciones.
+          {tx(
+            'No se pudieron consultar las posiciones.',
+            'Could not load positions.',
+          )}
         </p>
       )}
 
@@ -52,34 +67,40 @@ export function PositionsCard({
           <table className={styles.table}>
             <thead>
               <tr>
-                <th>Instrumento</th>
-                <th>Cantidad</th>
-                <th>Reservada</th>
-                <th>Disponible</th>
+                <th>{tx('Instrumento', 'Symbol')}</th>
+                <th>{tx('Cantidad', 'Qty')}</th>
+                <th>{tx('Reservada', 'Reserved')}</th>
+                <th>{tx('Disponible', 'Available')}</th>
               </tr>
             </thead>
             <tbody>
-              {positions.map((position) => (
-                <tr key={position.symbol}>
-                  <td>
-                    <strong>{position.symbol}</strong>
-                  </td>
-                  <td className={styles.tabularNum}>{position.qty}</td>
-                  <td className={styles.tabularNum}>{position.reserved_qty}</td>
-                  <td className={styles.tabularNum}>
-                    <strong>
-                      {Math.max(
-                        0,
-                        Number(position.qty) - Number(position.reserved_qty),
-                      )}
-                    </strong>
-                  </td>
-                </tr>
-              ))}
+              {positions.map((position) => {
+                const available = Math.max(
+                  0,
+                  Number(position.qty) - Number(position.reserved_qty),
+                );
+                return (
+                  <tr key={position.symbol}>
+                    <td>
+                      <strong>{position.symbol}</strong>
+                    </td>
+                    <td className={styles.tabularNum}>{position.qty}</td>
+                    <td className={styles.tabularNum}>
+                      {position.reserved_qty}
+                    </td>
+                    <td className={styles.tabularNum}>
+                      <strong>{formatDecimalNumber(available, locale)}</strong>
+                    </td>
+                  </tr>
+                );
+              })}
               {positions.length === 0 && (
                 <tr>
                   <td colSpan={4} className={styles.emptyCell}>
-                    Todavía no tienes posiciones registradas.
+                    {tx(
+                      'Todavía no tienes posiciones registradas.',
+                      'You do not have any positions yet.',
+                    )}
                   </td>
                 </tr>
               )}

@@ -1,5 +1,7 @@
 'use client';
 
+import type { Locale } from '@/lib/i18n/locale';
+
 export type OrderSide = 'buy' | 'sell';
 export type OrderType = 'market' | 'limit' | 'stop_loss' | 'take_profit';
 export type TimeInForce = 'DAY' | 'GTC' | 'IOC';
@@ -194,37 +196,66 @@ export const ORDER_TYPE_META: Record<
   OrderType,
   {
     label: string;
+    labelEn: string;
     shortLabel: string;
     description: string;
+    descriptionEn: string;
     badge: string;
+    badgeEn: string;
   }
 > = {
   market: {
     label: 'Market Order (A Mercado)',
+    labelEn: 'Market Order',
     shortLabel: 'Market',
     description:
       'Ejecución inmediata al mejor precio disponible en Wall Street.',
+    descriptionEn:
+      'Immediate execution at the best available Wall Street price.',
     badge: 'Inmediata',
+    badgeEn: 'Instant',
   },
   limit: {
     label: 'Limit Order (Límite)',
+    labelEn: 'Limit Order',
     shortLabel: 'Limit',
     description:
       'Se ejecuta únicamente al precio límite indicado o uno más favorable. Reserva saldo.',
+    descriptionEn:
+      'Executes only at the specified limit price or better. Reserves buying power.',
     badge: 'Precio Fijo',
+    badgeEn: 'Limit Price',
   },
   stop_loss: {
     label: 'Stop Loss (Protección)',
+    labelEn: 'Stop Loss (Protection)',
     shortLabel: 'Stop Loss',
     description:
       'Activa orden automática para limitar pérdidas si la acción cae al nivel Stop.',
+    descriptionEn:
+      'Triggers an automatic order to limit downside if the stock hits the Stop level.',
     badge: 'Gestión Riesgo',
+    badgeEn: 'Risk Control',
   },
   take_profit: {
     label: 'Take Profit (Toma de Ganancia)',
+    labelEn: 'Take Profit',
     shortLabel: 'Take Profit',
     description:
       'Cierra o ejecuta posición automáticamente al alcanzar tu objetivo de ganancia.',
+    descriptionEn:
+      'Automatically exits or executes a position when your profit target is reached.',
     badge: 'Objetivo',
+    badgeEn: 'Target',
   },
 };
+
+export function getOrderTypeMeta(type: OrderType, locale: Locale = 'es') {
+  const item = ORDER_TYPE_META[type];
+  return {
+    label: locale === 'en' ? item.labelEn : item.label,
+    shortLabel: item.shortLabel,
+    description: locale === 'en' ? item.descriptionEn : item.description,
+    badge: locale === 'en' ? item.badgeEn : item.badge,
+  };
+}

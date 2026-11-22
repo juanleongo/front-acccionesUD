@@ -1,5 +1,11 @@
 // @vitest-environment jsdom
-import { render, screen, fireEvent } from '@testing-library/react';
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  act,
+} from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { expect, it, vi, beforeEach } from 'vitest';
 import { PortfolioDashboard } from './PortfolioDashboard';
@@ -84,4 +90,66 @@ it('distingue un portafolio vacío de un error', async () => {
     await screen.findByText(/No tienes posiciones abiertas/),
   ).toBeInTheDocument();
   expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+});
+
+it('mantiene los controles de fechas al consultar estadísticas y envía el rango a la API', async () => {
+  vi.mocked(api.fetchPortfolioStatistics).mockResolvedValue({
+    execution_count: 0,
+    buy_count: 0,
+    sell_count: 0,
+    volume: '0',
+    by_market: [],
+    by_instrument: [],
+    by_sector: [],
+  });
+  setup();
+  await screen.findByText('TEST');
+  fireEvent.click(
+    screen.getByRole('tab', { name: 'Estadísticas y Distribución' }),
+  );
+  await waitFor(() => expect(api.fetchPortfolioStatistics).toHaveBeenCalled());
+  const from = screen.getByLabelText('Desde');
+  fireEvent.change(from, { target: { value: '2026-01-01' } });
+  await waitFor(() =>
+    expect(api.fetchPortfolioStatistics).toHaveBeenCalledWith(
+      '2026-01-01',
+      expect.any(String),
+      expect.any(AbortSignal),
+    ),
+  );
+  expect(from).toBeVisible();
+});
+
+it('conserva las posiciones visibles durante la actualización en segundo plano sin aviso de carga', async () => {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: 0 } },
+  });
+  render(
+    <QueryClientProvider client={client}>
+      <PortfolioDashboard />
+    </QueryClientProvider>,
+  );
+  await screen.findByText('TEST');
+  let finish!: (value: typeof data) => void;
+  vi.mocked(api.fetchPortfolioPositions).mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  act(() => {
+    void client.invalidateQueries({ queryKey: ['portfolio', 'positions'] });
+  });
+  await waitFor(() =>
+    expect(client.isFetching({ queryKey: ['portfolio', 'positions'] })).toBe(1),
+  );
+  expect(screen.getByText('TEST')).toBeVisible();
+  expect(screen.queryByText('Actualizando datos…')).not.toBeInTheDocument();
+  expect(
+    screen.queryByText('Consultando tus posiciones…'),
+  ).not.toBeInTheDocument();
+  await act(async () =>
+    finish({ ...data, totals: { ...data.totals, market_value: '31' } }),
+  );
+  expect(await screen.findByText('$31.00 USD')).toBeVisible();
 });

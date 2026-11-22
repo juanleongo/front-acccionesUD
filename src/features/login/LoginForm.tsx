@@ -3,12 +3,48 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, type FormEvent } from 'react';
+import {
+  useEffect,
+  useState,
+  useSyncExternalStore,
+  type FormEvent,
+} from 'react';
 import { z } from 'zod';
 import { Icon } from '@/components/ui/Icon';
+import { LanguageToggle } from '@/components/ui/LanguageToggle';
 import { browserHttp } from '@/lib/api/client';
 import { ApiError } from '@/lib/api';
+import { useLocale } from '@/lib/i18n';
+import {
+  getDocumentTheme,
+  subscribeThemeStorage,
+  toggleDocumentTheme,
+  type Theme,
+} from '@/lib/theme';
 import styles from './login.module.css';
+
+function subscribeDocumentTheme(onThemeChange: () => void): () => void {
+  const stopStorage = subscribeThemeStorage(() => onThemeChange());
+  if (
+    typeof document === 'undefined' ||
+    typeof MutationObserver === 'undefined'
+  ) {
+    return stopStorage;
+  }
+  const observer = new MutationObserver(onThemeChange);
+  observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['data-theme'],
+  });
+  return () => {
+    observer.disconnect();
+    stopStorage();
+  };
+}
+
+function getServerThemeSnapshot(): Theme {
+  return 'dark';
+}
 
 import { startLogin, type Challenge } from './challenge';
 import { RecoveryCodesDisplay, usePendingCodes } from './RecoveryCodes';
@@ -36,6 +72,12 @@ export function LoginForm({
   onRegisteredUserVerified?: () => Promise<void>;
 } = {}) {
   const router = useRouter();
+  const { tx } = useLocale();
+  const activeTheme = useSyncExternalStore(
+    subscribeDocumentTheme,
+    getDocumentTheme,
+    getServerThemeSnapshot,
+  );
   const { codes: pendingCodes, setCodes: showDashboardCodes } =
     usePendingCodes();
   const [isAdminLogin, setIsAdminLogin] = useState(false);
@@ -48,18 +90,10 @@ export function LoginForm({
   const [destination, setDestination] = useState('/dashboard');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [fieldError, setFieldError] = useState<
+    'email' | 'password' | 'verification' | null
+  >(null);
   const [showPassword, setShowPassword] = useState(false);
-
-  function toggleTheme() {
-    const next =
-      document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
-    document.documentElement.dataset.theme = next;
-    try {
-      localStorage.setItem('acciones_ud_theme', next);
-    } catch {
-      /* Preferencia opcional. */
-    }
-  }
 
   useEffect(() => {
     if (!challenge || busy) return;
@@ -68,24 +102,76 @@ export function LoginForm({
         setChallenge(null);
         setRecovery(false);
         setError(
-          'La verificación venció. Ingresa de nuevo con tu correo y contraseña.',
+          tx(
+            'La verificación venció. Ingresa de nuevo con tu correo y contraseña.',
+            'Verification expired. Sign in again with your email and password.',
+          ),
         );
       },
       Math.max(0, Date.parse(challenge.mfa_expires_at) - Date.now()),
     );
     return () => window.clearTimeout(timer);
-  }, [challenge, busy]);
+  }, [challenge, busy, tx]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busy) return;
     const form = new FormData(event.currentTarget);
-    setBusy(true);
     setError('');
+    setFieldError(null);
+    if (!challenge) {
+      const email = String(form.get('email') ?? '').trim();
+      const password = String(form.get('password') ?? '');
+      if (!email) {
+        setFieldError('email');
+        setError(
+          tx('Ingresa tu correo electrónico.', 'Enter your email address.'),
+        );
+        return;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        setFieldError('email');
+        setError(
+          tx(
+            'Ingresa un correo electrónico válido (ej. nombre@correo.com).',
+            'Enter a valid email address (e.g. name@domain.com).',
+          ),
+        );
+        return;
+      }
+      if (!password) {
+        setFieldError('password');
+        setError(tx('Ingresa tu contraseña.', 'Enter your password.'));
+        return;
+      }
+    } else {
+      const verification = String(form.get('verification') ?? '').trim();
+      if (recovery && !/^[a-zA-Z0-9]{10}$/.test(verification)) {
+        setFieldError('verification');
+        setError(
+          tx(
+            'Ingresa un código de recuperación válido de 10 caracteres alfanuméricos.',
+            'Enter a valid 10-character alphanumeric recovery code.',
+          ),
+        );
+        return;
+      }
+      if (!recovery && !/^[0-9]{6}$/.test(verification)) {
+        setFieldError('verification');
+        setError(
+          tx(
+            'Ingresa el código numérico de 6 dígitos de tu autenticador.',
+            'Enter the 6-digit code from your authenticator app.',
+          ),
+        );
+        return;
+      }
+    }
+    setBusy(true);
     try {
       if (!challenge) {
         const result = await startLogin(
-          String(form.get('email')),
+          String(form.get('email')).trim(),
           String(form.get('password')),
         );
         setChallenge(result);
@@ -106,7 +192,10 @@ export function LoginForm({
         setChallenge(null);
         if (registeredUserId && result.user.user_id !== registeredUserId) {
           setError(
-            'Inicia sesión con la cuenta que acabas de registrar para continuar.',
+            tx(
+              'Inicia sesión con la cuenta que acabas de registrar para continuar.',
+              'Sign in with the account you just registered to continue.',
+            ),
           );
           return;
         }
@@ -131,13 +220,29 @@ export function LoginForm({
       if (status === 401) {
         setError(
           challenge
-            ? 'La verificación falló. Revisa el código o vuelve a iniciar sesión.'
-            : 'El correo o la contraseña son incorrectos.',
+            ? tx(
+                'La verificación falló. Revisa el código o vuelve a iniciar sesión.',
+                'Verification failed. Check your code or sign in again.',
+              )
+            : tx(
+                'El correo o la contraseña son incorrectos.',
+                'Invalid email or password.',
+              ),
         );
       } else if (status === 422) {
-        setError('Revisa el formato de los datos ingresados.');
+        setError(
+          tx(
+            'Revisa el formato de los datos ingresados.',
+            'Please check the format of your entered details.',
+          ),
+        );
       } else {
-        setError('No pudimos completar la solicitud. Inténtalo de nuevo.');
+        setError(
+          tx(
+            'No pudimos completar la solicitud. Inténtalo de nuevo.',
+            'We could not complete your request. Please try again.',
+          ),
+        );
       }
     } finally {
       setBusy(false);
@@ -151,11 +256,11 @@ export function LoginForm({
           <Link
             href="/"
             className={styles.brand}
-            aria-label="Acciones UD, inicio"
+            aria-label={tx('Acciones UD, inicio', 'Acciones UD, home')}
           >
             <Image
               src="/logo-acciones-ud.png"
-              alt="Logo Acciones UD"
+              alt={tx('Logo Acciones UD', 'Acciones UD Logo')}
               width={40}
               height={40}
               className={styles.brandLogo}
@@ -163,25 +268,36 @@ export function LoginForm({
             />
             <div className={styles.brandText}>
               <strong>Acciones UD</strong>
-              <span>Mercados de EE. UU. · NYSE &amp; NASDAQ</span>
+              <span>
+                {tx(
+                  'Mercados de EE. UU. · NYSE & NASDAQ',
+                  'U.S. Markets · NYSE & NASDAQ',
+                )}
+              </span>
             </div>
           </Link>
           <div className={styles.topActions}>
+            <LanguageToggle className={styles.themeButton} size={16} />
             <button
               type="button"
               className={styles.themeButton}
-              onClick={toggleTheme}
-              aria-label="Cambiar tema de color"
+              onClick={() => {
+                toggleDocumentTheme();
+              }}
+              aria-label={tx('Cambiar tema de color', 'Toggle color theme')}
             >
-              <span className={styles.whenDark}>
-                <Icon name="sun" size={16} /> Claro
-              </span>
-              <span className={styles.whenLight}>
-                <Icon name="moon" size={16} /> Oscuro
-              </span>
+              {activeTheme === 'light' ? (
+                <>
+                  <Icon name="moon" size={16} /> {tx('Oscuro', 'Dark')}
+                </>
+              ) : (
+                <>
+                  <Icon name="sun" size={16} /> {tx('Claro', 'Light')}
+                </>
+              )}
             </button>
             <Link href="/" className={styles.back}>
-              ← Volver a Acciones UD
+              {tx('← Volver a Acciones UD', '← Back to Acciones UD')}
             </Link>
           </div>
         </div>
@@ -190,7 +306,9 @@ export function LoginForm({
       <main
         className={`${styles.page} ${challenge || codes ? styles.securityPage : ''}`}
       >
-        <section className={styles.panel}>
+        <section
+          className={`${styles.panel} ${isAdminLogin && !challenge && !codes ? styles.panelAdmin : ''}`}
+        >
           {!challenge && !codes && (
             <div className={styles.roleTabs}>
               <button
@@ -199,9 +317,11 @@ export function LoginForm({
                 onClick={() => {
                   setIsAdminLogin(false);
                   setError('');
+                  setFieldError(null);
                 }}
               >
-                <Icon name="user" size={15} /> Inversor / Comisionista
+                <Icon name="user" size={15} />{' '}
+                {tx('Inversor / Comisionista', 'Investor / Broker')}
               </button>
               <button
                 type="button"
@@ -209,23 +329,35 @@ export function LoginForm({
                 onClick={() => {
                   setIsAdminLogin(true);
                   setError('');
+                  setFieldError(null);
                 }}
               >
-                <Icon name="shield" size={15} /> Administrador (SysAdmin)
+                <Icon name="shield" size={15} />{' '}
+                {tx('Administrador (SysAdmin)', 'Administrator (SysAdmin)')}
               </button>
             </div>
           )}
 
-          <h1>
+          {isAdminLogin && !challenge && !codes && (
+            <p className={styles.badgeAdmin}>
+              <Icon name="shield" size={14} />
+              {tx('Acceso administrativo', 'Administrative access')}
+            </p>
+          )}
+
+          <h1 className={styles.panelTitle}>
             {codes
               ? codes.length
-                ? 'Tu acceso ya está protegido'
-                : 'Sesión iniciada'
+                ? tx(
+                    'Tu acceso ya está protegido',
+                    'Your access is now protected',
+                  )
+                : tx('Sesión iniciada', 'Signed in')
               : challenge
-                ? 'Verificación en dos pasos'
+                ? tx('Verificación en dos pasos', 'Two-step verification')
                 : isAdminLogin
-                  ? 'Portal de Administración'
-                  : 'Iniciar sesión'}
+                  ? tx('Portal de Administración', 'Admin Portal')
+                  : tx('Iniciar sesión', 'Sign in')}
           </h1>
 
           {error && (
@@ -236,8 +368,14 @@ export function LoginForm({
           {registrationStatus && (
             <p className={styles.statusBanner} role="status">
               {registrationStatus === 'active'
-                ? 'Tu cuenta de inversionista está activa.'
-                : 'Tu cuenta de comisionista está pendiente de activación por un administrador.'}
+                ? tx(
+                    'Tu cuenta de inversionista está activa.',
+                    'Your investor account is active.',
+                  )
+                : tx(
+                    'Tu cuenta de comisionista está pendiente de activación por un administrador.',
+                    'Your broker account is pending administrator activation.',
+                  )}
             </p>
           )}
           {codes ? (
@@ -249,11 +387,15 @@ export function LoginForm({
                 showDashboardCodes(null);
                 setCodes(null);
               }}
-              dismissText="Continuar al panel"
+              dismissText={tx('Continuar al panel', 'Continue to dashboard')}
             />
           ) : (
-            <form key={challenge ? 'verify' : 'login'} onSubmit={submit}>
-              <fieldset disabled={busy}>
+            <form
+              key={challenge ? 'verify' : 'login'}
+              onSubmit={submit}
+              noValidate
+            >
+              <fieldset disabled={busy} className={styles.fieldset}>
                 {challenge ? (
                   <>
                     {challenge.totp_enrollment && (
@@ -262,44 +404,83 @@ export function LoginForm({
                         otpauthUri={challenge.totp_enrollment.otpauth_uri}
                       />
                     )}
-                    <label>
+                    <label
+                      htmlFor="login-verification"
+                      className={styles.fieldLabel}
+                    >
                       {recovery
-                        ? 'Código de recuperación'
-                        : 'Código del autenticador'}
-                      <input
-                        key={String(recovery)}
-                        name="verification"
-                        placeholder={recovery ? 'Ej. ABC1234567' : '000000'}
-                        autoComplete="one-time-code"
-                        inputMode={recovery ? 'text' : 'numeric'}
-                        pattern={recovery ? '[a-zA-Z0-9]{10}' : '[0-9]{6}'}
-                        maxLength={recovery ? 10 : 6}
-                        required
-                      />
+                        ? tx('Código de recuperación', 'Recovery code')
+                        : tx('Código del autenticador', 'Authenticator code')}
                     </label>
+                    <input
+                      id="login-verification"
+                      key={String(recovery)}
+                      name="verification"
+                      className={styles.inputControl}
+                      placeholder={
+                        recovery
+                          ? tx('Ej. ABC1234567', 'e.g. ABC1234567')
+                          : '000000'
+                      }
+                      autoComplete="one-time-code"
+                      inputMode={recovery ? 'text' : 'numeric'}
+                      pattern={recovery ? '[a-zA-Z0-9]{10}' : '[0-9]{6}'}
+                      maxLength={recovery ? 10 : 6}
+                      aria-invalid={fieldError === 'verification' || undefined}
+                      onChange={() => {
+                        if (fieldError === 'verification') {
+                          setFieldError(null);
+                          setError('');
+                        }
+                      }}
+                      required
+                    />
                   </>
                 ) : (
                   <>
-                    <label htmlFor="login-email">Correo electrónico</label>
+                    <label htmlFor="login-email" className={styles.fieldLabel}>
+                      {tx('Correo electrónico', 'Email address')}
+                    </label>
                     <input
                       id="login-email"
                       type="email"
                       name="email"
+                      className={styles.inputControl}
                       value={emailValue}
-                      onChange={(e) => setEmailValue(e.target.value)}
-                      placeholder="correo@ejemplo.com"
+                      aria-invalid={fieldError === 'email' || undefined}
+                      onChange={(e) => {
+                        setEmailValue(e.target.value);
+                        if (fieldError === 'email') {
+                          setFieldError(null);
+                          setError('');
+                        }
+                      }}
+                      placeholder={tx('correo@ejemplo.com', 'name@example.com')}
                       autoComplete="username"
                       required
                     />
-                    <label htmlFor="login-password">Contraseña</label>
+                    <label
+                      htmlFor="login-password"
+                      className={styles.fieldLabel}
+                    >
+                      {tx('Contraseña', 'Password')}
+                    </label>
                     <div className={styles.passwordWrapper}>
                       <input
                         id="login-password"
                         type={showPassword ? 'text' : 'password'}
                         name="password"
+                        className={styles.inputControl}
                         value={passwordValue}
-                        onChange={(e) => setPasswordValue(e.target.value)}
-                        placeholder="Tu contraseña"
+                        aria-invalid={fieldError === 'password' || undefined}
+                        onChange={(e) => {
+                          setPasswordValue(e.target.value);
+                          if (fieldError === 'password') {
+                            setFieldError(null);
+                            setError('');
+                          }
+                        }}
+                        placeholder={tx('Tu contraseña', 'Your password')}
                         autoComplete="current-password"
                         maxLength={128}
                         required
@@ -309,9 +490,15 @@ export function LoginForm({
                         className={styles.passwordToggle}
                         onClick={() => setShowPassword((prev) => !prev)}
                         aria-label={
-                          showPassword ? 'Ocultar clave' : 'Mostrar clave'
+                          showPassword
+                            ? tx('Ocultar clave', 'Hide password')
+                            : tx('Mostrar clave', 'Show password')
                         }
-                        title={showPassword ? 'Ocultar clave' : 'Mostrar clave'}
+                        title={
+                          showPassword
+                            ? tx('Ocultar clave', 'Hide password')
+                            : tx('Mostrar clave', 'Show password')
+                        }
                       >
                         <Icon
                           name={showPassword ? 'eyeOff' : 'eye'}
@@ -321,45 +508,57 @@ export function LoginForm({
                     </div>
                   </>
                 )}
-                <button type="submit">
+                <button type="submit" className={styles.submitButton}>
                   {busy
-                    ? 'Enviando…'
+                    ? tx('Enviando…', 'Submitting…')
                     : challenge
-                      ? 'Verificar'
+                      ? tx('Verificar', 'Verify')
                       : isAdminLogin
-                        ? 'Ingresar al Portal Administrativo'
-                        : 'Iniciar sesión'}
+                        ? tx(
+                            'Ingresar al Portal Administrativo',
+                            'Enter Admin Portal',
+                          )
+                        : tx('Iniciar sesión', 'Sign in')}
                 </button>
                 {challenge && !challenge.totp_enrollment && (
                   <button
                     type="button"
+                    className={styles.secondaryButton}
                     onClick={() => {
                       setRecovery(!recovery);
                       setError('');
+                      setFieldError(null);
                     }}
                   >
                     {recovery
-                      ? 'Usar el autenticador'
-                      : 'Usar un código de recuperación'}
+                      ? tx('Usar el autenticador', 'Use authenticator app')
+                      : tx(
+                          'Usar un código de recuperación',
+                          'Use a recovery code',
+                        )}
                   </button>
                 )}
                 {challenge && (
                   <button
                     type="button"
+                    className={styles.secondaryButton}
                     onClick={() => {
                       setChallenge(null);
                       setRecovery(false);
                       setError('');
+                      setFieldError(null);
                     }}
                   >
-                    Volver al inicio de sesión
+                    {tx('Volver al inicio de sesión', 'Back to sign in')}
                   </button>
                 )}
               </fieldset>
               {!challenge && !isAdminLogin && (
                 <p className={styles.registerPrompt}>
-                  ¿Aún no tienes cuenta?{' '}
-                  <Link href="/registro">Abrir cuenta de práctica</Link>
+                  {tx('¿Aún no tienes cuenta?', "Don't have an account yet?")}{' '}
+                  <Link href="/registro">
+                    {tx('Abrir cuenta de práctica', 'Open practice account')}
+                  </Link>
                 </p>
               )}
             </form>

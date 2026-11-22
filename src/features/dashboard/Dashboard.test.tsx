@@ -122,7 +122,7 @@ it('muestra la pantalla oscura de sesión cerrada al expirar la sesión durante 
   fireEvent.click(refreshButton);
 
   expect(await screen.findByRole('alertdialog')).toHaveTextContent(
-    '¿Te faltó una acción? Tu sesión se cerró',
+    'Vuelve a iniciar sesión',
   );
   expect(
     screen.getByRole('link', { name: /Iniciar sesión de nuevo/ }),
@@ -148,7 +148,7 @@ it('bloquea /dashboard con el aviso oscuro si se abre sin sesión activa (401)',
   renderDashboard('dashboard');
 
   expect(await screen.findByRole('alertdialog')).toHaveTextContent(
-    '¿Te faltó una acción? Tu sesión se cerró',
+    'Vuelve a iniciar sesión',
   );
   expect(
     screen.getByRole('link', { name: /Iniciar sesión de nuevo/ }),
@@ -176,4 +176,36 @@ it('mantiene el acceso público en /markets sin sesión iniciada', async () => {
   const loginLink = await screen.findByRole('link', { name: 'Inicia sesión' });
   expect(loginLink).toHaveAttribute('href', '/login');
   expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+});
+
+it('muestra poder de compra, liquidación ACH real y la foto del asesor en el resumen', async () => {
+  mockServer.use(
+    http.get('*/api/v1/users/me', () => HttpResponse.json(sampleProfile)),
+    http.get('*/api/v1/kyc/status', () =>
+      HttpResponse.json({ has_account: true, status: 'ACTIVE' }),
+    ),
+    http.get('*/api/v1/wallet/balances', () =>
+      HttpResponse.json({
+        ...sampleWalletBalance,
+        cash: '10000.00',
+        cash_withdrawable: '0.00',
+        buying_power: '10000.00',
+        equity: '10000.00',
+        portfolio_value: '10000.00',
+        long_market_value: '0.00',
+      }),
+    ),
+    http.get('*/api/v1/markets', () => HttpResponse.json([])),
+  );
+
+  renderDashboard('dashboard');
+
+  expect(await screen.findByText('Disponible para invertir')).toBeVisible();
+  expect(
+    screen.queryByText('Dinero en órdenes pendientes'),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.getByText('En liquidación bancaria: $10,000.00 USD'),
+  ).toBeVisible();
+  expect(screen.getByAltText('Foto Carlos Rodríguez, CFA')).toBeVisible();
 });

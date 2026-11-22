@@ -1,6 +1,7 @@
 'use client';
 import Image from 'next/image';
 import { useEffect, useId, useRef, useState } from 'react';
+import { useLocale } from '@/lib/i18n';
 import styles from './registration.module.css';
 
 interface Country {
@@ -23,6 +24,7 @@ export function CountryCombobox({
   disabled = false,
   id = 'country-combobox-input',
 }: CountryComboboxProps) {
+  const { tx } = useLocale();
   const [selectedCode, setSelectedCode] = useState(defaultValue);
   const [query, setQuery] = useState(() => {
     if (!defaultValue) return '';
@@ -71,7 +73,7 @@ export function CountryCombobox({
       {/* Select nativo accesible para sincronización con pruebas y formData */}
       <select
         name="country"
-        aria-label="País"
+        aria-label={tx('País', 'Country')}
         value={selectedCode}
         disabled={disabled}
         required
@@ -86,7 +88,7 @@ export function CountryCombobox({
         }}
       >
         <option value="" disabled>
-          Selecciona tu país
+          {tx('Selecciona tu país', 'Select your country')}
         </option>
         {countries.map((c) => (
           <option key={c.code} value={c.code}>
@@ -115,7 +117,10 @@ export function CountryCombobox({
           aria-expanded={open}
           aria-autocomplete="list"
           aria-controls={listboxId}
-          placeholder="Escribe o selecciona tu país..."
+          placeholder={tx(
+            'Escribe o selecciona tu país...',
+            'Type or select your country...',
+          )}
           value={query}
           disabled={disabled}
           autoComplete="off"
@@ -142,7 +147,7 @@ export function CountryCombobox({
           type="button"
           tabIndex={-1}
           className={styles.comboboxToggle}
-          aria-label="Abrir listado de países"
+          aria-label={tx('Abrir listado de países', 'Open country list')}
           onClick={() => {
             setOpen((prev) => !prev);
             inputRef.current?.focus();
@@ -160,11 +165,14 @@ export function CountryCombobox({
           id={listboxId}
           role="listbox"
           className={styles.comboboxMenu}
-          aria-label="Países disponibles"
+          aria-label={tx('Países disponibles', 'Available countries')}
         >
           {filtered.length === 0 ? (
             <li className={styles.comboboxEmpty}>
-              No se encontraron países que coincidan con &ldquo;{query}&rdquo;
+              {tx(
+                `No se encontraron países que coincidan con “${query}”`,
+                `No countries found matching “${query}”`,
+              )}
             </li>
           ) : (
             filtered.map((c) => {

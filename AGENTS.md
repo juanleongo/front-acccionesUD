@@ -101,10 +101,25 @@ El script `scripts/check-boundaries.mjs` valida el grafo de dependencias en cada
 
 ---
 
-## 4. Accesibilidad y Compatibilidad con Pruebas E2E (Playwright)
+## 4. Reglas Estrictas de UX/UI, Responsive, Tablas, Formularios, Accesibilidad y E2E
 
-- **Labels únicos:** No envuelvas botones (como el botón de mostrar contraseña) dentro de un `<label>` que ya apunta a un `<input>`, usa siempre `<label htmlFor="id">` separado del `<button>` y cuida que el `aria-label` del botón no colisione con el texto del `<label>`.
-- **Semántica:** Usa `<Link>` para navegaciones de ruta y `<button type="button">` para acciones en pantalla.
+- **Full Responsive real (320 px en móvil mínimo hasta 27"+ / `>= 2560 px` en PC):**
+  - En monitores grandes (`27"` / ultra-wide), usar contenedores centrados con `max-width` proporcionados (`78rem`–`96rem`) y grids fluidos (`auto-fit` / `minmax`) para evitar líneas infinitas o huecos deformes.
+  - En móvil mínimo (`320px`–`375px`), garantizar `scrollWidth <= clientWidth`: sin `white-space: nowrap` en títulos/textos largos, sin `min-width` rígidos que desborden, botones y barras de filtro con `flex-wrap: wrap` y `min-width: 0` en columnas grid/flex.
+- **Tablas y filtros ligados a contratos reales de la API:**
+  - Envolver tablas en contenedores con scroll horizontal fluido (`overflow-x: auto`) y tipografía tabular (`font-variant-numeric: tabular-nums`) en montos, precios, cantidades y fechas.
+  - **Regla de filtros en tablas:** Agregar barra o controles de filtro (`CustomSelect` + inputs con tokens) **siempre que la API/contrato soporte query params o retorne campos filtrables útiles**. **Si el endpoint aún no expone o soporta filtros reales, esperar al backend y NO renderizar cabeceras ni controles de filtro vacíos/decorativos.**
+- **Tarjetas, modales y tipografía unificada (cero diseño plano o texto sin estilos):**
+  - **Tarjetas:** Prohibido usar bloques planos sin contraste visual. Usar `--color-surface` / `--color-surface-raised`, borde definido (`--color-border` / `--color-border-strong`), `--shadow-card`, radios uniformes (`--radius-lg`), encabezados estructurados y badges semánticos de estado.
+  - **Modales:** Backdrop con blur, tarjeta centrada con ancho fluido (`min(calc(100vw - 2rem), ...)`), borde destacado, sombra elevada, cierre accesible (`Esc` + botón claro), cuerpo legible y footer jerarquizado.
+  - **Tipografía:** Prohibido dejar títulos, subtítulos, metadatos, etiquetas, estados vacíos o mensajes de error como texto HTML básico sin clases de diseño (`--font-family-body`, jerarquía de pesos `700`/`800`, `--color-text` / `--color-text-muted` / `--color-text-subtle`).
+  - **Escala oficial de `z-index` (evitar choques):** Tarjetas `1–10`, cabeceras/sidebars `20–40`, menús desplegables (`CustomSelect`, combobox) `70`, modales `90`, overlay de sesión cerrada `9999`. Toda cabecera `sticky` debe mantenerse `<= 40` para nunca tapar menús abiertos.
+  - **Mejora continua:** Siempre que se detecte un bloque visual pobre, desalineado o mejorable en el módulo que se edita, elevarlo al estándar del sistema respetando contratos de API y pruebas.
+- **Formularios sin validación nativa del navegador (`noValidate`):** Todo `<form>` (que no sea `method="dialog"`) debe incluir `noValidate` y mostrar errores de validación con alertas/banners estilizados propios usando tokens de `src/styles/tokens.css`. **Prohibido** mostrar globos o tooltips nativos del navegador.
+- **Listas desplegables estilizadas (`CustomSelect` obligatorio):** Toda lista desplegable visible debe implementarse con `@/components/ui/CustomSelect` (que sincroniza un `<select>` oculto solo para accesibilidad, formularios y pruebas E2E/unitarias). **Prohibido** mostrar `<select>` nativos sin estilos del sistema Claro/Oscuro.
+- **Tema inicial sin parpadeo (FOUC) y bilingüe (`ES / EN`):** `src/app/layout.tsx` ejecuta un script síncrono previo al primer renderizado para aplicar `acciones_ud_theme` (`data-theme`) y `acciones_ud_locale` (`lang` y `data-locale`) desde `localStorage` antes de pintar. Todo texto visible o accesible nuevo debe integrarse con `useLocale()` (`tx`, `intl`).
+- **Labels únicos y semántica:** Usar `<label htmlFor="id">` separado de botones internos (como mostrar contraseña) y separado de `<CustomSelect>`. Usar `<Link>` para rutas y `<button type="button">` para acciones (evitando `<div onClick>`).
+- **Imágenes y activos:** Todo `<Image>` externo debe usar `unoptimized` o dominio declarado en `next.config.ts` (`images.remotePatterns`), o servirse desde `public/` con fallback de iniciales (como `BrokerAvatar`).
 
 ---
 
@@ -119,3 +134,13 @@ npm run build
 ```
 
 `npm run check` valida Prettier, ESLint (`--max-warnings=0`), TypeScript estricto (`exactOptionalPropertyTypes` y `noUncheckedIndexedAccess`), fronteras arquitectónicas (`check:boundaries`), consistencia OpenAPI y pruebas unitarias en Vitest.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+## This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

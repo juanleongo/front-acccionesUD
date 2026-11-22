@@ -2,31 +2,74 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Icon } from '@/components/ui/Icon';
+import { LanguageToggle } from '@/components/ui/LanguageToggle';
+import { LinkPendingIndicator } from '@/components/ui/LinkPendingIndicator';
 import { getCurrentUser } from '@/features/dashboard/client';
 import { formatPersonName } from '@/lib/format-person-name';
+import { useLocale } from '@/lib/i18n';
+import {
+  getDocumentTheme,
+  subscribeThemeStorage,
+  toggleDocumentTheme,
+  type Theme,
+} from '@/lib/theme';
 import styles from '../landing.module.css';
 
+function subscribeDocumentTheme(onThemeChange: () => void): () => void {
+  const stopStorage = subscribeThemeStorage(() => onThemeChange());
+  if (
+    typeof document === 'undefined' ||
+    typeof MutationObserver === 'undefined'
+  ) {
+    return stopStorage;
+  }
+  const observer = new MutationObserver(onThemeChange);
+  observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['data-theme'],
+  });
+  return () => {
+    observer.disconnect();
+    stopStorage();
+  };
+}
+
+function getServerThemeSnapshot(): Theme {
+  return 'dark';
+}
+
 export function Brand() {
+  const { tx } = useLocale();
   return (
-    <a href="#inicio" className={styles.brand} aria-label="Acciones UD, inicio">
+    <a
+      href="#inicio"
+      className={styles.brand}
+      aria-label={tx('Acciones UD, inicio', 'Acciones UD, home')}
+    >
       <Image
         src="/logo-acciones-ud.png"
-        alt="Logo Acciones UD"
+        alt={tx('Logo Acciones UD', 'Acciones UD Logo')}
         width={42}
         height={42}
         className={styles.brandLogo}
         priority
       />
-      <span>Acciones UD</span>
+      <span className={styles.brandName}>Acciones UD</span>
     </a>
   );
 }
 
 export function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const { tx } = useLocale();
+  const activeTheme = useSyncExternalStore(
+    subscribeDocumentTheme,
+    getDocumentTheme,
+    getServerThemeSnapshot,
+  );
   const userQuery = useQuery({
     queryKey: ['users', 'me'],
     queryFn: ({ signal }) => getCurrentUser(signal),
@@ -34,118 +77,124 @@ export function Header() {
   });
   const user = userQuery.data;
 
-  function toggleTheme() {
-    const theme =
-      document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
-    document.documentElement.dataset.theme = theme;
-    try {
-      localStorage.setItem('acciones_ud_theme', theme);
-    } catch {
-      /* El tema sigue funcionando sin almacenamiento. */
-    }
-  }
-
   return (
-    <header className={styles.header}>
-      <div className={`${styles.container} ${styles.headerInner}`}>
-        <Brand />
-        <nav
-          id="main-navigation"
-          aria-label="Navegación principal"
-          className={`${styles.navigation} ${menuOpen ? styles.navigationOpen : ''}`}
-          onClick={(event) => {
-            if (event.target instanceof Element && event.target.closest('a')) {
-              setMenuOpen(false);
-            }
-          }}
-        >
-          <a href="#comisionistas">
-            <Icon name="check" size={17} /> Comisionistas
-          </a>
-          <a href="#mercados">
-            <Icon name="trend" size={17} /> Mercados EE. UU.
-          </a>
-          <a href="#como-funciona">
-            <Icon name="exchange" size={17} /> Cómo Funciona
-          </a>
-          <a href="#seguridad">
-            <Icon name="shield" size={17} /> Seguridad &amp; Confianza
-          </a>
-          <div className={styles.mobileAccount}>
+    <>
+      <a href="#contenido" className={styles.skipLink}>
+        {tx('Saltar al contenido', 'Skip to content')}
+      </a>
+      <header className={styles.header}>
+        <div className={`${styles.container} ${styles.headerInner}`}>
+          <Brand />
+          <nav
+            id="main-navigation"
+            aria-label={tx('Navegación principal', 'Main navigation')}
+            className={`${styles.navigation} ${menuOpen ? styles.navigationOpen : ''}`}
+            onClick={(event) => {
+              if (
+                event.target instanceof Element &&
+                event.target.closest('a')
+              ) {
+                setMenuOpen(false);
+              }
+            }}
+          >
+            <a href="#comisionistas" className={styles.navLink}>
+              <Icon name="check" size={17} /> {tx('Comisionistas', 'Brokers')}
+            </a>
+            <a href="#mercados" className={styles.navLink}>
+              <Icon name="trend" size={17} />{' '}
+              {tx('Mercados EE. UU.', 'U.S. Markets')}
+            </a>
+            <a href="#como-funciona" className={styles.navLink}>
+              <Icon name="exchange" size={17} />{' '}
+              {tx('Cómo Funciona', 'How It Works')}
+            </a>
+            <a href="#seguridad" className={styles.navLink}>
+              <Icon name="shield" size={17} />{' '}
+              {tx('Seguridad & Confianza', 'Security & Trust')}
+            </a>
+            <div className={styles.mobileAccount}>
+              {user ? (
+                <Link href="/dashboard" className={styles.primaryButton}>
+                  {tx('Ir al Dashboard', 'Go to Dashboard')} (
+                  {formatPersonName(user.first_names).split(' ')[0] ||
+                    tx('Inversionista', 'Investor')}
+                  )
+                </Link>
+              ) : (
+                <>
+                  <Link href="/login" className={styles.loginButton}>
+                    {tx('Iniciar sesión', 'Sign in')}
+                  </Link>
+                  <Link href="/registro" className={styles.primaryButton}>
+                    {tx('Abrir cuenta de práctica', 'Open practice account')}
+                    <LinkPendingIndicator />
+                  </Link>
+                </>
+              )}
+            </div>
+          </nav>
+          <div className={styles.headerActions}>
+            <LanguageToggle className={styles.language} size={16} />
+            <button
+              type="button"
+              className={styles.themeButton}
+              onClick={() => {
+                toggleDocumentTheme();
+              }}
+              aria-label={tx('Cambiar tema de color', 'Toggle color theme')}
+            >
+              {activeTheme === 'light' ? (
+                <>
+                  <Icon name="moon" size={16} /> {tx('Oscuro', 'Dark')}
+                </>
+              ) : (
+                <>
+                  <Icon name="sun" size={16} /> {tx('Claro', 'Light')}
+                </>
+              )}
+            </button>
             {user ? (
-              <Link href="/dashboard" className={styles.primaryButton}>
-                Ir al Dashboard (
-                {formatPersonName(user.first_names).split(' ')[0] ||
-                  'Inversionista'}
-                )
+              <Link
+                href="/dashboard"
+                className={`${styles.primaryButton} ${styles.headerCta}`}
+              >
+                <span>{tx('Ir al Dashboard', 'Go to Dashboard')}</span>
+                <Icon name="arrow" size={17} />
               </Link>
             ) : (
               <>
                 <Link href="/login" className={styles.loginButton}>
-                  Iniciar sesión
+                  {tx('Iniciar sesión', 'Sign in')}
                 </Link>
-                <Link href="/registro" className={styles.primaryButton}>
-                  Abrir cuenta de práctica
+                <Link
+                  href="/registro"
+                  className={`${styles.primaryButton} ${styles.headerCta}`}
+                >
+                  {tx('Abrir cuenta de práctica', 'Open practice account')}{' '}
+                  <LinkPendingIndicator>
+                    <Icon name="arrow" size={17} />
+                  </LinkPendingIndicator>
                 </Link>
               </>
             )}
-          </div>
-        </nav>
-        <div className={styles.headerActions}>
-          <span className={styles.language} aria-label="Idioma: español">
-            <Icon name="globe" size={16} /> ES
-          </span>
-          <button
-            type="button"
-            className={styles.themeButton}
-            onClick={toggleTheme}
-            aria-label="Cambiar tema de color"
-          >
-            <span className={styles.whenDark}>
-              <Icon name="sun" size={16} /> Claro
-            </span>
-            <span className={styles.whenLight}>
-              <Icon name="moon" size={16} /> Oscuro
-            </span>
-          </button>
-          {user ? (
-            <Link
-              href="/dashboard"
-              className={`${styles.primaryButton} ${styles.headerCta}`}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.45rem',
-              }}
+            <button
+              type="button"
+              className={`${styles.iconButton} ${styles.menuButton}`}
+              aria-label={
+                menuOpen
+                  ? tx('Cerrar menú', 'Close menu')
+                  : tx('Abrir menú', 'Open menu')
+              }
+              aria-expanded={menuOpen}
+              aria-controls="main-navigation"
+              onClick={() => setMenuOpen(!menuOpen)}
             >
-              <span>Ir al Dashboard</span>
-              <Icon name="arrow" size={17} />
-            </Link>
-          ) : (
-            <>
-              <Link href="/login" className={styles.loginButton}>
-                Iniciar sesión
-              </Link>
-              <Link
-                href="/registro"
-                className={`${styles.primaryButton} ${styles.headerCta}`}
-              >
-                Abrir cuenta de práctica <Icon name="arrow" size={17} />
-              </Link>
-            </>
-          )}
-          <button
-            type="button"
-            className={`${styles.iconButton} ${styles.menuButton}`}
-            aria-label={menuOpen ? 'Cerrar menú' : 'Abrir menú'}
-            aria-expanded={menuOpen}
-            aria-controls="main-navigation"
-            onClick={() => setMenuOpen(!menuOpen)}
-          >
-            <Icon name={menuOpen ? 'close' : 'menu'} />
-          </button>
+              <Icon name={menuOpen ? 'close' : 'menu'} />
+            </button>
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
+    </>
   );
 }

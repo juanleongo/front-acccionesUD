@@ -1,6 +1,7 @@
 'use client';
 
 import { Icon, type IconName } from '@/components/ui/Icon';
+import { useLocale } from '@/lib/i18n';
 import { marketInterestsCatalog } from '../contract';
 import styles from '../registration.module.css';
 
@@ -17,7 +18,58 @@ const SECTOR_ICONS: IconName[] = [
   'star',
 ];
 
-function splitSectorLabel(item: { value: string; label: string }) {
+const INTEREST_LABELS_EN: Record<string, { title: string; subtitle: string }> =
+  {
+    'Tecnología & Semiconductores': {
+      title: 'Tech & Semiconductors',
+      subtitle: 'NASDAQ: Apple, NVIDIA, Microsoft',
+    },
+    'Mercados Tradicionales (NYSE & S&P 500)': {
+      title: 'Traditional U.S. Markets',
+      subtitle: 'NYSE, S&P 500 & Dow Jones',
+    },
+    'Materias Primas: Oro & Metales': {
+      title: 'Commodities: Gold & Metals',
+      subtitle: 'Gold, Silver & Precious Metals (GLD, NEM)',
+    },
+    'Energía, Petróleo & Gas Natural': {
+      title: 'Energy, Oil & Natural Gas',
+      subtitle: 'U.S. Energy Leaders (ExxonMobil, Chevron)',
+    },
+    'Sector Financiero & Banca USA': {
+      title: 'U.S. Financials & Banking',
+      subtitle: 'Banking & Payments (JPMorgan, Visa, Goldman Sachs)',
+    },
+    'Inteligencia Artificial & Cloud': {
+      title: 'Artificial Intelligence & Cloud',
+      subtitle: 'AI Infrastructure, Cloud & Cybersecurity',
+    },
+    'Salud & Biotecnología': {
+      title: 'Healthcare & Biotech',
+      subtitle: 'Pharma & Biotech (Eli Lilly, Pfizer, UNH)',
+    },
+    'ETFs & Fondos Indexados USA': {
+      title: 'U.S. ETFs & Index Funds',
+      subtitle: 'Exchange-Traded Funds (SPY, QQQ, DIA, IWM)',
+    },
+    'Consumo Masivo & Retail': {
+      title: 'Consumer & Retail',
+      subtitle: 'Consumer Staples & E-Commerce (Amazon, Walmart, Coca-Cola)',
+    },
+    'Bienes Raíces (REITs) & Dividendos': {
+      title: 'Real Estate (REITs) & Dividends',
+      subtitle: 'REITs & USD Dividend Stocks',
+    },
+  };
+
+function splitSectorLabel(
+  item: { value: string; label: string },
+  locale: string,
+) {
+  if (locale === 'en') {
+    const en = INTEREST_LABELS_EN[item.value];
+    if (en) return en;
+  }
   const match = /\(([^)]+)\)\s*$/.exec(item.label);
   return {
     title: item.value,
@@ -44,11 +96,15 @@ export function PreferencesStepFields({
   onToggleInterest,
   onRemoveInterest,
 }: PreferencesStepFieldsProps) {
+  const { locale, tx } = useLocale();
   return (
     <fieldset hidden={hidden} disabled={disabled}>
       <legend>
-        <Icon name="trend" size={18} /> Preferencias e intereses en mercados de
-        EE. UU.
+        <Icon name="trend" size={18} />{' '}
+        {tx(
+          'Preferencias e intereses en mercados de EE. UU.',
+          'U.S. Market Preferences & Interests',
+        )}
       </legend>
       <div className={styles.grid}>
         <div className={`${styles.field} ${styles.fullWidth}`}>
@@ -56,7 +112,10 @@ export function PreferencesStepFields({
             className={styles.sectionBlockTitle}
             htmlFor="investor_level_select"
           >
-            1. Nivel de experiencia (opcional)
+            {tx(
+              '1. Nivel de experiencia (opcional)',
+              '1. Experience level (optional)',
+            )}
           </label>
           <select
             id="investor_level_select"
@@ -66,15 +125,20 @@ export function PreferencesStepFields({
             tabIndex={-1}
             className={styles.hiddenNativeSelect}
           >
-            <option value="">Sin especificar</option>
-            <option value="beginner">Principiante</option>
-            <option value="experienced">Con experiencia</option>
+            <option value="">{tx('Sin especificar', 'Unspecified')}</option>
+            <option value="beginner">{tx('Principiante', 'Beginner')}</option>
+            <option value="experienced">
+              {tx('Con experiencia', 'Experienced')}
+            </option>
           </select>
 
           <div
             className={styles.experienceCardsGrid}
             role="radiogroup"
-            aria-label="Selección visual de nivel de experiencia"
+            aria-label={tx(
+              'Selector visual de trayectoria bursátil',
+              'Visual trading background selector',
+            )}
           >
             <button
               type="button"
@@ -93,10 +157,12 @@ export function PreferencesStepFields({
                 </span>
                 <span className={styles.experienceRadio} />
               </div>
-              <strong>Principiante</strong>
+              <strong>{tx('Principiante', 'Beginner')}</strong>
               <small>
-                Iniciando en Wall Street · Instrumentos de menor volatilidad,
-                ETFs y herramientas de aprendizaje.
+                {tx(
+                  'Iniciando en Wall Street · Instrumentos de menor volatilidad, ETFs y herramientas de aprendizaje.',
+                  'Getting started on Wall Street · Lower-volatility instruments, ETFs, and learning tools.',
+                )}
               </small>
             </button>
 
@@ -117,10 +183,12 @@ export function PreferencesStepFields({
                 </span>
                 <span className={styles.experienceRadio} />
               </div>
-              <strong>Con experiencia</strong>
+              <strong>{tx('Con experiencia', 'Experienced')}</strong>
               <small>
-                Operación activa en NYSE / NASDAQ · Órdenes avanzadas (Limit,
-                Stop Loss, Take Profit) y análisis bursátil.
+                {tx(
+                  'Operación activa en NYSE / NASDAQ · Órdenes avanzadas (Limit, Stop Loss, Take Profit) y análisis bursátil.',
+                  'Active NYSE / NASDAQ trading · Advanced order types (Limit, Stop Loss, Take Profit) and market analytics.',
+                )}
               </small>
             </button>
           </div>
@@ -132,24 +200,27 @@ export function PreferencesStepFields({
               className={styles.sectionBlockTitle}
               htmlFor="interests_input"
             >
-              2. Intereses (opcional)
+              {tx('2. Intereses (opcional)', '2. Interests (optional)')}
             </label>
             <span className={styles.sectorCounterBadge}>
               {selectedInterests.length}{' '}
               {selectedInterests.length === 1
-                ? 'seleccionado'
-                : 'seleccionados'}
+                ? tx('seleccionado', 'selected')
+                : tx('seleccionados', 'selected')}
             </span>
           </div>
 
           <div
             className={styles.interestCatalogGrid}
             role="group"
-            aria-label="Catálogo de sectores bursátiles"
+            aria-label={tx(
+              'Catálogo de sectores bursátiles',
+              'Market sectors catalog',
+            )}
           >
             {marketInterestsCatalog.map((item, idx) => {
               const isSelected = selectedInterests.includes(item.value);
-              const { title, subtitle } = splitSectorLabel(item);
+              const { title, subtitle } = splitSectorLabel(item, locale);
               const iconName =
                 SECTOR_ICONS[idx % SECTOR_ICONS.length] ?? 'trend';
               return (
@@ -181,13 +252,18 @@ export function PreferencesStepFields({
               name="interests"
               rows={1}
               className={styles.customInterestsBox}
-              placeholder="¿Tienes algún otro sector o activo de interés? Escríbelo aquí (opcional)…"
+              placeholder={tx(
+                '¿Tienes algún otro sector o activo de interés? Escríbelo aquí (opcional)…',
+                'Have any other sector or stock in mind? Write it here (optional)…',
+              )}
               aria-describedby="interests-help"
             />
           </div>
           <small id="interests-help" className={styles.fieldHelp}>
-            Selecciona uno o varios sectores arriba o escribe intereses
-            personalizados adicionales.
+            {tx(
+              'Selecciona uno o varios sectores arriba o escribe intereses personalizados adicionales.',
+              'Select one or more sectors above or enter additional custom interests.',
+            )}
           </small>
         </div>
       </div>
@@ -199,20 +275,23 @@ export function PreferencesStepFields({
       {selectedInterests.length > 0 && (
         <div
           className={styles.selectedInterests}
-          aria-label="Intereses seleccionados"
+          aria-label={tx('Intereses seleccionados', 'Selected interests')}
         >
           <span className={styles.selectedTitle}>
-            Sectores seleccionados ({selectedInterests.length}):
+            {tx('Sectores seleccionados', 'Selected sectors')} (
+            {selectedInterests.length}):
           </span>
           <div className={styles.interestChips}>
             {selectedInterests.map((interest) => (
               <span key={interest} className={styles.interestChip}>
-                {interest}
+                {locale === 'en'
+                  ? (INTEREST_LABELS_EN[interest]?.title ?? interest)
+                  : interest}
                 <button
                   type="button"
                   className={styles.chipRemove}
                   onClick={() => onRemoveInterest(interest)}
-                  aria-label={`Quitar ${interest}`}
+                  aria-label={`${tx('Quitar', 'Remove')} ${interest}`}
                 >
                   ×
                 </button>
@@ -224,7 +303,10 @@ export function PreferencesStepFields({
 
       <div className={styles.servicesSection}>
         <span className={styles.sectionBlockTitle}>
-          3. Servicios Adicionales y Acompañamiento
+          {tx(
+            '3. Servicios Adicionales y Acompañamiento',
+            '3. Additional Services & Advisory',
+          )}
         </span>
         <div className={styles.servicesGrid}>
           <label className={`${styles.check} ${styles.serviceCard}`}>
@@ -235,14 +317,21 @@ export function PreferencesStepFields({
               <input type="checkbox" name="monthly_report" />
             </div>
             <div className={styles.serviceCardBody}>
-              <strong>Recibir el informe mensual</strong>
+              <strong>
+                {tx(
+                  'Recibir el informe mensual',
+                  'Receive monthly market report',
+                )}
+              </strong>
               <small>
-                Resumen ejecutivo del mercado estadounidense (S&amp;P 500 y
-                NASDAQ).
+                {tx(
+                  'Resumen ejecutivo del mercado estadounidense (S&P 500 y NASDAQ).',
+                  'Executive monthly summary of U.S. markets (S&P 500 & NASDAQ).',
+                )}
               </small>
             </div>
             <em className={styles.serviceCardTagAccent}>
-              Incluido en simulación
+              {tx('Incluido en simulación', 'Included in simulation')}
             </em>
           </label>
 
@@ -254,12 +343,22 @@ export function PreferencesStepFields({
               <input type="checkbox" name="broker_requested" />
             </div>
             <div className={styles.serviceCardBody}>
-              <strong>Solicitar acompañamiento de un comisionista</strong>
+              <strong>
+                {tx(
+                  'Solicitar acompañamiento de un comisionista',
+                  'Request licensed broker guidance',
+                )}
+              </strong>
               <small>
-                Asesoría personalizada para estructurar tu portafolio en USD.
+                {tx(
+                  'Asesoría personalizada para estructurar tu portafolio en USD.',
+                  'Personalized advisory to structure your USD portfolio.',
+                )}
               </small>
             </div>
-            <em className={styles.serviceCardTagMuted}>Opcional</em>
+            <em className={styles.serviceCardTagMuted}>
+              {tx('Opcional', 'Optional')}
+            </em>
           </label>
 
           <label className={`${styles.check} ${styles.serviceCard}`}>
@@ -270,13 +369,19 @@ export function PreferencesStepFields({
               <input type="checkbox" name="premium_requested" />
             </div>
             <div className={styles.serviceCardBody}>
-              <strong>Solicitar el plan prémium</strong>
+              <strong>
+                {tx('Solicitar el plan prémium', 'Request premium plan')}
+              </strong>
               <small>
-                Acceso a listas de seguimiento avanzadas y alertas de precio en
-                tiempo real.
+                {tx(
+                  'Acceso a listas de seguimiento avanzadas y alertas de precio en tiempo real.',
+                  'Access to advanced watchlists and real-time price alerts.',
+                )}
               </small>
             </div>
-            <em className={styles.serviceCardTagAccent}>Simulación Pro</em>
+            <em className={styles.serviceCardTagAccent}>
+              {tx('Simulación Pro', 'Pro Simulation')}
+            </em>
           </label>
         </div>
       </div>

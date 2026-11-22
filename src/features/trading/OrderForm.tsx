@@ -2,7 +2,9 @@
 
 import { useRef, useState, type FormEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ApiError } from '@/lib/api';
+import { CustomSelect } from '@/components/ui/CustomSelect';
+import { ApiError, QUERY_STALE_TIMES, queryKeys } from '@/lib/api';
+import { useLocale } from '@/lib/i18n';
 import { InstrumentSelector } from './components/InstrumentSelector';
 import { OrderParametersFields } from './components/OrderParametersFields';
 import { OrderPreviewCard } from './components/OrderPreviewCard';
@@ -17,16 +19,14 @@ import {
   type OrderDetail,
   type Preview,
 } from './trading-api';
-import { formatOrderStatus } from './trading-labels';
+import {
+  formatOrderStatus,
+  getOrderTypeLabels,
+  orderTypeLabels,
+} from './trading-labels';
 import styles from './trading.module.css';
 
-export const orderTypeLabels = {
-  market: 'Mercado',
-  limit: 'Límite / take profit simple',
-  stop: 'Stop loss',
-  stop_limit: 'Stop-limit',
-  trailing_stop: 'Trailing stop',
-};
+export { getOrderTypeLabels, orderTypeLabels };
 
 export function OrderForm({
   initialSymbol,
@@ -39,6 +39,8 @@ export function OrderForm({
   onOrderCreated: (order: OrderDetail) => void;
   onStopEditing?: () => void;
 }) {
+  const { locale, tx } = useLocale();
+  const typeLabels = getOrderTypeLabels(locale);
   const [draft, setDraft] = useState<OrderInput>(() =>
     editing
       ? {
@@ -84,16 +86,18 @@ export function OrderForm({
   const [exchange, setExchange] = useState('');
   const [letter, setLetter] = useState('A');
   const markets = useQuery({
-    queryKey: ['trading-markets'],
+    queryKey: queryKeys.markets.list(),
     queryFn: ({ signal }) => listTradingMarkets(signal),
+    staleTime: QUERY_STALE_TIMES.catalog,
     enabled: !editing,
     retry: false,
   });
   const query = search.trim() || letter;
   const [page, setPage] = useState(1);
   const assets = useQuery({
-    queryKey: ['trading-assets', query, exchange, page],
+    queryKey: queryKeys.instruments.search(query, exchange, page),
     queryFn: ({ signal }) => searchAssets(query, page, signal, exchange),
+    staleTime: QUERY_STALE_TIMES.catalog,
     enabled: !editing,
     retry: false,
   });
@@ -148,11 +152,104 @@ export function OrderForm({
     setPreview(null);
   }
 
+  function validateOrderDraft(): string | null {
+    if (!draft.symbol)
+      return tx('Selecciona un instrumento.', 'Select an instrument.');
+    const qtyNum = Number(draft.qty);
+    if (!draft.qty.trim() || !Number.isFinite(qtyNum) || qtyNum <= 0) {
+      return tx(
+        'Ingresa una cantidad válida de acciones mayor a cero.',
+        'Enter a valid share quantity greater than zero.',
+      );
+    }
+    const wholeRequired =
+      draft.order_class === 'bracket' || draft.type === 'trailing_stop';
+    if (wholeRequired && (!Number.isInteger(qtyNum) || qtyNum < 1)) {
+      return tx(
+        'Las órdenes bracket y trailing stop requieren una cantidad entera mínima de 1 acción.',
+        'Bracket and trailing stop orders require an integer quantity of at least 1 share.',
+      );
+    }
+    if (draft.type === 'limit' || draft.type === 'stop_limit') {
+      const limitNum = Number(draft.limit_price);
+      if (
+        !draft.limit_price?.trim() ||
+        !Number.isFinite(limitNum) ||
+        limitNum <= 0
+      ) {
+        return tx(
+          'Ingresa un precio límite válido mayor a cero.',
+          'Enter a valid limit price greater than zero.',
+        );
+      }
+    }
+    if (draft.type === 'stop' || draft.type === 'stop_limit') {
+      const stopNum = Number(draft.stop_price);
+      if (
+        !draft.stop_price?.trim() ||
+        !Number.isFinite(stopNum) ||
+        stopNum <= 0
+      ) {
+        return tx(
+          'Ingresa un precio de activación stop válido mayor a cero.',
+          'Enter a valid stop trigger price greater than zero.',
+        );
+      }
+    }
+    if (draft.type === 'trailing_stop') {
+      if (draft.trail_price !== undefined) {
+        const trailNum = Number(draft.trail_price);
+        if (
+          !draft.trail_price.trim() ||
+          !Number.isFinite(trailNum) ||
+          trailNum <= 0
+        ) {
+          return tx(
+            'Ingresa una distancia en USD válida mayor a cero.',
+            'Enter a valid USD trailing distance greater than zero.',
+          );
+        }
+      } else {
+        const pctNum = Number(draft.trail_percent);
+        if (
+          !draft.trail_percent?.trim() ||
+          !Number.isFinite(pctNum) ||
+          pctNum < 0.1 ||
+          pctNum > 50
+        ) {
+          return tx(
+            'Ingresa un porcentaje de trailing válido entre 0.1% y 50%.',
+            'Enter a valid trailing percentage between 0.1% and 50%.',
+          );
+        }
+      }
+    }
+    if (draft.order_class === 'bracket') {
+      const tp = Number(draft.take_profit?.limit_price);
+      const sl = Number(draft.stop_loss?.stop_price);
+      if (
+        !draft.take_profit?.limit_price?.trim() ||
+        !Number.isFinite(tp) ||
+        tp <= 0 ||
+        !draft.stop_loss?.stop_price?.trim() ||
+        !Number.isFinite(sl) ||
+        sl <= 0
+      ) {
+        return tx(
+          'Ingresa precios válidos de take profit y stop loss mayores a cero.',
+          'Enter valid take profit and stop loss prices greater than zero.',
+        );
+      }
+    }
+    return null;
+  }
+
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     if (flight.current) return;
-    if (!draft.symbol) {
-      setError('Selecciona un instrumento.');
+    const validationError = validateOrderDraft();
+    if (validationError) {
+      setError(validationError);
       return;
     }
     flight.current = true;
@@ -165,11 +262,21 @@ export function OrderForm({
         return;
       }
       if (preview.authorization_method === 'acknowledgement' && !ack) {
-        setError('Confirma la autorización por monto elevado.');
+        setError(
+          tx(
+            'Confirma la autorización por monto elevado.',
+            'Confirm high-amount transaction authorization.',
+          ),
+        );
         return;
       }
       if (preview.authorization_method === 'totp' && !/^\d{6}$/.test(totp)) {
-        setError('Ingresa el código MFA de seis dígitos.');
+        setError(
+          tx(
+            'Ingresa el código MFA de seis dígitos.',
+            'Enter the six-digit MFA code.',
+          ),
+        );
         return;
       }
       const body = {
@@ -188,7 +295,10 @@ export function OrderForm({
         ? await orderAction(editing.id, 'resubmit', resubmitBody(body))
         : await submitOrder(body, attempt.current.key);
       setNotice(
-        `Orden registrada correctamente. Estado: ${formatOrderStatus(result.status, result.fully_filled)} (${result.status}).`,
+        tx(
+          `Orden registrada correctamente. Estado: ${formatOrderStatus(result.status, result.fully_filled, locale)} (${result.status}).`,
+          `Order placed successfully. Status: ${formatOrderStatus(result.status, result.fully_filled, locale)} (${result.status}).`,
+        ),
       );
       setPreview(null);
       setTotp('');
@@ -199,11 +309,20 @@ export function OrderForm({
       setError(
         cause instanceof ApiError && cause.metadata.timeout
           ? preview
-            ? 'El servidor no confirmó el resultado en 60 segundos. Consulta el historial antes de volver a enviar. Reintentar sin cambiar los datos reutiliza la clave de la orden para evitar duplicados.'
-            : 'La vista previa no respondió en 60 segundos. Esta consulta no envía órdenes. Puedes volver a consultar la vista previa.'
+            ? tx(
+                'El servidor no confirmó el resultado en 60 segundos. Consulta el historial antes de volver a enviar. Reintentar sin cambiar los datos reutiliza la clave de la orden para evitar duplicados.',
+                'The server did not confirm within 60 seconds. Check order history before retrying. Retrying unchanged reuses the same idempotency key to avoid duplicates.',
+              )
+            : tx(
+                'La vista previa no respondió en 60 segundos. Esta consulta no envía órdenes. Puedes volver a consultar la vista previa.',
+                'The preview did not respond within 60 seconds. No order was placed. You may request a preview again.',
+              )
           : cause instanceof Error
             ? cause.message
-            : 'No se pudo procesar la orden.',
+            : tx(
+                'No se pudo procesar la orden.',
+                'Could not process the order.',
+              ),
       );
     } finally {
       flight.current = false;
@@ -216,16 +335,20 @@ export function OrderForm({
       <div className={styles.cardHeader}>
         <div>
           <h2 className={styles.cardTitle}>
-            {editing ? 'Corregir orden devuelta' : 'Comprar y vender'}
+            {editing
+              ? tx('Corregir orden devuelta', 'Fix returned order')
+              : tx('Comprar y vender', 'Buy & sell')}
           </h2>
           <p className={styles.cardSubtitle}>
-            Operaciones bursátiles en USD · La vista previa es una estimación y
-            la ejecución depende del mercado.
+            {tx(
+              'Operaciones bursátiles en USD · La vista previa es una estimación y la ejecución depende del mercado.',
+              'US equity trading in USD · Preview is an estimate and execution depends on market conditions.',
+            )}
           </p>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} noValidate>
         <fieldset className={styles.orderFields} disabled={busy}>
           {!editing ? (
             <InstrumentSelector
@@ -267,50 +390,53 @@ export function OrderForm({
           ) : (
             <div className={styles.editingBanner}>
               <span>
-                Editando orden: {draft.symbol} ·{' '}
-                {draft.side === 'buy' ? 'Compra' : 'Venta'}
+                {tx('Editando orden:', 'Editing order:')} {draft.symbol} ·{' '}
+                {draft.side === 'buy'
+                  ? tx('Compra', 'Buy')
+                  : tx('Venta', 'Sell')}
               </span>
             </div>
           )}
 
           <div className={styles.fieldGrid}>
-            <label className={styles.fieldGroup}>
-              Operación
-              <select
-                className={styles.select}
+            <div className={styles.fieldGroup}>
+              <label htmlFor="order-side" className={styles.fieldLabel}>
+                {tx('Operación', 'Side')}
+              </label>
+              <CustomSelect
+                id="order-side"
                 disabled={Boolean(editing) || draft.order_class === 'bracket'}
                 value={draft.side}
-                onChange={(e) =>
-                  update({ side: e.target.value as 'buy' | 'sell' })
-                }
-              >
-                <option value="buy">Comprar</option>
-                <option value="sell">Vender</option>
-              </select>
-            </label>
+                onChange={(val) => update({ side: val as 'buy' | 'sell' })}
+                options={[
+                  { value: 'buy', label: tx('Comprar', 'Buy') },
+                  { value: 'sell', label: tx('Vender', 'Sell') },
+                ]}
+              />
+            </div>
 
-            <label className={styles.fieldGroup}>
-              Tipo de orden
-              <select
-                className={styles.select}
+            <div className={styles.fieldGroup}>
+              <label htmlFor="order-type" className={styles.fieldLabel}>
+                {tx('Tipo de orden', 'Order type')}
+              </label>
+              <CustomSelect
+                id="order-type"
                 disabled={Boolean(editing)}
                 value={draft.type}
-                onChange={(e) =>
-                  changeType(e.target.value as OrderInput['type'])
-                }
-              >
-                {Object.entries(orderTypeLabels).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </label>
+                onChange={(val) => changeType(val as OrderInput['type'])}
+                options={Object.entries(typeLabels).map(([value, label]) => ({
+                  value,
+                  label,
+                }))}
+              />
+            </div>
 
             <label className={styles.fieldGroup}>
-              Cantidad de acciones
+              <span className={styles.fieldLabel}>
+                {tx('Cantidad de acciones', 'Share quantity')}
+              </span>
               <input
-                className={styles.input}
+                className={`${styles.input} ${styles.tabularNum}`}
                 required
                 type="number"
                 min={
@@ -330,29 +456,55 @@ export function OrderForm({
               />
             </label>
 
-            <label className={styles.fieldGroup}>
-              Vigencia
-              <select
-                className={styles.select}
+            <div className={styles.fieldGroup}>
+              <label htmlFor="order-tif" className={styles.fieldLabel}>
+                {tx('Vigencia', 'Time in force')}
+              </label>
+              <CustomSelect
+                id="order-tif"
                 value={draft.time_in_force}
-                onChange={(e) =>
+                onChange={(val) =>
                   update({
-                    time_in_force: e.target
-                      .value as OrderInput['time_in_force'],
+                    time_in_force: val as OrderInput['time_in_force'],
                   })
                 }
-              >
-                <option value="day">Día · Durante la sesión</option>
-                <option value="gtc">GTC · Hasta cancelación</option>
-                {draft.type !== 'trailing_stop' &&
-                  draft.order_class !== 'bracket' && (
-                    <>
-                      <option value="ioc">IOC · Inmediata o cancelar</option>
-                      <option value="fok">FOK · Completa o cancelar</option>
-                    </>
-                  )}
-              </select>
-            </label>
+                options={[
+                  {
+                    value: 'day',
+                    label: tx(
+                      'Día · Durante la sesión',
+                      'DAY · Trading session',
+                    ),
+                  },
+                  {
+                    value: 'gtc',
+                    label: tx(
+                      'GTC · Hasta cancelación',
+                      'GTC · Good til canceled',
+                    ),
+                  },
+                  ...(draft.type !== 'trailing_stop' &&
+                  draft.order_class !== 'bracket'
+                    ? [
+                        {
+                          value: 'ioc',
+                          label: tx(
+                            'IOC · Inmediata o cancelar',
+                            'IOC · Immediate or cancel',
+                          ),
+                        },
+                        {
+                          value: 'fok',
+                          label: tx(
+                            'FOK · Completa o cancelar',
+                            'FOK · Fill or kill',
+                          ),
+                        },
+                      ]
+                    : []),
+                ]}
+              />
+            </div>
 
             <OrderParametersFields
               draft={draft}
@@ -387,7 +539,10 @@ export function OrderForm({
                   setTotp('');
                 }}
               />
-              Compra bracket: take profit y stop loss
+              {tx(
+                'Compra bracket: take profit y stop loss',
+                'Bracket buy: take profit & stop loss',
+              )}
             </label>
           )}
 
@@ -398,7 +553,10 @@ export function OrderForm({
               checked={draft.schedule_if_closed}
               onChange={(e) => update({ schedule_if_closed: e.target.checked })}
             />
-            Programar para la próxima apertura si el mercado está cerrado
+            {tx(
+              'Programar para la próxima apertura si el mercado está cerrado',
+              'Schedule for next market open if market is closed',
+            )}
           </label>
 
           {preview && (
@@ -414,12 +572,15 @@ export function OrderForm({
           <div className={styles.actionsRow}>
             <button type="submit" className={styles.btnPrimary}>
               {busy
-                ? 'Procesando…'
+                ? tx('Procesando…', 'Processing…')
                 : preview
                   ? editing
-                    ? 'Confirmar corrección y reenviar'
-                    : 'Confirmar y enviar orden'
-                  : 'Consultar vista previa'}
+                    ? tx(
+                        'Confirmar corrección y reenviar',
+                        'Confirm changes & resubmit',
+                      )
+                    : tx('Confirmar y enviar orden', 'Confirm & submit order')
+                  : tx('Consultar vista previa', 'Preview order')}
             </button>
             {preview && (
               <button
@@ -431,7 +592,7 @@ export function OrderForm({
                   setTotp('');
                 }}
               >
-                Volver a revisar
+                {tx('Volver a revisar', 'Edit order')}
               </button>
             )}
             {editing && (
@@ -440,7 +601,7 @@ export function OrderForm({
                 className={styles.btnSecondary}
                 onClick={onStopEditing}
               >
-                Salir de la corrección
+                {tx('Salir de la corrección', 'Exit editing')}
               </button>
             )}
           </div>

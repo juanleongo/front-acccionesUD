@@ -1,35 +1,66 @@
-const BANK_STATUS_LABELS: Record<string, string> = {
-  APPROVED: 'Aprobada',
-  QUEUED: 'En validación',
-  SENT_TO_VENDOR: 'En validación',
-  APPROVAL_REQUIRED: 'Pendiente de aprobación',
-  CANCELED: 'Cancelada',
-  CANCELLED: 'Cancelada',
-  REJECTED: 'Rechazada',
+import { formatUsd as formatSharedUsd } from '@/lib/formatters';
+import { tx, type Locale } from '@/lib/i18n/locale';
+
+const BANK_STATUS_LABELS: Record<string, { es: string; en: string }> = {
+  APPROVED: { es: 'Aprobada', en: 'Approved' },
+  QUEUED: { es: 'En validación', en: 'Validating' },
+  SENT_TO_VENDOR: { es: 'En validación', en: 'Validating' },
+  APPROVAL_REQUIRED: { es: 'Pendiente de aprobación', en: 'Pending approval' },
+  CANCELED: { es: 'Cancelada', en: 'Canceled' },
+  CANCELLED: { es: 'Cancelada', en: 'Canceled' },
+  REJECTED: { es: 'Rechazada', en: 'Rejected' },
 };
 
-const TRANSFER_STATUS_LABELS: Record<string, string> = {
-  PENDING: 'Pendiente',
-  QUEUED: 'En cola',
-  SENT_TO_CLEARING: 'En compensación',
-  COMPLETE: 'Completado',
-  COMPLETED: 'Completado',
-  COMPLETADO: 'Completado',
-  CANCELED: 'Cancelado',
-  CANCELLED: 'Cancelado',
-  REJECTED: 'Rechazado',
-  RETURNED: 'Devuelto',
-  FAILED: 'Fallido',
+const TRANSFER_STATUS_LABELS: Record<string, { es: string; en: string }> = {
+  PENDING: { es: 'Pendiente', en: 'Pending' },
+  QUEUED: { es: 'En cola', en: 'Queued' },
+  SENT_TO_CLEARING: { es: 'En compensación', en: 'Clearing' },
+  COMPLETE: { es: 'Completado', en: 'Completed' },
+  COMPLETED: { es: 'Completado', en: 'Completed' },
+  COMPLETADO: { es: 'Completado', en: 'Completed' },
+  LIQUIDADO: { es: 'Liquidado', en: 'Settled' },
+  RESERVADO: { es: 'Reservado', en: 'Reserved' },
+  CANCELED: { es: 'Cancelado', en: 'Canceled' },
+  CANCELLED: { es: 'Cancelado', en: 'Canceled' },
+  REJECTED: { es: 'Rechazado', en: 'Rejected' },
+  RETURNED: { es: 'Devuelto', en: 'Returned' },
+  FAILED: { es: 'Fallido', en: 'Failed' },
 };
 
 export type WalletStatusTone = 'success' | 'reserved' | 'error';
 
-export function formatBankStatus(status: string): string {
-  return BANK_STATUS_LABELS[status.toUpperCase()] ?? 'En verificación';
+export function formatBankStatus(
+  status: string,
+  locale: Locale = 'es',
+): string {
+  const entry = BANK_STATUS_LABELS[status.toUpperCase()];
+  if (entry) return locale === 'en' ? entry.en : entry.es;
+  return tx(locale, 'En verificación', 'Verifying');
 }
 
-export function formatTransferStatus(status: string): string {
-  return TRANSFER_STATUS_LABELS[status.toUpperCase()] ?? 'En proceso';
+export function formatTransferStatus(
+  status: string,
+  locale: Locale = 'es',
+): string {
+  const entry = TRANSFER_STATUS_LABELS[status.toUpperCase()];
+  if (entry) return locale === 'en' ? entry.en : entry.es;
+  return tx(locale, 'En proceso', 'In progress');
+}
+
+export function formatCurrencyName(
+  code: string,
+  locale: Locale = 'es',
+  fallback = code,
+): string {
+  const names: Record<string, { es: string; en: string }> = {
+    COP: { es: 'Peso Colombiano', en: 'Colombian Peso' },
+    EUR: { es: 'Euro', en: 'Euro' },
+    GBP: { es: 'Libra Esterlina', en: 'British Pound' },
+    USD: { es: 'Dólar Estadounidense', en: 'US Dollar' },
+  };
+  const entry = names[code.toUpperCase()];
+  if (!entry) return fallback;
+  return locale === 'en' ? entry.en : entry.es;
 }
 
 export function getTransferStatusTone(status: string): WalletStatusTone {
@@ -51,8 +82,7 @@ export function getTransferStatusTone(status: string): WalletStatusTone {
 }
 
 export function formatUsd(amount: number): string {
-  return amount.toLocaleString('en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
+  return formatSharedUsd(amount).replace(/^-?\$/, (prefix) =>
+    prefix.startsWith('-') ? '-' : '',
+  );
 }

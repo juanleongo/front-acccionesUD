@@ -12,8 +12,8 @@ vi.mock('./history', async (original) => ({
   ...(await original<typeof HistoryModule>()),
   history: vi.fn(),
 }));
-vi.mock('./PriceSeries', () => ({
-  PriceSeries: ({ label }: { label: string }) => (
+vi.mock('./chart/FinancialChart', () => ({
+  FinancialChart: ({ label }: { label: string }) => (
     <div role="img" aria-label={label} />
   ),
 }));
@@ -53,7 +53,7 @@ it.each(['letra', 'página'])(
   'oculta el catálogo y la gráfica anteriores al cambiar de %s',
   async (filter) => {
     setup();
-    await screen.findByRole('img', { name: /Evolución de AAPL/ });
+    await screen.findByRole('img', { name: /Histórico de AAPL/ });
     let resolve!: (value: typeof catalog) => void;
     vi.mocked(getInstruments).mockImplementationOnce(
       () =>
@@ -62,7 +62,7 @@ it.each(['letra', 'página'])(
         }),
     );
     if (filter === 'letra') {
-      fireEvent.change(screen.getByLabelText('Filtro de nombre o símbolo'), {
+      fireEvent.change(screen.getByLabelText('Explorar por letra'), {
         target: { value: 'B' },
       });
     } else {
@@ -74,7 +74,7 @@ it.each(['letra', 'página'])(
       await screen.findByText('Cargando instrumentos de NASDAQ…'),
     ).toBeVisible();
     expect(
-      screen.queryByRole('img', { name: /Evolución de AAPL/ }),
+      screen.queryByRole('img', { name: /Histórico de AAPL/ }),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole('option', { name: /AAPL/ }),
@@ -84,7 +84,7 @@ it.each(['letra', 'página'])(
       resolve({ ...catalog, results: [{ symbol: 'BA', name: 'Boeing' }] }),
     );
     expect(
-      await screen.findByRole('img', { name: /Evolución de BA/ }),
+      await screen.findByRole('img', { name: /Histórico de BA/ }),
     ).toBeVisible();
   },
 );
@@ -116,4 +116,16 @@ it('muestra el error del catálogo sin sustituirlo por datos de muestra', async 
   );
   expect(screen.queryByRole('img')).not.toBeInTheDocument();
   expect(history).not.toHaveBeenCalled();
+});
+
+it('reuses historical data when switching all three representations', async () => {
+  setup();
+  await screen.findByRole('img', { name: /Histórico de AAPL/ });
+  const initial = vi.mocked(history).mock.calls.length;
+  for (const mode of ['line', 'area', 'candles'])
+    fireEvent.change(screen.getByLabelText('Tipo de gráfico'), {
+      target: { value: mode },
+    });
+  expect(history).toHaveBeenCalledTimes(initial);
+  expect(screen.getByLabelText('Instrumento')).toHaveValue('AAPL');
 });

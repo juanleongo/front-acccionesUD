@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { Icon } from '@/components/ui/Icon';
+import { useLocale } from '@/lib/i18n';
 import { navItems, type DashboardSection } from '../dashboard-constants';
 import styles from '../dashboard.module.css';
 
@@ -33,6 +34,7 @@ export function DashboardSidebar({
   onOpenProfile,
   onLogout,
 }: DashboardSidebarProps) {
+  const { locale, tx } = useLocale();
   return (
     <aside
       id="dashboard-navigation"
@@ -46,11 +48,11 @@ export function DashboardSidebar({
           type="button"
           className={styles.brandButton}
           onClick={() => onNavigate('dashboard')}
-          aria-label="Acciones UD, inicio"
+          aria-label={tx('Acciones UD, inicio', 'Acciones UD, home')}
         >
           <Image
             src="/logo-acciones-ud.png"
-            alt="Logo Acciones UD"
+            alt={tx('Logo Acciones UD', 'Acciones UD Logo')}
             width={36}
             height={36}
             className={styles.brandLogoImg}
@@ -58,14 +60,15 @@ export function DashboardSidebar({
           />
           <span className={styles.sidebarText}>
             <strong>Acciones UD</strong>
-            <span>Simulador Bursátil USA</span>
           </span>
         </button>
         <button
           type="button"
           className={styles.sidebarToggle}
           aria-label={
-            collapsed ? 'Expandir menú lateral' : 'Colapsar menú lateral'
+            collapsed
+              ? tx('Expandir menú lateral', 'Expand sidebar menu')
+              : tx('Colapsar menú lateral', 'Collapse sidebar menu')
           }
           onClick={onToggleCollapse}
         >
@@ -80,27 +83,33 @@ export function DashboardSidebar({
           onClick={() => onNavigate('orders')}
         >
           <span aria-hidden="true">⊕</span>
-          <span className={styles.sidebarText}>Nueva Orden</span>
+          <span className={styles.sidebarText}>
+            {tx('Nueva Orden', 'New Order')}
+          </span>
         </button>
 
-        <nav aria-label="Navegación del dashboard">
+        <nav
+          aria-label={tx('Navegación del dashboard', 'Dashboard navigation')}
+        >
           {navItems.map((item) => {
             const isSelected = activeSection === item.id;
+            const itemLabel = locale === 'en' ? item.labelEn : item.label;
             return (
               <button
                 key={item.id}
                 type="button"
                 className={isSelected ? styles.selected : styles.navButton}
+                aria-current={isSelected ? 'page' : undefined}
                 onClick={() => onNavigate(item.id)}
-                title={item.label}
+                title={itemLabel}
               >
                 <Icon name={item.icon} size={18} />
-                <span className={styles.sidebarText}>{item.label}</span>
+                <span className={styles.sidebarText}>{itemLabel}</span>
                 <span
                   className={styles.collapsedLabel}
                   aria-hidden={!collapsed || mobile}
                 >
-                  {item.label}
+                  {itemLabel}
                 </span>
               </button>
             );
@@ -115,12 +124,14 @@ export function DashboardSidebar({
             className={`${styles.navButton} ${styles.adminNavLink}`}
           >
             <Icon name="shield" />
-            <span className={styles.sidebarText}>Panel Administrador</span>
+            <span className={styles.sidebarText}>
+              {tx('Panel Administrador', 'Admin Panel')}
+            </span>
             <span
               className={styles.collapsedLabel}
               aria-hidden={!collapsed || mobile}
             >
-              Panel Administrador
+              {tx('Panel Administrador', 'Admin Panel')}
             </span>
           </Link>
         )}
@@ -130,12 +141,14 @@ export function DashboardSidebar({
           onClick={onOpenProfile}
         >
           <Icon name="user" />
-          <span className={styles.sidebarText}>Mi Perfil &amp; KYC</span>
+          <span className={styles.sidebarText}>
+            {tx('Mi Perfil & KYC', 'My Profile & KYC')}
+          </span>
           <span
             className={styles.collapsedLabel}
             aria-hidden={!collapsed || mobile}
           >
-            Mi Perfil &amp; KYC
+            {tx('Mi Perfil & KYC', 'My Profile & KYC')}
           </span>
         </button>
         <button
@@ -146,17 +159,19 @@ export function DashboardSidebar({
         >
           <Icon name="arrow" />
           <span className={styles.sidebarText}>
-            {loggingOut ? 'Cerrando sesión…' : 'Cerrar Sesión'}
+            {loggingOut
+              ? tx('Cerrando sesión…', 'Signing out…')
+              : tx('Cerrar Sesión', 'Sign Out')}
           </span>
           <span
             className={styles.collapsedLabel}
             aria-hidden={!collapsed || mobile}
           >
-            Cerrar Sesión
+            {tx('Cerrar Sesión', 'Sign Out')}
           </span>
         </button>
         <Link href="/" className={styles.homeLink}>
-          ← Volver a la portada
+          {tx('← Volver a la portada', '← Back to landing page')}
         </Link>
       </div>
     </aside>

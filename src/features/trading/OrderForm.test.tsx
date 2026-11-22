@@ -268,3 +268,17 @@ it('filtra por bolsa y elimina la acción anterior al cambiar de mercado', async
     ),
   );
 });
+
+it('muestra error estilizado en español sin tooltip del navegador ante parámetros inválidos', async () => {
+  setup();
+  const qtyInput = screen.getByLabelText('Cantidad de acciones');
+  expect(qtyInput.closest('form')).toHaveAttribute('novalidate');
+  fireEvent.change(qtyInput, { target: { value: '0' } });
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Consultar vista previa' }),
+  );
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Ingresa una cantidad válida de acciones mayor a cero.',
+  );
+  expect(previewOrder).not.toHaveBeenCalled();
+});

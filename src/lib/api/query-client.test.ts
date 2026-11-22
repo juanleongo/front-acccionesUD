@@ -1,6 +1,17 @@
 import { expect, it } from 'vitest';
-import { ApiError, parseRetryAfter } from './errors';
-import { createQueryClient, queryRetryDelay, retryQuery } from './query-client';
+import {
+  ApiError,
+  getApiErrorStatus,
+  isApiHttpStatus,
+  isUnauthorizedApiError,
+  parseRetryAfter,
+} from './errors';
+import {
+  createQueryClient,
+  QUERY_STALE_TIMES,
+  queryRetryDelay,
+  retryQuery,
+} from './query-client';
 
 it('creates isolated caches and disables mutation retries and offline resumption', () => {
   const first = createQueryClient();
@@ -10,13 +21,27 @@ it('creates isolated caches and disables mutation retries and offline resumption
     'private value',
   );
   expect(second.getQueryCache().getAll()).toHaveLength(0);
-  expect(first.getDefaultOptions().queries?.gcTime).toBe(120_000);
+  expect(first.getDefaultOptions().queries).toMatchObject({
+    gcTime: 120_000,
+    staleTime: 15_000,
+    refetchOnWindowFocus: false,
+  });
+  expect(QUERY_STALE_TIMES.catalog).toBe(300_000);
   expect(first.getDefaultOptions().mutations).toMatchObject({
     retry: false,
     networkMode: 'always',
   });
   first.clear();
   second.clear();
+});
+
+it('classifies HTTP status helpers safely across unknown errors', () => {
+  const unauth = new ApiError('http', 'unauthorized', { status: 401 });
+  expect(getApiErrorStatus(unauth)).toBe(401);
+  expect(isUnauthorizedApiError(unauth)).toBe(true);
+  expect(isApiHttpStatus(unauth, 403)).toBe(false);
+  expect(getApiErrorStatus(new Error('generic'))).toBeUndefined();
+  expect(isUnauthorizedApiError(null)).toBe(false);
 });
 
 it('retries transient reads twice but not permission, validation or cancellation failures', () => {

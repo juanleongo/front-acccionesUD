@@ -54,3 +54,23 @@ it('mantiene los códigos tras verificar y espera Continuar antes de finalizar e
   fireEvent.click(screen.getByRole('button', { name: 'Continuar al panel' }));
   expect(finish).toHaveBeenCalledOnce();
 });
+
+it('valida correo incompleto con el aviso estilizado y no con tooltip del navegador', async () => {
+  render(
+    <RecoveryCodesProvider>
+      <LoginForm />
+    </RecoveryCodesProvider>,
+  );
+  const emailInput = screen.getByLabelText('Correo electrónico');
+  expect(emailInput.closest('form')).toHaveAttribute('novalidate');
+  fireEvent.change(emailInput, { target: { value: 'sasad1@' } });
+  fireEvent.change(screen.getByLabelText('Contraseña'), {
+    target: { value: 'Secret123' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Iniciar sesión' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Ingresa un correo electrónico válido (ej. nombre@correo.com).',
+  );
+  expect(emailInput).toHaveAttribute('aria-invalid', 'true');
+  expect(requestMock).not.toHaveBeenCalled();
+});

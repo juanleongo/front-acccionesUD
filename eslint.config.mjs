@@ -33,6 +33,8 @@ export default defineConfig([
   },
   globalIgnores([
     '.next/**',
+    '.dev-cache-backup-*/**',
+    '.build-cache-profile-*/**',
     'coverage/**',
     'playwright-report/**',
     'test-results/**',

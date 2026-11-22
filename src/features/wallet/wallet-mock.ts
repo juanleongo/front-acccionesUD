@@ -15,6 +15,8 @@ export interface WalletBalance {
   available_balance_usd: number;
   reserved_balance_usd: number;
   invested_equity_usd: number;
+  total_cash_usd?: number;
+  buying_power_usd?: number;
 }
 
 export interface FxRate {
@@ -72,6 +74,8 @@ export const INITIAL_WALLET_BALANCE: WalletBalance = {
   available_balance_usd: 64450.0,
   reserved_balance_usd: 8420.0,
   invested_equity_usd: 27130.0,
+  total_cash_usd: 72870.0,
+  buying_power_usd: 64450.0,
 };
 
 export const INITIAL_LEDGER_TRANSACTIONS: LedgerTransaction[] = [

@@ -2,11 +2,14 @@
 
 import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
+import { useLocale } from '@/lib/i18n';
 import { advisorsPreview } from '../data/advisors-preview';
+import { Icon } from '@/components/ui/Icon';
 import { UpcomingButton } from './LandingActions';
 import styles from '../landing.module.css';
 
 export function AdvisorsCarousel() {
+  const { locale, tx } = useLocale();
   const viewport = useRef<HTMLDivElement>(null);
   const hovering = useRef(false);
   const focused = useRef(false);
@@ -83,33 +86,49 @@ export function AdvisorsCarousel() {
       aria-roledescription="carrusel"
     >
       <div className={styles.advisorsHeading}>
-        <div>
-          <p className={styles.securityBadge}>
-            Red de Asesoría Bursátil Autorizada · Mercados de EE. UU.
-          </p>
-          <h2 id="advisors-title" className={styles.sectionTitle}>
-            Comisionistas Financieros Calificados
-          </h2>
-          <p>
-            Asesores bursátiles certificados para formular y acompañar
-            propuestas de inversión personalizadas en las bolsas de Estados
-            Unidos (NYSE, NASDAQ y NYSE Arca). Transparencia con comisiones
-            institucionales bajo esquema 60/40.
-          </p>
+        <div className={styles.advisorsIntro}>
+          <span className={styles.advisorsIntroIcon} aria-hidden="true">
+            <Icon name="users" size={26} />
+          </span>
+          <div>
+            <p className={styles.eyebrow}>
+              {tx(
+                'Acompañamiento para tus inversiones',
+                'Support for your investments',
+              )}
+            </p>
+            <h2 id="advisors-title" className={styles.sectionTitle}>
+              {tx('Conoce a tus próximos asesores', 'Meet your next advisors')}
+            </h2>
+            <p className={styles.advisorsSubtitle}>
+              {tx(
+                'Explora perfiles profesionales, compara especialidades y encuentra acompañamiento para tus decisiones en los mercados de Estados Unidos.',
+                'Explore professional profiles, compare specialties, and find support for your decisions in U.S. markets.',
+              )}
+            </p>
+          </div>
         </div>
         <div className={styles.advisorControls}>
           <UpcomingButton
-            feature="Directorio de comisionistas"
+            feature={tx('Directorio de comisionistas', 'Brokers directory')}
             className={styles.directoryButton}
           >
-            Ver Directorio Completo →
+            {tx('Ver Directorio Completo →', 'View Full Directory →')}
           </UpcomingButton>
           <button
             type="button"
             className={styles.iconButton}
             onClick={() => setPaused(!paused)}
-            aria-label={paused ? 'Reanudar carrusel' : 'Pausar carrusel'}
-            title={paused ? 'Reanudar carrusel' : 'Pausar carrusel'}
+            aria-label={
+              paused
+                ? tx('Reanudar carrusel', 'Resume carousel')
+                : tx('Pausar carrusel', 'Pause carousel')
+            }
+            title={
+              paused
+                ? tx('Reanudar carrusel', 'Resume carousel')
+                : tx('Pausar carrusel', 'Pause carousel')
+            }
           >
             {paused ? (
               <svg
@@ -137,8 +156,8 @@ export function AdvisorsCarousel() {
           <button
             type="button"
             className={styles.iconButton}
-            aria-label="Comisionista anterior"
-            title="Comisionista anterior"
+            aria-label={tx('Comisionista anterior', 'Previous broker')}
+            title={tx('Comisionista anterior', 'Previous broker')}
             onClick={() => navigate(active - 1)}
           >
             <svg
@@ -158,8 +177,8 @@ export function AdvisorsCarousel() {
           <button
             type="button"
             className={styles.iconButton}
-            aria-label="Comisionista siguiente"
-            title="Comisionista siguiente"
+            aria-label={tx('Comisionista siguiente', 'Next broker')}
+            title={tx('Comisionista siguiente', 'Next broker')}
             onClick={() => navigate(active + 1)}
           >
             <svg
@@ -179,7 +198,11 @@ export function AdvisorsCarousel() {
         </div>
       </div>
       <p className={styles.advisorDisclaimer}>
-        Perfiles, licencias y resultados de demostración en mercados de EE. UU.
+        <Icon name="info" size={16} />
+        {tx(
+          'Perfiles, licencias y resultados de demostración en mercados de EE. UU.',
+          'Sample profiles, licenses, and illustrative metrics for U.S. markets.',
+        )}
       </p>
       <div
         ref={viewport}
@@ -212,7 +235,9 @@ export function AdvisorsCarousel() {
             inert={index >= advisorsPreview.length}
             aria-hidden={index >= advisorsPreview.length ? true : undefined}
           >
-            <span className={styles.advisorBadge}>{advisor.badge}</span>
+            <span className={styles.advisorBadge}>
+              {locale === 'en' ? advisor.badgeEn : advisor.badge}
+            </span>
             <div className={styles.advisorIdentity}>
               <Image
                 src={advisor.photo}
@@ -220,35 +245,41 @@ export function AdvisorsCarousel() {
                 width={64}
                 height={64}
               />
-              <div>
-                <h3>{advisor.name}</h3>
-                <p>{advisor.license}</p>
-                <span className={styles.advisorRating}>
-                  {advisor.rating}
-                </span>{' '}
-                <small>{advisor.proposals}</small>
+              <div className={styles.advisorIdentityMeta}>
+                <h3 className={styles.advisorName}>{advisor.name}</h3>
+                <p className={styles.advisorLicense}>
+                  {locale === 'en' ? advisor.licenseEn : advisor.license}
+                </p>
+                <span className={styles.advisorRating}>{advisor.rating}</span>{' '}
+                <small className={styles.advisorProposals}>
+                  {locale === 'en' ? advisor.proposalsEn : advisor.proposals}
+                </small>
               </div>
             </div>
-            <p className={styles.advisorDescription}>{advisor.description}</p>
+            <p className={styles.advisorDescription}>
+              {locale === 'en' ? advisor.descriptionEn : advisor.description}
+            </p>
             <dl className={styles.advisorMetrics}>
               <div>
-                <dt>Portafolio activo</dt>
+                <dt>{tx('Portafolio activo', 'Active portfolio')}</dt>
                 <dd>{advisor.portfolio}</dd>
               </div>
               <div>
-                <dt>Tasa de éxito</dt>
+                <dt>{tx('Tasa de éxito', 'Success rate')}</dt>
                 <dd>{advisor.success}</dd>
               </div>
               <div>
-                <dt>Especialidad:</dt>
-                <dd>{advisor.specialty}</dd>
+                <dt>{tx('Especialidad:', 'Specialty:')}</dt>
+                <dd>
+                  {locale === 'en' ? advisor.specialtyEn : advisor.specialty}
+                </dd>
               </div>
             </dl>
             <UpcomingButton
-              feature={`Solicitar propuesta · ${advisor.name}`}
+              feature={`${tx('Solicitar propuesta', 'Request proposal')} · ${advisor.name}`}
               className={styles.primaryButton}
             >
-              Solicitar Propuesta ↗
+              {tx('Solicitar Propuesta ↗', 'Request Proposal ↗')}
             </UpcomingButton>
           </article>
         ))}
@@ -258,16 +289,20 @@ export function AdvisorsCarousel() {
           {advisorsPreview.map((advisor, index) => (
             <button
               key={advisor.name}
-              aria-label={`Ver comisionista ${index + 1}`}
+              type="button"
+              aria-label={`${tx('Ver comisionista', 'View broker')} ${index + 1}`}
               aria-pressed={active === index}
               onClick={() => navigate(index)}
             />
           ))}
         </div>
-        <span>
+        <span className={styles.advisorScrollHint}>
           {paused
-            ? 'En pausa'
-            : 'Desplazamiento automático · Pase el cursor para pausar'}
+            ? tx('En pausa', 'Paused')
+            : tx(
+                'Desplazamiento automático · Pase el cursor para pausar',
+                'Auto-scrolling · Hover to pause',
+              )}
         </span>
       </div>
     </section>

@@ -1,195 +1,261 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Icon } from '@/components/ui/Icon';
-import type { Exchange, MarketAsset } from '../model/market.types';
-import { UpcomingButton } from './LandingActions';
-import styles from '../landing.module.css';
+import { LoadingState } from '@/components/ui/LoadingState';
+import { useLocale } from '@/lib/i18n';
+import { getDocumentTheme, subscribeDocumentTheme } from '@/lib/theme';
+import { tradingViewWidgetUrl, type MarketView } from '../tradingview';
+import type { Locale } from '@/lib/i18n';
+import type { Theme } from '@/lib/theme';
+import landing from '../landing.module.css';
+import styles from '../market-explorer.module.css';
 
-const exchanges: { value: Exchange | 'all'; label: string }[] = [
-  { value: 'all', label: 'Todos los mercados EE. UU.' },
-  { value: 'NASDAQ', label: 'NASDAQ (Tecnología & Growth)' },
-  { value: 'NYSE', label: 'NYSE (Wall Street Tradicional)' },
-  { value: 'ARCA', label: 'NYSE Arca (ETFs & Índices USA)' },
-];
+const serverTheme = (): Theme => 'dark';
 
-export function MarketExplorer({ assets }: { assets: readonly MarketAsset[] }) {
-  const [exchange, setExchange] = useState<Exchange | 'all'>('all');
-  const [search, setSearch] = useState('');
-  const searchInput = useRef<HTMLInputElement>(null);
-  const query = search.trim().toLocaleLowerCase('es');
-  const filtered = assets.filter(
-    (asset) =>
-      (exchange === 'all' || asset.exchange === exchange) &&
-      `${asset.name} ${asset.symbol} ${asset.exchange}`
-        .toLocaleLowerCase('es')
-        .includes(query),
+function TradingViewFrame({
+  locale,
+  theme,
+  view,
+}: {
+  locale: Locale;
+  theme: Theme;
+  view: MarketView;
+}) {
+  const { tx } = useLocale();
+  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>(
+    'loading',
   );
-
+  const [url] = useState(() =>
+    tradingViewWidgetUrl(locale, theme, window.location.origin, view),
+  );
   useEffect(() => {
-    function focusSearch(event: KeyboardEvent) {
-      if (
-        (event.ctrlKey || event.metaKey) &&
-        event.key.toLowerCase() === 'k' &&
-        !document.querySelector('dialog[open]')
-      ) {
-        event.preventDefault();
-        searchInput.current?.focus();
-      }
-    }
-    window.addEventListener('keydown', focusSearch);
-    return () => window.removeEventListener('keydown', focusSearch);
-  }, []);
+    if (status !== 'loading') return;
+    const timer = setTimeout(() => setStatus('error'), 25000);
+    return () => clearTimeout(timer);
+  }, [status]);
+  if (status === 'error')
+    return (
+      <div className={styles.feedback} role="alert">
+        <Icon name="globe" size={28} />
+        <strong>
+          {tx('No pudimos abrir TradingView', 'Could not open TradingView')}
+        </strong>
+        <p>
+          {tx(
+            'Puedes reintentar o abrir el explorador directamente en TradingView.',
+            'Try again or open the screener directly on TradingView.',
+          )}
+        </p>
+      </div>
+    );
+  return (
+    <>
+      {status === 'loading' && (
+        <div className={styles.feedback}>
+          <LoadingState
+            mode="compact"
+            label={tx('Cargando mercados…', 'Loading markets…')}
+          />
+        </div>
+      )}
+      <iframe
+        title={
+          view === 'chart'
+            ? tx(
+                'Gráfico y búsqueda de acciones de TradingView',
+                'TradingView chart and stock search',
+              )
+            : tx(
+                'Explorador de acciones de TradingView',
+                'TradingView stock screener',
+              )
+        }
+        src={url}
+        className={`${styles.frame} ${view === 'screener' ? styles.screenerFrame : ''} ${status === 'loading' ? styles.pending : ''}`}
+        aria-busy={status === 'loading'}
+        referrerPolicy="strict-origin-when-cross-origin"
+        sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
+        onLoad={() => setStatus('ready')}
+        onError={() => setStatus('error')}
+      />
+    </>
+  );
+}
 
+export function MarketExplorer() {
+  const { locale, tx } = useLocale();
+  const theme = useSyncExternalStore(
+    subscribeDocumentTheme,
+    getDocumentTheme,
+    serverTheme,
+  );
+  const host = useRef<HTMLDivElement>(null);
+  const [active, setActive] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const [view, setView] = useState<MarketView>('screener');
+  useEffect(() => {
+    if (typeof IntersectionObserver === 'undefined') {
+      const timer = setTimeout(() => setActive(true), 0);
+      return () => clearTimeout(timer);
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setActive(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '300px' },
+    );
+    if (host.current) observer.observe(host.current);
+    return () => observer.disconnect();
+  }, []);
   return (
     <section
       id="mercados"
-      className={`${styles.container} ${styles.marketSection}`}
+      className={`${landing.container} ${landing.marketSection}`}
       aria-labelledby="markets-title"
     >
-      <div className={styles.marketPanel}>
-        <div className={styles.marketHeader}>
-          <div>
-            <h2 id="markets-title">
-              <span className={styles.dot} /> Explorador de Mercados Bursátiles
-              de EE. UU.
+      <div className={landing.marketPanel}>
+        <header className={styles.header}>
+          <div className={landing.marketHeadingGroup}>
+            <span className={landing.marketEyebrow}>
+              {tx(
+                'Exploración bursátil · Estados Unidos',
+                'Market exploration · United States',
+              )}
+            </span>
+            <h2 id="markets-title" className={landing.marketTitle}>
+              <Icon name="trend" size={24} />
+              {tx('Explorador de mercados de EE. UU.', 'U.S. market explorer')}
             </h2>
-            <p>
-              Supervisión de activos cotizados en las bolsas de Estados Unidos:
-              New York Stock Exchange (NYSE), NASDAQ y NYSE Arca en USD.
+            <p className={landing.marketSubtitle}>
+              {tx(
+                'Consulta acciones, compara su evolución y encuentra nuevas oportunidades de análisis.',
+                'Explore stocks, compare their performance and discover more instruments to analyze.',
+              )}
             </p>
           </div>
-          <label className={styles.search}>
-            <Icon name="search" size={18} />
-            <span className={styles.srOnly}>Buscar empresa o acción</span>
-            <input
-              ref={searchInput}
-              type="search"
-              placeholder="Buscar empresa o acción en EE. UU. (ej. Apple, NVIDIA, S&P 500)…"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-            />
-            <kbd>Ctrl + K</kbd>
-          </label>
-        </div>
-        <div
-          className={styles.filters}
-          role="group"
-          aria-label="Filtrar por mercado estadounidense"
-        >
-          {exchanges.map((item) => (
-            <button
-              key={item.value}
-              type="button"
-              aria-pressed={exchange === item.value}
-              onClick={() => setExchange(item.value)}
-            >
-              {item.label}
-              {item.value === 'all' ? ` (${assets.length})` : ''}
-            </button>
-          ))}
-        </div>
-        <div
-          className={styles.tableScroll}
-          role="region"
-          aria-label="Cotizaciones de demostración, tabla desplazable"
-          tabIndex={0}
-        >
-          <table className={styles.marketTable}>
-            <caption className={styles.srOnly}>
-              Cotizaciones ilustrativas del mercado estadounidense. Precios y
-              estados de ejemplo en dólares (USD).
-            </caption>
-            <thead>
-              <tr>
-                <th scope="col">Activo bursátil (EE. UU.)</th>
-                <th scope="col">Cotización</th>
-                <th scope="col">Variación 24h</th>
-                <th scope="col">Estado mercado</th>
-                <th scope="col">Paper execution</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((asset) => (
-                <tr key={asset.symbol}>
-                  <th scope="row">
-                    <div className={styles.asset}>
-                      <span className={styles.assetEmblem} aria-hidden="true">
-                        {asset.emblem}
-                      </span>
-                      <div>
-                        <div className={styles.assetTitle}>
-                          {asset.symbol} <span>{asset.exchange}</span>
-                        </div>
-                        <span className={styles.assetName}>{asset.name}</span>
-                      </div>
-                    </div>
-                  </th>
-                  <td className={styles.quote}>
-                    {asset.priceLabel} <small>{asset.currency}</small>
-                  </td>
-                  <td>
-                    <span className={styles.change}>{asset.changeLabel}</span>
-                  </td>
-                  <td>
-                    <span
-                      className={
-                        asset.status === 'open'
-                          ? styles.openStatus
-                          : styles.closedStatus
-                      }
-                    >
-                      {asset.status === 'open'
-                        ? 'Abierto (NY ET)'
-                        : '● En cola (mercado cerrado)'}
-                    </span>
-                  </td>
-                  <td>
-                    <UpcomingButton
-                      feature={`Simulación de órdenes · ${asset.symbol}`}
-                      className={styles.orderButton}
-                    >
-                      {asset.status === 'open'
-                        ? 'Simular orden'
-                        : 'Encolar orden FIX'}
-                    </UpcomingButton>
-                  </td>
-                </tr>
-              ))}
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={5} className={styles.emptyState}>
-                    <strong>No encontramos activos</strong>
-                    <p>
-                      Prueba otro nombre, símbolo o bolsa de Estados Unidos.
-                    </p>
-                    <button
-                      type="button"
-                      className={styles.secondaryButton}
-                      onClick={() => {
-                        setSearch('');
-                        setExchange('all');
-                      }}
-                    >
-                      Limpiar filtros
-                    </button>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-        <div className={styles.marketNote}>
-          <span>
-            <Icon name="info" size={15} /> Datos de demostración. Cotizaciones y
-            estados ilustrativos del mercado estadounidense en USD, sin
-            operaciones reales.
+          <span className={styles.provider}>
+            <Icon name="globe" size={16} />
+            TradingView
           </span>
-          <Link href="/markets" className={styles.liveMarketsLink}>
-            Ir al explorador en tiempo real →
-          </Link>
+        </header>
+        <div className={styles.viewBar}>
+          <div
+            className={styles.views}
+            role="group"
+            aria-label={tx('Vista del explorador', 'Market explorer view')}
+          >
+            <button
+              type="button"
+              aria-pressed={view === 'screener'}
+              onClick={() => setView('screener')}
+            >
+              <Icon name="grid" size={16} />
+              {tx('Explorar acciones', 'Explore stocks')}
+            </button>
+            <button
+              type="button"
+              aria-pressed={view === 'chart'}
+              onClick={() => setView('chart')}
+            >
+              <Icon name="search" size={16} />
+              {tx('Buscar y analizar', 'Search and analyze')}
+            </button>
+          </div>
+          <p className={styles.hint}>
+            {view === 'chart'
+              ? tx(
+                  'Pulsa el símbolo en la parte superior del gráfico para buscar una empresa o acción.',
+                  'Select the symbol at the top of the chart to search for a company or stock.',
+                )
+              : tx(
+                  'Usa «Filtros» para explorar por bolsa, sector y otras características.',
+                  'Use Filters to explore by exchange, sector and other criteria.',
+                )}
+            {view === 'screener' && (
+              <span className={styles.mobileHint}>
+                {tx(
+                  'Desliza la tabla para consultar precios y más columnas.',
+                  'Swipe the table to see prices and more columns.',
+                )}
+              </span>
+            )}
+          </p>
         </div>
+        <div
+          ref={host}
+          className={`${styles.widget} ${view === 'screener' ? styles.scrollable : ''}`}
+          role="region"
+          aria-label={tx(
+            'Contenido de mercado de TradingView',
+            'TradingView market content',
+          )}
+          tabIndex={view === 'screener' ? 0 : -1}
+        >
+          {active ? (
+            <TradingViewFrame
+              key={`${locale}-${theme}-${view}-${attempt}`}
+              locale={locale}
+              theme={theme}
+              view={view}
+            />
+          ) : (
+            <div className={styles.feedback}>
+              <p>
+                {tx(
+                  'Explora las acciones del mercado estadounidense.',
+                  'Explore U.S. stock markets.',
+                )}
+              </p>
+            </div>
+          )}
+        </div>
+        <div className={styles.tools}>
+          <a
+            href={
+              view === 'chart'
+                ? 'https://www.tradingview.com/chart/'
+                : 'https://www.tradingview.com/screener/'
+            }
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.credit}
+          >
+            {view === 'chart'
+              ? tx('Gráficos por TradingView ↗', 'Charts by TradingView ↗')
+              : tx(
+                  'Analizador de acciones por TradingView ↗',
+                  'Stock Screener by TradingView ↗',
+                )}
+          </a>
+          <button
+            type="button"
+            className={landing.secondaryButton}
+            onClick={() => {
+              setActive(true);
+              setAttempt(attempt + 1);
+            }}
+          >
+            <Icon name="exchange" size={15} />
+            {tx('Recargar vista', 'Reload view')}
+          </button>
+        </div>
+        <footer className={landing.marketNote}>
+          <span className={landing.marketNoteText}>
+            <Icon name="info" size={16} />
+            {tx(
+              'Cotizaciones con demora según la bolsa. Consulta la información del proveedor antes de operar.',
+              'Quotes may be delayed depending on the exchange. Check provider information before trading.',
+            )}
+          </span>
+          <Link href="/login" className={landing.liveMarketsLink}>
+            {tx('Operar en Acciones UD →', 'Trade on Acciones UD →')}
+          </Link>
+        </footer>
       </div>
     </section>
   );

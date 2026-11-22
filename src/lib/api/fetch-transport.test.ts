@@ -208,12 +208,27 @@ describe('HTTP transport (technical fixtures only)', () => {
     '//other.test/api/probe',
     '/api/../private',
     '/api/%2e%2e/private',
+    '/api/v1/instruments/../secret/quote',
     '/api/probe?token=secret',
     '/api\\probe',
   ])('rejects unsafe path %s before transport', async (path) => {
     await expect(transport.request({ ...options, path })).rejects.toMatchObject(
       { kind: 'contract' },
     );
+  });
+
+  it('allows dotted instrument symbols on quote and detail paths', async () => {
+    mockServer.use(
+      http.get(`${origin}/api/v1/instruments/BRK.B/quote`, () =>
+        HttpResponse.json({ ok: true }),
+      ),
+    );
+    await expect(
+      transport.request({
+        ...options,
+        path: '/api/v1/instruments/BRK.B/quote',
+      }),
+    ).resolves.toEqual({ ok: true });
   });
 
   it('rejects credentials in query strings and invalid timeout', async () => {

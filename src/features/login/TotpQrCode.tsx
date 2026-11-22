@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { Icon } from '@/components/ui/Icon';
+import { useLocale } from '@/lib/i18n';
 import styles from './login.module.css';
 
 // ISO/IEC 18004 QR Code Version 1..10 (EC Level L): [totalCodewords, ecCodewordsPerBlock, numBlocks]
@@ -254,6 +255,7 @@ export function TotpQrCode({
   secret: string;
   otpauthUri: string;
 }) {
+  const { tx } = useLocale();
   const [copied, setCopied] = useState(false);
   const matrix = useMemo(
     () =>
@@ -277,12 +279,17 @@ export function TotpQrCode({
     <div className={styles.enrollmentBox}>
       <div className={styles.securityIntro}>
         <span className={styles.qrBadge}>
-          <Icon name="shield" size={14} /> Protege tu cuenta · 2FA
+          <Icon name="shield" size={14} />{' '}
+          {tx('Protege tu cuenta · 2FA', 'Protect your account · 2FA')}
         </span>
-        <h2>Configura tu autenticador</h2>
-        <p>
-          Vincula una aplicación como Google Authenticator o Authy para
-          confirmar cada inicio de sesión.
+        <h2 className={styles.qrTitle}>
+          {tx('Configura tu autenticador', 'Set up your authenticator')}
+        </h2>
+        <p className={styles.qrDescription}>
+          {tx(
+            'Vincula una aplicación como Google Authenticator o Authy para confirmar cada inicio de sesión.',
+            'Link an app such as Google Authenticator or Authy to verify every sign-in.',
+          )}
         </p>
       </div>
       <div className={styles.qrLayout}>
@@ -290,7 +297,10 @@ export function TotpQrCode({
           <svg
             viewBox={`0 0 ${totalSize} ${totalSize}`}
             role="img"
-            aria-label="Código QR de configuración 2FA"
+            aria-label={tx(
+              'Código QR de configuración 2FA',
+              '2FA setup QR code',
+            )}
             className={styles.qrSvg}
             shapeRendering="crispEdges"
           >
@@ -310,22 +320,41 @@ export function TotpQrCode({
               ),
             )}
           </svg>
-          <span className={styles.qrCaption}>Escanear con Authenticator</span>
+          <span className={styles.qrCaption}>
+            {tx('Escanear con Authenticator', 'Scan with Authenticator')}
+          </span>
         </div>
 
         <div className={styles.qrDetails}>
           <ol className={styles.setupSteps}>
-            <li>Abre tu aplicación de autenticación.</li>
-            <li>Añade una cuenta y escanea este QR.</li>
             <li>
-              Escribe abajo el código de 6 dígitos que aparece en la aplicación.
+              {tx(
+                'Abre tu aplicación de autenticación.',
+                'Open your authenticator app.',
+              )}
+            </li>
+            <li>
+              {tx(
+                'Añade una cuenta y escanea este QR.',
+                'Add an account and scan this QR code.',
+              )}
+            </li>
+            <li>
+              {tx(
+                'Escribe abajo el código de 6 dígitos que aparece en la aplicación.',
+                'Enter the 6-digit code shown in your app below.',
+              )}
             </li>
           </ol>
-          <details className={styles.manualSetup}>
-            <summary>¿No puedes escanear el QR?</summary>
-            <p>
-              Introduce esta clave en tu autenticador y selecciona códigos
-              basados en tiempo.
+          <details open className={styles.manualSetup}>
+            <summary className={styles.manualSummary}>
+              {tx('¿No puedes escanear el QR?', "Can't scan the QR code?")}
+            </summary>
+            <p className={styles.manualDescription}>
+              {tx(
+                'Introduce esta clave en tu autenticador y selecciona códigos basados en tiempo.',
+                'Enter this key in your authenticator app and select time-based codes (TOTP).',
+              )}
             </p>
             <code className={styles.secretCode}>{secret}</code>
 
@@ -334,7 +363,9 @@ export function TotpQrCode({
               onClick={handleCopy}
               className={styles.copySecretBtn}
             >
-              {copied ? '✓ Código copiado' : 'Copiar código de configuración'}
+              {copied
+                ? tx('✓ Código copiado', '✓ Code copied')
+                : tx('Copiar código de configuración', 'Copy setup key')}
             </button>
           </details>
         </div>

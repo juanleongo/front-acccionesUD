@@ -19,14 +19,19 @@ interface TransportOptions {
 }
 
 function requestPath(options: RequestOptions): string {
-  const candles =
-    /^\/api\/v1\/instruments\/[a-z0-9.-]+(?:\/[a-z0-9.-]+)*\/candles$/i.test(
+  const hasDotTraversal = options.path
+    .split('/')
+    .some((segment) => segment === '.' || segment === '..');
+  const instrumentEndpoint =
+    !hasDotTraversal &&
+    /^\/api\/v1\/instruments\/[a-z0-9.-]+(?:\/[a-z0-9.-]+)*(?:\/(?:candles|quote|depth))?$/i.test(
       options.path,
-    ) &&
-    !options.path
-      .split('/')
-      .some((segment) => segment === '.' || segment === '..');
-  if (!candles && !/^\/api\/(?:[A-Za-z0-9_-]+\/?)*$/.test(options.path)) {
+    );
+  const candles = instrumentEndpoint && /\/candles$/i.test(options.path);
+  if (
+    !instrumentEndpoint &&
+    !/^\/api\/(?:[A-Za-z0-9_-]+\/?)*$/.test(options.path)
+  ) {
     throw new ApiError(
       'contract',
       'La ruta debe pertenecer a /api/ y no contener una URL, query o fragmento.',

@@ -1,59 +1,77 @@
 'use client';
 
+import { useLocale } from '@/lib/i18n';
 import { defaultSystemPermissions, defaultSystemRoles } from '../admin-api';
 import {
-  permissionLabels,
-  roleDescriptions,
-  roleLabels,
+  formatPermissionDescription,
+  formatPermissionLabel,
+  formatRoleDescription,
+  formatRoleLabel,
 } from '../admin-labels';
 import styles from '../admin.module.css';
 
 export function AdminRbacSection() {
+  const { locale, tx } = useLocale();
   return (
     <div>
       <div className={styles.pageHeader}>
-        <h1>Roles y permisos</h1>
+        <span className={styles.pageEyebrow}>
+          {tx(
+            'Seguridad Institucional · RBAC',
+            'Institutional Security · RBAC',
+          )}
+        </span>
+        <h1>{tx('Roles y permisos', 'Roles & Permissions')}</h1>
         <p>
-          Consulta las acciones disponibles para cada rol. Debe permanecer al
-          menos un administrador activo.
+          {tx(
+            'Consulta las acciones disponibles para cada rol. Debe permanecer al menos un administrador activo.',
+            'Review actions available to each role. At least one active administrator must remain.',
+          )}
         </p>
       </div>
 
       <div className={styles.tableCard}>
         <div className={styles.tableHeader}>
-          <h2>Roles del Sistema y Matriz de Permisos</h2>
+          <h2>
+            {tx(
+              'Roles del Sistema y Matriz de Permisos',
+              'System Roles & Permission Matrix',
+            )}
+          </h2>
+          <span className={styles.headerMeta}>
+            {defaultSystemRoles.length} {tx('roles activos', 'active roles')}
+          </span>
         </div>
         <div className={styles.tableResponsive}>
           <table className={styles.adminTable}>
             <thead>
               <tr>
-                <th>Rol del Sistema</th>
-                <th>Permisos Habilitados</th>
-                <th>Alcance y Responsabilidad</th>
+                <th>{tx('Rol del Sistema', 'System Role')}</th>
+                <th>{tx('Permisos Habilitados', 'Enabled Permissions')}</th>
+                <th>
+                  {tx('Alcance y Responsabilidad', 'Scope & Responsibility')}
+                </th>
               </tr>
             </thead>
             <tbody>
               {defaultSystemRoles.map((r) => (
                 <tr key={r.role}>
                   <td>
-                    <strong className={styles.roleTitle}>
-                      {roleLabels[r.role] ?? r.role}
-                    </strong>
+                    <span className={styles.roleCode}>
+                      {formatRoleLabel(r.role, locale)}
+                    </span>
                   </td>
                   <td>
                     <div className={styles.permissionList}>
                       {r.permissions.map((p) => (
-                        <code
-                          key={permissionLabels[p] ?? p}
-                          className={styles.permissionChip}
-                        >
-                          {permissionLabels[p] ?? p}
-                        </code>
+                        <span key={p} className={styles.permissionChip}>
+                          {formatPermissionLabel(p, locale)}
+                        </span>
                       ))}
                     </div>
                   </td>
                   <td className={styles.roleScopeCell}>
-                    {roleDescriptions[r.role] ?? ''}
+                    {formatRoleDescription(r.role, locale)}
                   </td>
                 </tr>
               ))}
@@ -64,23 +82,36 @@ export function AdminRbacSection() {
 
       <div className={styles.tableCard}>
         <div className={styles.tableHeader}>
-          <h2>Permisos disponibles</h2>
+          <h2>{tx('Permisos disponibles', 'Available Permissions')}</h2>
+          <span className={styles.headerMeta}>
+            {defaultSystemPermissions.length}{' '}
+            {tx('capacidades registradas', 'registered capabilities')}
+          </span>
         </div>
         <div className={styles.tableResponsive}>
           <table className={styles.adminTable}>
             <thead>
               <tr>
-                <th>Permiso</th>
-                <th>Descripción</th>
+                <th>{tx('Permiso', 'Permission')}</th>
+                <th>{tx('Descripción', 'Description')}</th>
               </tr>
             </thead>
             <tbody>
               {defaultSystemPermissions.map((perm) => (
                 <tr key={perm.code}>
                   <td>
-                    <span>{permissionLabels[perm.code] ?? perm.code}</span>
+                    <strong>{formatPermissionLabel(perm.code, locale)}</strong>
+                    <div className={styles.cellMeta}>
+                      <code className={styles.codeTag}>{perm.code}</code>
+                    </div>
                   </td>
-                  <td className={styles.mutedText}>{perm.description}</td>
+                  <td className={styles.mutedText}>
+                    {formatPermissionDescription(
+                      perm.code,
+                      locale,
+                      perm.description,
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

@@ -4,9 +4,10 @@
   align-items: center;
   justify-content: center;
   gap: 1rem;
-  padding: clamp(1.75rem, 4vw, 2.75rem) 1.5rem;
-  border-radius: 1rem;
-  background: var(--color-surface-raised);
+  min-width: 0;
+  padding: clamp(1.75rem, 4vw, 2.75rem) clamp(1rem, 3vw, 1.5rem);
+  border-radius: var(--radius-xl);
+  background: var(--color-card-gradient);
   border: 1px solid var(--color-border);
   box-shadow: var(--shadow-card);
   text-align: center;
@@ -17,10 +18,12 @@
   display: flex;
   align-items: center;
   gap: 0.9rem;
+  min-width: 0;
   padding: 0.95rem 1.15rem;
-  border-radius: 0.85rem;
-  background: var(--color-control);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-elevated);
   border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
   width: 100%;
 }
 
@@ -45,7 +48,7 @@
 .ringSvg {
   width: 100%;
   height: 100%;
-  transform: rotate(-90deg);
+  animation: loadingSpin 1s linear infinite;
 }
 
 .ringTrack {
@@ -58,26 +61,6 @@
   fill: none;
   stroke-width: 6;
   stroke-linecap: round;
-  transition: stroke-dashoffset 0.28s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.percentLabel {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 800;
-  color: var(--color-text);
-  font-variant-numeric: tabular-nums;
-}
-
-.percentLarge {
-  font-size: 0.88rem;
-}
-
-.percentCompact {
-  font-size: 0.68rem;
 }
 
 .textGroup {
@@ -89,19 +72,33 @@
 
 .title {
   margin: 0;
-  font-size: 0.95rem;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-md);
   font-weight: 700;
   color: var(--color-text);
+  overflow-wrap: anywhere;
 }
 
 .compactWrapper .title {
-  font-size: 0.86rem;
+  font-size: var(--font-size-sm);
 }
 
 .detail {
   margin: 0;
-  font-size: 0.82rem;
+  font-size: var(--font-size-sm);
   color: var(--color-text-muted);
   line-height: 1.45;
   max-width: 34rem;
+  overflow-wrap: anywhere;
+}
+
+@keyframes loadingSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ringSvg {
+    animation: none;
+  }
 }

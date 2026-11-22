@@ -63,6 +63,7 @@ export async function fetchWalletBalance(
   if (data.unavailable) return null;
   const totalCash = Number(data.cash ?? 0);
   const withdrawable = Number(data.cash_withdrawable ?? 0);
+  const buyingPower = Number(data.buying_power ?? withdrawable);
   const reserved = Math.max(0, Number((totalCash - withdrawable).toFixed(2)));
   const invested = Number(data.long_market_value ?? 0);
 
@@ -71,6 +72,8 @@ export async function fetchWalletBalance(
     available_balance_usd: withdrawable,
     reserved_balance_usd: reserved,
     invested_equity_usd: invested,
+    total_cash_usd: totalCash,
+    buying_power_usd: buyingPower,
   };
 }
 
@@ -114,14 +117,7 @@ export async function fetchWalletTransfers(
       balance_after_usd: null,
       external_ref: item.alpaca_transfer_id || item.id.slice(0, 10),
       status: item.status,
-      created_at: new Date(item.created_at).toLocaleString('es-CO', {
-        timeZone: 'America/Bogota',
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      }),
+      created_at: item.created_at,
     };
   });
   return { items, next_cursor: page.next_cursor ?? null };

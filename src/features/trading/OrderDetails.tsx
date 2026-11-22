@@ -3,6 +3,9 @@
 import { useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { LoadingState } from '@/components/ui/LoadingState';
+import { QUERY_STALE_TIMES, queryKeys } from '@/lib/api';
+import { formatMarketDateTime } from '@/lib/formatters';
+import { useLocale } from '@/lib/i18n';
 import {
   OrderActionConfirmForm,
   type OrderPendingAction,
@@ -41,9 +44,11 @@ export function OrderDetails({
   onEdit: (order: OrderDetail) => void;
   onClose: () => void;
 }) {
+  const { locale, tx } = useLocale();
   const query = useQuery({
-    queryKey: ['order-detail', id],
+    queryKey: queryKeys.orders.detail(id),
     queryFn: ({ signal }) => getOrder(id, signal),
+    staleTime: QUERY_STALE_TIMES.realtime,
     retry: false,
     refetchInterval: 15000,
   });
@@ -76,7 +81,10 @@ export function OrderDetails({
             : { decision: action },
       );
       setNotice(
-        `Solicitud procesada correctamente. Estado: ${formatOrderStatus(result.status, result.fully_filled)} (${result.status}).`,
+        tx(
+          `Solicitud procesada correctamente. Estado: ${formatOrderStatus(result.status, result.fully_filled, locale)} (${result.status}).`,
+          `Request processed successfully. Status: ${formatOrderStatus(result.status, result.fully_filled, locale)} (${result.status}).`,
+        ),
       );
       setAction(null);
       await query.refetch();
@@ -85,7 +93,10 @@ export function OrderDetails({
       setError(
         cause instanceof Error
           ? cause.message
-          : 'No se pudo procesar la solicitud.',
+          : tx(
+              'No se pudo procesar la solicitud.',
+              'Could not process the request.',
+            ),
       );
     } finally {
       flight.current = false;
@@ -102,23 +113,30 @@ export function OrderDetails({
     : 'cancelled';
 
   return (
-    <section className={styles.card} aria-label="Detalle de orden">
+    <section
+      className={styles.card}
+      aria-label={tx('Detalle de orden', 'Order details')}
+    >
       <div className={styles.cardHeader}>
         <div>
           <h2 className={styles.cardTitle}>
-            Detalle de orden{order ? ` · ${order.symbol}` : ''}
+            {tx('Detalle de orden', 'Order details')}
+            {order ? ` · ${order.symbol}` : ''}
           </h2>
           {order && (
             <p className={styles.cardSubtitle}>
-              {order.side === 'buy' ? 'Compra' : 'Venta'} de {order.qty}{' '}
-              acciones · {formatTimeInForce(order.time_in_force)}
+              {order.side === 'buy'
+                ? tx('Compra de', 'Buy')
+                : tx('Venta de', 'Sell')}{' '}
+              {order.qty} {tx('acciones', 'shares')} ·{' '}
+              {formatTimeInForce(order.time_in_force, locale)}
             </p>
           )}
         </div>
         <div className={styles.actionsRow}>
           {order && (
             <span className={`${styles.statusBadge} ${TONE_CLASS_MAP[tone]}`}>
-              {formatOrderStatus(order.status, order.fully_filled)}
+              {formatOrderStatus(order.status, order.fully_filled, locale)}
             </span>
           )}
           <button
@@ -127,18 +145,26 @@ export function OrderDetails({
             className={styles.btnCompact}
             onClick={onClose}
           >
-            Cerrar detalle
+            {tx('Cerrar detalle', 'Close details')}
           </button>
         </div>
       </div>
 
       {query.isPending && (
-        <LoadingState mode="compact" label="Consultando orden…" />
+        <LoadingState
+          mode="compact"
+          label={tx('Consultando orden…', 'Loading order…')}
+        />
       )}
 
       {query.isError && (
         <div role="alert" className={styles.alertError}>
-          <span>No se pudo consultar el detalle.</span>
+          <span>
+            {tx(
+              'No se pudo consultar el detalle.',
+              'Could not load order details.',
+            )}
+          </span>
           <button
             type="button"
             className={styles.btnCompact}
@@ -146,7 +172,7 @@ export function OrderDetails({
               void query.refetch();
             }}
           >
-            Reintentar
+            {tx('Reintentar', 'Retry')}
           </button>
         </div>
       )}
@@ -155,44 +181,57 @@ export function OrderDetails({
         <>
           <div className={styles.detailGrid}>
             <div className={styles.detailTile}>
-              <span className={styles.detailTileLabel}>Ejecutadas</span>
+              <span className={styles.detailTileLabel}>
+                {tx('Ejecutadas', 'Filled')}
+              </span>
               <span className={styles.detailTileValue}>
-                {order.filled_qty} / {order.qty} acciones
+                {order.filled_qty} / {order.qty} {tx('acciones', 'shares')}
               </span>
             </div>
             <div className={styles.detailTile}>
-              <span className={styles.detailTileLabel}>Precio promedio</span>
+              <span className={styles.detailTileLabel}>
+                {tx('Precio promedio', 'Average fill price')}
+              </span>
               <span className={styles.detailTileValue}>
                 {order.filled_avg_price
                   ? `$${order.filled_avg_price} USD`
-                  : 'No disponible'}
+                  : tx('No disponible', 'Not available')}
               </span>
             </div>
             <div className={styles.detailTile}>
-              <span className={styles.detailTileLabel}>Condiciones</span>
+              <span className={styles.detailTileLabel}>
+                {tx('Condiciones', 'Conditions')}
+              </span>
               <span className={styles.detailTileValue}>
                 {order.limit_price
-                  ? `Límite $${order.limit_price}`
+                  ? `${tx('Límite', 'Limit')} $${order.limit_price}`
                   : order.stop_price
                     ? `Stop $${order.stop_price}`
                     : order.trail_price
                       ? `Trailing $${order.trail_price}`
                       : order.trail_percent
                         ? `Trailing ${order.trail_percent}%`
-                        : 'Ejecución a mercado'}
+                        : tx('Ejecución a mercado', 'Market execution')}
               </span>
             </div>
             <div className={styles.detailTile}>
-              <span className={styles.detailTileLabel}>Estado operativo</span>
+              <span className={styles.detailTileLabel}>
+                {tx('Estado operativo', 'Operational status')}
+              </span>
               <span className={styles.detailTileValue}>
-                {formatOrderCause(order.status_cause ?? order.provider_status)}
+                {formatOrderCause(
+                  order.status_cause ?? order.provider_status,
+                  locale,
+                )}
               </span>
             </div>
             {order.scheduled_for && (
               <div className={styles.detailTile}>
-                <span className={styles.detailTileLabel}>Programada para</span>
+                <span className={styles.detailTileLabel}>
+                  {tx('Programada para', 'Scheduled for')}
+                </span>
                 <span className={styles.detailTileValue}>
-                  {new Date(order.scheduled_for).toLocaleString('es-CO')}
+                  {formatMarketDateTime(order.scheduled_for, locale)}
                 </span>
               </div>
             )}
@@ -208,8 +247,8 @@ export function OrderDetails({
                   <span className={styles.detailTileValue}>
                     ${leg.price} USD ·{' '}
                     {leg.provider_status
-                      ? formatOrderCause(leg.provider_status)
-                      : 'Pendiente'}
+                      ? formatOrderCause(leg.provider_status, locale)
+                      : tx('Pendiente', 'Pending')}
                   </span>
                 </div>
               ))}
@@ -218,7 +257,10 @@ export function OrderDetails({
 
           {order.review_comments.map((comment) => (
             <div key={comment.id} className={styles.commentBox}>
-              <strong>Comentario del comisionista:</strong> {comment.comment}
+              <strong>
+                {tx('Comentario del comisionista:', 'Broker note:')}
+              </strong>{' '}
+              {comment.comment}
             </div>
           ))}
 
@@ -226,15 +268,21 @@ export function OrderDetails({
             <div className={styles.orderPreview}>
               <div className={styles.previewHeader}>
                 <h3 className={styles.previewTitle}>
-                  Reautorización por cambio de precio
+                  {tx(
+                    'Reautorización por cambio de precio',
+                    'Price change reauthorization',
+                  )}
                 </h3>
               </div>
               <p className={styles.cardSubtitle}>
-                Reautorización: precio anterior ${pending.previous_price} →
-                nuevo ${pending.updated_price} USD
+                {tx(
+                  `Reautorización: precio anterior $${pending.previous_price} → nuevo $${pending.updated_price} USD`,
+                  `Reauthorization: previous price $${pending.previous_price} → updated $${pending.updated_price} USD`,
+                )}
               </p>
-              <p className={styles.previewNote}>
-                Vence: {new Date(pending.deadline).toLocaleString('es-CO')}
+              <p className={`${styles.previewNote} ${styles.tabularNum}`}>
+                {tx('Vence:', 'Expires:')}{' '}
+                {formatMarketDateTime(pending.deadline, locale)}
               </p>
             </div>
           )}
@@ -250,7 +298,7 @@ export function OrderDetails({
                   className={styles.btnDanger}
                   onClick={() => setAction('cancel')}
                 >
-                  Cancelar orden
+                  {tx('Cancelar orden', 'Cancel order')}
                 </button>
               )}
             {order.status === 'HELD' && pending && (
@@ -261,7 +309,7 @@ export function OrderDetails({
                   className={styles.btnPrimary}
                   onClick={() => setAction('accept')}
                 >
-                  Aceptar nuevo precio
+                  {tx('Aceptar nuevo precio', 'Accept updated price')}
                 </button>
                 <button
                   type="button"
@@ -269,7 +317,7 @@ export function OrderDetails({
                   className={styles.btnSecondary}
                   onClick={() => setAction('reject')}
                 >
-                  Rechazar nuevo precio
+                  {tx('Rechazar nuevo precio', 'Reject updated price')}
                 </button>
               </>
             )}
@@ -280,7 +328,7 @@ export function OrderDetails({
                 className={styles.btnSecondary}
                 onClick={() => onEdit(order)}
               >
-                Corregir y reenviar
+                {tx('Corregir y reenviar', 'Edit & resubmit')}
               </button>
             )}
             {order.status === 'IN_REVIEW' &&
@@ -291,7 +339,7 @@ export function OrderDetails({
                   className={styles.btnPrimary}
                   onClick={() => setAction('resume')}
                 >
-                  Reanudar orden
+                  {tx('Reanudar orden', 'Resume order')}
                 </button>
               )}
           </div>

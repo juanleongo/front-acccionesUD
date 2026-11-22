@@ -1,5 +1,7 @@
 'use client';
 
+import { formatMarketDateTime, formatUsd } from '@/lib/formatters';
+import { useLocale } from '@/lib/i18n';
 import type { Preview } from '../trading-api';
 import styles from '../trading.module.css';
 
@@ -16,10 +18,16 @@ export function OrderPreviewCard({
   onAckChange: (checked: boolean) => void;
   onTotpChange: (value: string) => void;
 }) {
+  const { locale, tx } = useLocale();
   return (
-    <div className={styles.previewBox} aria-label="Vista previa de la orden">
+    <div
+      className={styles.previewBox}
+      aria-label={tx('Vista previa de la orden', 'Order preview')}
+    >
       <div className={styles.previewHeader}>
-        <h3 className={styles.previewTitle}>Resumen previo de la orden</h3>
+        <h3 className={styles.previewTitle}>
+          {tx('Resumen previo de la orden', 'Order preview summary')}
+        </h3>
         <span
           className={
             preview.market_open
@@ -28,32 +36,50 @@ export function OrderPreviewCard({
           }
         >
           <span className={styles.dotPulse} aria-hidden="true" />
-          {preview.market_open ? 'Mercado abierto' : 'Mercado cerrado'}
+          {preview.market_open
+            ? tx('Mercado abierto', 'Market open')
+            : tx('Mercado cerrado', 'Market closed')}
         </span>
       </div>
 
       <div className={styles.summaryRow}>
-        <span>Precio de referencia</span>
-        <strong>${preview.reference_price} USD</strong>
+        <span>{tx('Precio de referencia', 'Reference price')}</span>
+        <strong className={styles.tabularNum}>
+          {formatUsd(preview.reference_price, {
+            withCode: true,
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 4,
+          })}
+        </strong>
       </div>
       <div className={styles.summaryRow}>
-        <span>Importe estimado</span>
-        <strong>${preview.estimated_amount} USD</strong>
+        <span>{tx('Importe estimado', 'Estimated amount')}</span>
+        <strong className={styles.tabularNum}>
+          {formatUsd(preview.estimated_amount, { withCode: true })}
+        </strong>
       </div>
       <div className={styles.summaryRow}>
-        <span>Comisión de referencia estimada</span>
-        <strong>${preview.reference_commission} USD</strong>
+        <span>
+          {tx('Comisión de referencia estimada', 'Estimated reference fee')}
+        </span>
+        <strong className={styles.tabularNum}>
+          {formatUsd(preview.reference_commission, { withCode: true })}
+        </strong>
       </div>
       <div className={`${styles.summaryRow} ${styles.summaryTotal}`}>
-        <span>Poder de compra disponible</span>
-        <strong>${preview.available_buying_power} USD</strong>
+        <span>
+          {tx('Poder de compra disponible', 'Available buying power')}
+        </span>
+        <strong className={styles.tabularNum}>
+          {formatUsd(preview.available_buying_power, { withCode: true })}
+        </strong>
       </div>
 
       {preview.scheduled_for && (
         <div className={styles.summaryRow}>
-          <span>Programada para</span>
-          <strong>
-            {new Date(preview.scheduled_for).toLocaleString('es-CO')}
+          <span>{tx('Programada para', 'Scheduled for')}</span>
+          <strong className={styles.tabularNum}>
+            {formatMarketDateTime(preview.scheduled_for, locale)}
           </strong>
         </div>
       )}
@@ -66,15 +92,20 @@ export function OrderPreviewCard({
             checked={ack}
             onChange={(e) => onAckChange(e.target.checked)}
           />
-          Autorizo expresamente esta operación de monto elevado
+          {tx(
+            'Autorizo expresamente esta operación de monto elevado',
+            'I explicitly authorize this high-amount transaction',
+          )}
         </label>
       )}
 
       {preview.authorization_method === 'totp' && (
         <label className={styles.fieldGroup}>
-          Código MFA
+          <span className={styles.fieldLabel}>
+            {tx('Código MFA', 'MFA Code')}
+          </span>
           <input
-            className={styles.input}
+            className={`${styles.input} ${styles.tabularNum}`}
             required
             inputMode="numeric"
             pattern="[0-9]{6}"
@@ -88,7 +119,10 @@ export function OrderPreviewCard({
       )}
 
       <p className={styles.previewNote}>
-        Confirma los datos antes de enviar la orden.
+        {tx(
+          'Confirma los datos antes de enviar la orden.',
+          'Review all details before submitting your order.',
+        )}
       </p>
     </div>
   );

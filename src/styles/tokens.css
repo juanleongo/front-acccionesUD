@@ -1,62 +1,155 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
 :root {
+  --color-brand-logo-surface: #ffffff;
   color-scheme: dark;
+
+  /* Superficies y fondos base */
   --color-background: #0c0e13;
   --color-surface: #0e1118;
   --color-surface-raised: #10131b;
-  --color-text: #f1f5f9;
-  --color-text-muted: #cbd5e1;
-  --color-text-subtle: #94a3b8;
-  --color-primary: #bdc2ff;
-  --color-button: #384bff;
-  --color-on-button: #ffffff;
-  --color-border: #2d3343;
-  --color-border-strong: #434c66;
-  --color-border-subtle: #ffffff0d;
-  --shadow-control:
-    0 2px 6px rgba(0, 0, 0, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.04);
-  --color-accent: #b4d72d;
-  --color-accent-text: #b4d72d;
-  --color-on-accent: #172000;
-  --color-accent-border: #b4d72d40;
-  --color-accent-soft: #b4d72d1c;
+  --color-surface-elevated: #151a26;
+  --color-surface-hover: rgba(255, 255, 255, 0.05);
+  --color-surface-glass: rgba(14, 17, 24, 0.84);
+  --color-section: #0e1015;
   --color-control: #181c24;
   --color-icon-bg: #20252f;
   --color-header: #0c0e13ed;
   --color-logo: #242a3b;
   --color-secondary-button: #ffffff0a;
   --color-badge: #20252fcc;
-  --color-gradient-mid: #dfe0ff;
-  --color-section: #0e1015;
-  --color-change-border: #9ca0ad;
-  --color-warning: #f4ba25;
-  --color-warning-bg: #f59e0b15;
-  --color-warning-border: #f59e0b40;
-  --color-shield-bg: #bdc2ff15;
-  --color-shield-border: #bdc2ff33;
   --color-footer: #080b11;
   --color-footer-border: #222c3c;
-  --color-success-bg: #10b98118;
+
+  /* Superficies no planas y gradientes */
+  --color-card-gradient: linear-gradient(180deg, #161b28 0%, #10131b 100%);
+  --color-card-accent-gradient:
+    linear-gradient(145deg, rgba(56, 75, 255, 0.14), rgba(16, 185, 129, 0.05)),
+    #10131b;
+  --color-modal-gradient:
+    radial-gradient(circle at 50% 0%, rgba(56, 75, 255, 0.16), transparent 58%),
+    #121622;
   --hero-gradient: radial-gradient(
     ellipse at 50% 5%,
     #384bff0a,
     #b4d72d06 45%,
     transparent 75%
   );
-  --shadow-market: 0 15px 35px -15px #0005;
-  --shadow-card: 0 10px 30px -10px #0002;
-  --color-error: #a41925;
-  --color-error-surface: #fff0f1;
-  --color-success: #34d399;
+  --color-gradient-mid: #dfe0ff;
+
+  /* Tipografía y jerarquía de texto (WCAG AA sobre superficies oscuras) */
+  --color-text: #f1f5f9;
+  --color-text-secondary: #cbd5e1;
+  --color-text-muted: #cbd5e1;
+  --color-text-subtle: #94a3b8;
+
+  /* Primario / Marca / Acciones principales */
+  --color-primary: #bdc2ff;
+  --color-button: #384bff;
+  --color-on-button: #ffffff;
+  --color-primary-soft: rgba(56, 75, 255, 0.14);
+  --color-primary-soft-hover: rgba(56, 75, 255, 0.22);
+  --color-primary-border: rgba(133, 146, 255, 0.34);
+  --color-primary-glow: rgba(56, 75, 255, 0.48);
   --color-focus: #8592ff;
+  --color-shield-bg: #bdc2ff15;
+  --color-shield-border: #bdc2ff33;
+
+  /* Acento institucional */
+  --color-accent: #b4d72d;
+  --color-accent-text: #b4d72d;
+  --color-on-accent: #172000;
+  --color-accent-soft: #b4d72d1c;
+  --color-accent-border: #b4d72d40;
+  --color-accent-glow: rgba(180, 215, 45, 0.24);
+  --color-highlight-scrim: rgba(0, 0, 0, 0.14);
+  --color-highlight-border: rgba(0, 0, 0, 0.08);
+
+  /* Semántica: Éxito y mercado alcista */
+  --color-success: #34d399;
+  --color-success-bg: rgba(16, 185, 129, 0.14);
+  --color-success-soft: rgba(16, 185, 129, 0.12);
+  --color-success-border: rgba(16, 185, 129, 0.34);
+  --color-success-glow: rgba(16, 185, 129, 0.24);
+  --color-success-button: #047857;
+  --color-on-success: #ffffff;
+  --color-chart-up: #10b981;
+  --color-chart-down: #ef4444;
+
+  /* Semántica: Advertencia / Reservado */
+  --color-warning: #f4ba25;
+  --color-warning-bg: #f59e0b15;
+  --color-warning-soft: rgba(245, 158, 11, 0.12);
+  --color-warning-border: #f59e0b40;
+  --color-warning-glow: rgba(245, 158, 11, 0.24);
+
+  /* Semántica: Error / Peligro / Venta */
+  --color-error: #f87171;
+  --color-error-surface: rgba(239, 68, 68, 0.14);
+  --color-error-soft: rgba(239, 68, 68, 0.1);
+  --color-error-border: rgba(248, 113, 113, 0.36);
+  --color-error-glow: rgba(239, 68, 68, 0.24);
+  --color-danger-button: #c81e2b;
+  --color-on-danger: #ffffff;
+
+  /* Bordes y separadores */
+  --color-border: #2d3343;
+  --color-border-strong: #434c66;
+  --color-border-subtle: rgba(255, 255, 255, 0.06);
+  --color-divider: rgba(255, 255, 255, 0.08);
+  --color-change-border: #9ca0ad;
+
+  /* Backdrops y overlays */
+  --color-backdrop: rgba(6, 9, 15, 0.76);
+  --color-backdrop-strong:
+    radial-gradient(
+      circle at 50% 35%,
+      rgba(56, 75, 255, 0.16),
+      rgba(6, 9, 15, 0.94) 60%
+    ),
+    #06090f;
+  --blur-backdrop: blur(6px);
+  --blur-backdrop-strong: blur(12px);
+
+  /* Sombras de elevación */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.28);
+  --shadow-control:
+    0 2px 6px rgba(0, 0, 0, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.04);
+  --shadow-card:
+    0 10px 30px -10px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --shadow-card-elevated:
+    0 18px 42px -12px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.04);
+  --shadow-dropdown:
+    0 18px 40px -10px rgba(0, 0, 0, 0.6), 0 4px 14px rgba(0, 0, 0, 0.35);
+  --shadow-modal:
+    0 24px 60px -12px rgba(0, 0, 0, 0.72), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  --shadow-market: 0 15px 35px -15px #0005;
+  --shadow-tooltip: 0 4px 12px rgba(0, 0, 0, 0.35);
+  --shadow-primary-sm: 0 4px 12px rgba(56, 75, 255, 0.32);
+  --shadow-primary-md: 0 8px 22px -6px rgba(56, 75, 255, 0.5);
+  --shadow-focus-ring: 0 0 0 3px rgba(133, 146, 255, 0.24);
+  --shadow-error-sm: 0 2px 6px rgba(239, 68, 68, 0.2);
+  --shadow-error-ring: 0 0 0 3px rgba(239, 68, 68, 0.2);
+  --shadow-logo-glow: drop-shadow(0 2px 8px rgba(133, 146, 255, 0.28));
+
+  /* Escala tipográfica, espaciado, radios y movimiento */
   --font-family-body:
     'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont,
     'Segoe UI', Roboto, sans-serif;
+  --font-size-xs: 0.75rem;
   --font-size-sm: 0.875rem;
+  --font-size-md: 0.9375rem;
   --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.375rem;
+  --font-size-2xl: clamp(1.5rem, 2.8vw, 2rem);
   --font-size-title: clamp(2rem, 5vw, 3rem);
+  --line-height-tight: 1.2;
+  --line-height-snug: 1.35;
   --line-height-body: 1.6;
+  --letter-spacing-tight: -0.02em;
+  --letter-spacing-label: 0.04em;
   --space-1: 0.25rem;
   --space-2: 0.5rem;
   --space-3: 0.75rem;
@@ -65,13 +158,29 @@
   --space-8: 2rem;
   --space-10: 2.5rem;
   --size-content: 42rem;
+  --container-max: 78rem;
+  --container-max-wide: 90rem;
+  --container-max-workspace: 144rem;
   --size-control-min: 2.75rem;
   --border-width: 1px;
   --radius-sm: 0.25rem;
+  --radius-md: 0.625rem;
   --radius-lg: 0.75rem;
-  --shadow-sm: 0 0.25rem 1rem rgb(23 43 58 / 6%);
+  --radius-xl: 1rem;
+  --radius-2xl: 1.25rem;
+  --radius-pill: 9999px;
   --focus-width: 3px;
   --focus-offset: 3px;
+  --transition-fast: 150ms cubic-bezier(0.22, 1, 0.36, 1);
+  --transition-base: 220ms cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Escala oficial de capas (z-index) */
+  --z-card: 10;
+  --z-sticky: 40;
+  --z-dropdown: 70;
+  --z-modal: 90;
+  --z-critical: 9999;
+
   /* Documented reference values; repeat literals in @media, never var(). */
   --breakpoint-sm: 30rem;
   --breakpoint-md: 48rem;
@@ -80,49 +189,137 @@
 
 :root[data-theme='light'] {
   color-scheme: light;
+
+  /* Superficies y fondos base */
   --color-background: #f1f5f9;
   --color-surface: #ffffff;
   --color-surface-raised: #f8fafc;
-  --color-text: #0f172a;
-  --color-text-muted: #2c384b;
-  --color-text-subtle: #475569;
-  --color-primary: #2563eb;
-  --color-button: #2563eb;
-  --color-border: #cbd5e1;
-  --color-border-strong: #94a3b8;
-  --color-border-subtle: #e2e8f0;
-  --shadow-control:
-    0 2px 6px rgba(15, 23, 42, 0.08), inset 0 1px 2px rgba(15, 23, 42, 0.04);
-  --color-accent: #0db985;
-  --color-accent-text: #00845f;
-  --color-on-accent: #ffffff;
-  --color-accent-border: #10b98155;
-  --color-accent-soft: #10b98120;
+  --color-surface-elevated: #ffffff;
+  --color-surface-hover: rgba(15, 23, 42, 0.04);
+  --color-surface-glass: rgba(255, 255, 255, 0.86);
+  --color-section: #fbfcfe;
   --color-control: #f8fafc;
   --color-icon-bg: #f0f5f9;
   --color-header: #ffffffed;
   --color-logo: #edf5ff;
-  --color-secondary-button: #ffffff40;
+  --color-secondary-button: rgba(15, 23, 42, 0.045);
   --color-badge: #f1f8fa;
-  --color-gradient-mid: #3b82f6;
-  --color-section: #fbfcfe;
-  --color-change-border: #dce2ec;
-  --color-warning: #996000;
-  --color-warning-bg: #fff6e5;
-  --color-warning-border: #ffd28d;
-  --color-shield-bg: #eaf0ff;
-  --color-shield-border: #ccd9ff;
   --color-footer: #eaf1f7;
   --color-footer-border: #d4dfea;
-  --color-success: #00845f;
-  --color-success-bg: #d1fae5;
-  --color-focus: #2563eb;
+
+  /* Superficies no planas y gradientes */
+  --color-card-gradient: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  --color-card-accent-gradient:
+    linear-gradient(145deg, rgba(37, 99, 235, 0.08), rgba(6, 95, 70, 0.04)),
+    #ffffff;
+  --color-modal-gradient:
+    radial-gradient(circle at 50% 0%, rgba(37, 99, 235, 0.08), transparent 58%),
+    #ffffff;
   --hero-gradient: radial-gradient(
     ellipse at 50% 5%,
     #2563eb08,
     #10b98106 45%,
     transparent 75%
   );
-  --shadow-market: 0 22px 36px -12px #0004;
-  --shadow-card: 0 10px 30px -10px #0000000d;
+  --color-gradient-mid: #3b82f6;
+
+  /* Tipografía y jerarquía de texto (WCAG AA sobre superficies claras) */
+  --color-text: #0f172a;
+  --color-text-secondary: #2c384b;
+  --color-text-muted: #2c384b;
+  --color-text-subtle: #475569;
+
+  /* Primario / Marca / Acciones principales */
+  --color-primary: #1d4ed8;
+  --color-button: #2563eb;
+  --color-on-button: #ffffff;
+  --color-primary-soft: rgba(37, 99, 235, 0.09);
+  --color-primary-soft-hover: rgba(37, 99, 235, 0.16);
+  --color-primary-border: rgba(29, 78, 216, 0.28);
+  --color-primary-glow: rgba(37, 99, 235, 0.26);
+  --color-focus: #2563eb;
+  --color-shield-bg: #eaf0ff;
+  --color-shield-border: #ccd9ff;
+
+  /* Acento institucional (WCAG AA >= 4.5:1 sobre claro y --color-on-accent) */
+  --color-accent: #065f46;
+  --color-accent-text: #065f46;
+  --color-on-accent: #ffffff;
+  --color-accent-soft: rgba(6, 95, 70, 0.1);
+  --color-accent-border: rgba(6, 95, 70, 0.34);
+  --color-accent-glow: rgba(6, 95, 70, 0.18);
+  --color-highlight-scrim: rgba(15, 23, 42, 0.16);
+  --color-highlight-border: rgba(255, 255, 255, 0.24);
+
+  /* Semántica: Éxito y mercado alcista */
+  --color-success: #065f46;
+  --color-success-bg: #d1fae5;
+  --color-success-soft: rgba(16, 185, 129, 0.14);
+  --color-success-border: rgba(6, 95, 70, 0.32);
+  --color-success-glow: rgba(6, 95, 70, 0.18);
+  --color-success-button: #065f46;
+  --color-on-success: #ffffff;
+  --color-chart-up: #065f46;
+  --color-chart-down: #dc2626;
+
+  /* Semántica: Advertencia / Reservado */
+  --color-warning: #996000;
+  --color-warning-bg: #fff6e5;
+  --color-warning-soft: rgba(180, 83, 9, 0.08);
+  --color-warning-border: #ffd28d;
+  --color-warning-glow: rgba(180, 83, 9, 0.16);
+
+  /* Semántica: Error / Peligro / Venta */
+  --color-error: #b91c1c;
+  --color-error-surface: #fef2f2;
+  --color-error-soft: rgba(220, 38, 38, 0.08);
+  --color-error-border: rgba(185, 28, 28, 0.3);
+  --color-error-glow: rgba(220, 38, 38, 0.16);
+  --color-danger-button: #b91c1c;
+  --color-on-danger: #ffffff;
+
+  /* Bordes y separadores */
+  --color-border: #cbd5e1;
+  --color-border-strong: #94a3b8;
+  --color-border-subtle: #e2e8f0;
+  --color-divider: rgba(15, 23, 42, 0.08);
+  --color-change-border: #dce2ec;
+
+  /* Backdrops y overlays */
+  --color-backdrop: rgba(15, 23, 42, 0.52);
+  --color-backdrop-strong:
+    radial-gradient(
+      circle at 50% 35%,
+      rgba(37, 99, 235, 0.14),
+      rgba(15, 23, 42, 0.64) 62%
+    ),
+    rgba(15, 23, 42, 0.52);
+
+  /* Sombras de elevación */
+  --shadow-sm: 0 2px 8px rgba(15, 23, 42, 0.06);
+  --shadow-control:
+    0 2px 6px rgba(15, 23, 42, 0.08), inset 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-card:
+    0 10px 28px -10px rgba(15, 23, 42, 0.1), 0 1px 3px rgba(15, 23, 42, 0.05);
+  --shadow-card-elevated:
+    0 18px 38px -12px rgba(15, 23, 42, 0.14), 0 4px 12px rgba(15, 23, 42, 0.06);
+  --shadow-dropdown:
+    0 18px 40px -10px rgba(15, 23, 42, 0.16), 0 4px 12px rgba(15, 23, 42, 0.08);
+  --shadow-modal:
+    0 24px 56px -12px rgba(15, 23, 42, 0.24), 0 8px 20px rgba(15, 23, 42, 0.1);
+  --shadow-market: 0 20px 36px -14px rgba(15, 23, 42, 0.14);
+  --shadow-tooltip: 0 4px 12px rgba(15, 23, 42, 0.12);
+  --shadow-primary-sm: 0 4px 12px rgba(37, 99, 235, 0.2);
+  --shadow-primary-md: 0 8px 20px -6px rgba(37, 99, 235, 0.34);
+  --shadow-focus-ring: 0 0 0 3px rgba(37, 99, 235, 0.18);
+  --shadow-error-sm: 0 2px 6px rgba(185, 28, 28, 0.14);
+  --shadow-error-ring: 0 0 0 3px rgba(185, 28, 28, 0.16);
+  --shadow-logo-glow: drop-shadow(0 2px 8px rgba(37, 99, 235, 0.18));
+}
+
+:root {
+  --color-chart-up-fill: rgba(16, 185, 129, 0.24);
+  --color-chart-down-fill: rgba(239, 68, 68, 0.24);
+  --color-chart-neutral-fill: rgba(148, 163, 184, 0.2);
+  --color-chart-transparent: rgba(0, 0, 0, 0);
 }

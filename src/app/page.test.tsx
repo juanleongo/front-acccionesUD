@@ -1,12 +1,19 @@
 // @vitest-environment jsdom
-import { render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { QueryClient } from '@tanstack/react-query';
-import { expect, it } from 'vitest';
+import { afterEach, expect, it } from 'vitest';
+import { setAppLocale } from '@/lib/i18n';
 import HomePage from './page';
 import { Providers } from './providers';
 
-it('links the landing to live markets', () => {
+afterEach(() => {
+  cleanup();
+  window.localStorage.clear();
+  setAppLocale('es');
+});
+
+it('routes market exploration through sign in', () => {
   render(
     <Providers>
       <HomePage />
@@ -14,8 +21,28 @@ it('links the landing to live markets', () => {
   );
   expect(
     screen.getByRole('link', { name: 'Explorar mercados' }),
-  ).toHaveAttribute('href', '/markets');
-  expect(screen.getByRole('table')).toBeDefined();
+  ).toHaveAttribute('href', '/login');
+  expect(
+    screen.getByRole('region', { name: 'Explorador de mercados de EE. UU.' }),
+  ).toBeVisible();
+});
+
+it('switches the landing UI to English when clicking the header language button', () => {
+  render(
+    <Providers>
+      <HomePage />
+    </Providers>,
+  );
+  const toggle = screen.getByRole('button', {
+    name: 'Cambiar idioma a inglés',
+  });
+  fireEvent.click(toggle);
+
+  expect(screen.getByRole('link', { name: 'Explore markets' })).toHaveAttribute(
+    'href',
+    '/login',
+  );
+  expect(document.documentElement.lang).toBe('en');
 });
 it('keeps the provider client stable across re-renders and isolated between mounts', () => {
   const clients: QueryClient[] = [];

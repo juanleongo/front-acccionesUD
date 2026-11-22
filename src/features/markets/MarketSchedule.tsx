@@ -2,6 +2,9 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { LoadingState } from '@/components/ui/LoadingState';
+import { DatePicker } from '@/components/ui/DatePicker';
+import { QUERY_STALE_TIMES, queryKeys } from '@/lib/api';
+import { useLocale } from '@/lib/i18n';
 import { getCalendar, getStatus, tz } from './api';
 import { formatInstant, localDay, localTime, today } from './marketDates';
 import { Problem } from './MarketProblem';
@@ -27,10 +30,13 @@ function SessionBar({
   close: string | null;
   trading: boolean;
 }) {
+  const { tx } = useLocale();
   if (!trading || !open || !close)
     return (
       <span className={styles.inactive}>
-        {trading ? 'Horario sin publicar' : 'Cerrado'}
+        {trading
+          ? tx('Horario sin publicar', 'Schedule unpublished')
+          : tx('Cerrado', 'Closed')}
       </span>
     );
   const start = positionOnDay(open, day);
@@ -43,7 +49,7 @@ function SessionBar({
     <div
       className={styles.track}
       role="img"
-      aria-label={'Sesión ' + label}
+      aria-label={`${tx('Sesión', 'Session')} ${label}`}
       title={label}
     >
       <span
@@ -54,6 +60,7 @@ function SessionBar({
 }
 
 export function MarketSchedule({ code }: { code: string }) {
+  const { locale, tx } = useLocale();
   const [start, setStart] = useState(today);
   const [end, setEnd] = useState(() =>
     new Date(Date.parse(start) + 6 * 86400000).toISOString().slice(0, 10),
@@ -62,41 +69,46 @@ export function MarketSchedule({ code }: { code: string }) {
   const valid =
     Number.isFinite(period) && period >= 0 && period <= 366 * 86400000;
   const status = useQuery({
-    queryKey: ['markets', 'status', code, start, tz],
+    queryKey: queryKeys.markets.status(code, start, tz),
     queryFn: ({ signal }) => getStatus(code, start, signal),
     enabled: Boolean(start),
+    staleTime: QUERY_STALE_TIMES.catalog,
   });
   const calendar = useQuery({
-    queryKey: ['markets', 'calendar', code, start, end, tz],
+    queryKey: queryKeys.markets.calendar(code, start, end, tz),
     queryFn: ({ signal }) => getCalendar(code, start, end, signal),
     enabled: valid,
+    staleTime: QUERY_STALE_TIMES.catalog,
   });
   return (
     <section className={styles.scheduleCard}>
       <div className={styles.scheduleHeader}>
         <div>
           <span className={styles.sectionKicker}>
-            CRONOGRAMA OFICIAL DE SESIONES ({tz})
+            {tx('CRONOGRAMA OFICIAL DE SESIONES', 'OFFICIAL TRADING SCHEDULE')}{' '}
+            ({tz})
           </span>
-          <h3>Calendario de {code}</h3>
+          <h3>{tx(`Calendario de ${code}`, `${code} Trading Calendar`)}</h3>
         </div>
 
         <div className={styles.filters}>
           <label className={styles.dateFilterLabel}>
-            <span>Desde</span>
-            <input
-              type="date"
+            <span>{tx('Desde', 'From')}</span>
+            <DatePicker
+              id="market-calendar-from"
+              label={tx('Desde', 'From')}
               value={start}
-              onChange={(e) => setStart(e.target.value)}
+              onChange={setStart}
             />
           </label>
           <label className={styles.dateFilterLabel}>
-            <span>Hasta</span>
-            <input
-              type="date"
+            <span>{tx('Hasta', 'To')}</span>
+            <DatePicker
+              id="market-calendar-to"
+              label={tx('Hasta', 'To')}
               min={start}
               value={end}
-              onChange={(e) => setEnd(e.target.value)}
+              onChange={setEnd}
             />
           </label>
         </div>
@@ -112,21 +124,22 @@ export function MarketSchedule({ code }: { code: string }) {
             }`}
           >
             <span className={styles.dayStatusDot} />
-            <p style={{ margin: 0 }}>
+            <p className={styles.dayStatusText}>
               <strong>
                 {status.data.open
-                  ? 'Jornada de negociación'
-                  : 'Sin negociación'}
+                  ? tx('Jornada de negociación', 'Trading day')
+                  : tx('Sin negociación', 'Market closed')}
               </strong>{' '}
               · {status.data.date}
               {status.data.open && (
                 <>
                   {' '}
-                  · {formatInstant(status.data.open_at)} –{' '}
-                  {formatInstant(status.data.close_at)}
+                  · {formatInstant(status.data.open_at, locale)} –{' '}
+                  {formatInstant(status.data.close_at, locale)}
                 </>
               )}
-              {status.data.override && ' · Horario especial'}
+              {status.data.override &&
+                tx(' · Horario especial', ' · Special schedule')}
             </p>
           </div>
         )
@@ -134,39 +147,60 @@ export function MarketSchedule({ code }: { code: string }) {
 
       {!valid ? (
         <p className={styles.alertBox} role="alert">
-          Selecciona un intervalo válido de hasta 366 días entre las fechas.
+          {tx(
+            'Selecciona un intervalo válido de hasta 366 días entre las fechas.',
+            'Select a valid date range of up to 366 days.',
+          )}
         </p>
       ) : calendar.error ? (
         <Problem error={calendar.error} retry={calendar.refetch} />
       ) : !calendar.data ? (
         <LoadingState
           mode="compact"
-          label="Cargando calendario bursátil…"
-          detail={`Consultando jornadas oficiales de ${code} en zona horaria ${tz}.`}
+          label={tx(
+            'Cargando calendario bursátil…',
+            'Loading market calendar…',
+          )}
+          detail={tx(
+            `Consultando jornadas oficiales de ${code} en zona horaria ${tz}.`,
+            `Fetching official ${code} sessions in timezone ${tz}.`,
+          )}
         />
       ) : !calendar.data.days.length ? (
-        <p className={styles.emptyNotice}>Sin jornadas para este intervalo.</p>
+        <p className={styles.emptyNotice}>
+          {tx(
+            'Sin jornadas para este intervalo.',
+            'No sessions found for this date range.',
+          )}
+        </p>
       ) : (
         <div className={styles.scroll}>
-          <table>
+          <table className={styles.calendarTable}>
             <caption>
-              Jornadas bursátiles de {code} · Zona horaria:{' '}
-              {calendar.data.time_zone}
+              {tx(
+                `Jornadas bursátiles de ${code} · Zona horaria: ${calendar.data.time_zone}`,
+                `${code} trading sessions · Time zone: ${calendar.data.time_zone}`,
+              )}
             </caption>
             <thead>
               <tr>
-                <th>Fecha</th>
-                <th>Jornada</th>
+                <th>{tx('Fecha', 'Date')}</th>
+                <th>{tx('Jornada', 'Day type')}</th>
                 <th className={styles.thSchedule}>
-                  <span>Horario de negociación (09:30 – 16:00 ET)</span>
+                  <span>
+                    {tx(
+                      'Horario de negociación (09:30 – 16:00 ET)',
+                      'Trading hours (09:30 – 16:00 ET)',
+                    )}
+                  </span>
                   <div className={styles.axis}>
                     <span>00 h</span>
                     <span>12 h</span>
                     <span>24 h</span>
                   </div>
                 </th>
-                <th>Apertura</th>
-                <th>Cierre</th>
+                <th>{tx('Apertura', 'Open')}</th>
+                <th>{tx('Cierre', 'Close')}</th>
               </tr>
             </thead>
             <tbody>
@@ -174,19 +208,22 @@ export function MarketSchedule({ code }: { code: string }) {
                 const kindLabel =
                   (
                     {
-                      trading_day: 'Negociación',
-                      holiday: 'Festivo',
-                      weekend: 'Fin de semana',
+                      trading_day: tx('Negociación', 'Trading day'),
+                      holiday: tx('Festivo', 'Holiday'),
+                      weekend: tx('Fin de semana', 'Weekend'),
                     } as Record<string, string>
                   )[day.kind] ?? day.kind;
                 return (
                   <tr key={day.date} data-kind={day.kind}>
                     <th scope="row">{day.date}</th>
                     <td className={styles.kindCell}>
-                      {kindLabel}
-                      {day.override && ' · Horario especial'}
+                      <span className={styles.sessionBadge}>
+                        {kindLabel}
+                        {day.override &&
+                          tx(' · Horario especial', ' · Special schedule')}
+                      </span>
                     </td>
-                    <td>
+                    <td className={styles.sessionTrackCell}>
                       <SessionBar
                         day={day.date}
                         open={day.open_at}
@@ -194,8 +231,12 @@ export function MarketSchedule({ code }: { code: string }) {
                         trading={day.kind === 'trading_day'}
                       />
                     </td>
-                    <td>{formatInstant(day.open_at)}</td>
-                    <td>{formatInstant(day.close_at)}</td>
+                    <td data-label={tx('Apertura', 'Open')}>
+                      {formatInstant(day.open_at, locale)}
+                    </td>
+                    <td data-label={tx('Cierre', 'Close')}>
+                      {formatInstant(day.close_at, locale)}
+                    </td>
                   </tr>
                 );
               })}

@@ -1,15 +1,26 @@
 'use client';
 
-import type { FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
+import { CustomSelect } from '@/components/ui/CustomSelect';
+import { useLocale } from '@/lib/i18n';
 import styles from '../trading.module.css';
 
 export type OrderPendingAction = 'cancel' | 'accept' | 'reject' | 'resume';
 
-const ACTION_PROMPTS: Record<OrderPendingAction, string> = {
-  cancel: 'la solicitud de cancelación',
-  resume: 'la reanudación',
-  accept: 'la aceptación del nuevo precio',
-  reject: 'el rechazo del nuevo precio',
+const ACTION_PROMPTS: Record<OrderPendingAction, { es: string; en: string }> = {
+  cancel: {
+    es: 'la solicitud de cancelación',
+    en: 'the cancellation request',
+  },
+  resume: { es: 'la reanudación', en: 'resuming this order' },
+  accept: {
+    es: 'la aceptación del nuevo precio',
+    en: 'accepting the updated price',
+  },
+  reject: {
+    es: 'el rechazo del nuevo precio',
+    en: 'rejecting the updated price',
+  },
 };
 
 export function OrderActionConfirmForm({
@@ -31,35 +42,71 @@ export function OrderActionConfirmForm({
   onConfirm: () => Promise<void>;
   onCancel: () => void;
 }) {
+  const { tx } = useLocale();
+  const [localError, setLocalError] = useState('');
+
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
+    if (action === 'cancel' && reason === 'other' && !reasonText.trim()) {
+      setLocalError(
+        tx(
+          'Describe el motivo de la cancelación antes de confirmar.',
+          'Describe the cancellation reason before confirming.',
+        ),
+      );
+      return;
+    }
+    setLocalError('');
     void onConfirm();
   }
 
   return (
-    <form className={styles.orderPreview} onSubmit={handleSubmit}>
+    <form className={styles.orderPreview} onSubmit={handleSubmit} noValidate>
       <fieldset disabled={busy} className={styles.orderFields}>
         <p className={styles.previewTitle}>
-          ¿Confirmas {ACTION_PROMPTS[action]}?
+          {tx(
+            `¿Confirmas ${ACTION_PROMPTS[action].es}?`,
+            `Confirm ${ACTION_PROMPTS[action].en}?`,
+          )}
         </p>
         {action === 'cancel' && (
           <div className={styles.fieldGrid}>
-            <label className={styles.fieldGroup}>
-              Motivo
-              <select
-                className={styles.select}
-                value={reason}
-                onChange={(e) => onReasonChange(e.target.value)}
+            <div className={styles.fieldGroup}>
+              <label
+                htmlFor="order-cancel-reason"
+                className={styles.fieldLabel}
               >
-                <option value="no_longer_needed">Ya no la necesito</option>
-                <option value="price_changed">Cambió el precio</option>
-                <option value="input_error">Error en los datos</option>
-                <option value="other">Otro motivo</option>
-              </select>
-            </label>
+                {tx('Motivo', 'Reason')}
+              </label>
+              <CustomSelect
+                id="order-cancel-reason"
+                value={reason}
+                onChange={onReasonChange}
+                options={[
+                  {
+                    value: 'no_longer_needed',
+                    label: tx('Ya no la necesito', 'No longer needed'),
+                  },
+                  {
+                    value: 'price_changed',
+                    label: tx('Cambió el precio', 'Price changed'),
+                  },
+                  {
+                    value: 'input_error',
+                    label: tx('Error en los datos', 'Input error'),
+                  },
+                  {
+                    value: 'other',
+                    label: tx('Otro motivo', 'Other reason'),
+                  },
+                ]}
+              />
+            </div>
             {reason === 'other' && (
               <label className={styles.fieldGroup}>
-                Describe el motivo
+                <span className={styles.fieldLabel}>
+                  {tx('Describe el motivo', 'Describe the reason')}
+                </span>
                 <input
                   className={styles.input}
                   required
@@ -71,16 +118,23 @@ export function OrderActionConfirmForm({
             )}
           </div>
         )}
+        {localError && (
+          <p role="alert" className={styles.alertError}>
+            {localError}
+          </p>
+        )}
         <div className={styles.actionsRow}>
           <button type="submit" className={styles.btnPrimary}>
-            {busy ? 'Procesando…' : 'Confirmar acción'}
+            {busy
+              ? tx('Procesando…', 'Processing…')
+              : tx('Confirmar acción', 'Confirm action')}
           </button>
           <button
             type="button"
             className={styles.btnSecondary}
             onClick={onCancel}
           >
-            Volver
+            {tx('Volver', 'Back')}
           </button>
         </div>
       </fieldset>

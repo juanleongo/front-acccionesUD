@@ -1,12 +1,18 @@
 'use client';
 
 import { formatPersonName } from '@/lib/format-person-name';
+import { useLocale } from '@/lib/i18n';
+import { tx as t, type Locale } from '@/lib/i18n/locale';
+import { toggleDocumentTheme } from '@/lib/theme';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { useRef, useState, type FormEvent } from 'react';
 import { z } from 'zod';
 import { Icon } from '@/components/ui/Icon';
-import { LoginForm, startLogin, type Challenge } from '@/features/login';
+import { startLogin, type Challenge } from '@/features/login/client';
+import { LoadingState } from '@/components/ui/LoadingState';
+import { LinkPendingIndicator } from '@/components/ui/LinkPendingIndicator';
 import { ApiError } from '@/lib/api';
 import { browserHttp } from '@/lib/api/client';
 import { PreferencesStepFields } from './components/PreferencesStepFields';
@@ -29,51 +35,135 @@ import {
 } from './KycFields';
 import styles from './registration.module.css';
 
+function VerificationLoading() {
+  const { tx } = useLocale();
+  return (
+    <LoadingState
+      label={tx('Preparando verificación…', 'Preparing verification…')}
+    />
+  );
+}
+
+const LoginForm = dynamic(
+  () => import('@/features/login').then((module) => module.LoginForm),
+  { loading: VerificationLoading },
+);
+
 function getCustomFieldError(
   control: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement,
+  locale: Locale,
 ): string {
   const name = control.name;
-  if (name === 'first_names') return 'Ingresa tus nombres.';
-  if (name === 'last_names') return 'Ingresa tus apellidos.';
+  if (name === 'first_names')
+    return t(locale, 'Ingresa tus nombres.', 'Enter your first name(s).');
+  if (name === 'last_names')
+    return t(locale, 'Ingresa tus apellidos.', 'Enter your last name(s).');
   if (name === 'email')
-    return 'Ingresa un correo electrónico válido (ej. nombre@correo.com).';
+    return t(
+      locale,
+      'Ingresa un correo electrónico válido (ej. nombre@correo.com).',
+      'Enter a valid email address (e.g. name@email.com).',
+    );
   if (name === 'phone')
-    return 'El teléfono debe incluir el indicativo del país (+) seguido únicamente de números, sin letras, espacios ni símbolos (ej. +573001234567).';
-  if (name === 'country') return 'Selecciona tu país de residencia.';
+    return t(
+      locale,
+      'El teléfono debe incluir el indicativo del país (+) seguido únicamente de números, sin letras, espacios ni símbolos (ej. +573001234567).',
+      'Phone must include country code (+) followed by digits only, with no letters, spaces, or symbols (e.g. +573001234567).',
+    );
+  if (name === 'country')
+    return t(
+      locale,
+      'Selecciona tu país de residencia.',
+      'Select your country of residence.',
+    );
   if (name === 'password')
-    return 'La contraseña debe tener al menos 8 caracteres, incluyendo mayúscula, minúscula y número.';
-  if (name === 'firm_name') return 'Ingresa el nombre de tu firma.';
+    return t(
+      locale,
+      'La contraseña debe tener al menos 8 caracteres, incluyendo mayúscula, minúscula y número.',
+      'Password must be at least 8 characters long, including letters and numbers.',
+    );
+  if (name === 'firm_name')
+    return t(locale, 'Ingresa el nombre de tu firma.', 'Enter your firm name.');
   if (name === 'license_number')
-    return 'Ingresa tu número de licencia profesional.';
+    return t(
+      locale,
+      'Ingresa tu número de licencia profesional.',
+      'Enter your professional license number.',
+    );
   if (name === 'tax_id')
-    return 'Ingresa un número de documento válido (para pasaporte puedes incluir letras y números, ej. PA1234567; para cédula/NIT usa solo números).';
+    return t(
+      locale,
+      'Ingresa un número de documento válido (para pasaporte puedes incluir letras y números, ej. PA1234567; para cédula/NIT usa solo números).',
+      'Enter a valid ID number (passports may include letters and digits, e.g. PA1234567; national IDs accept digits only).',
+    );
   if (name === 'date_of_birth')
     return (
-      validateBirthDateAge(control.value) ??
-      'Selecciona tu fecha de nacimiento (+18 años).'
+      validateBirthDateAge(control.value, locale) ??
+      t(
+        locale,
+        'Selecciona tu fecha de nacimiento (+18 años).',
+        'Select your date of birth (18+ years).',
+      )
     );
-  if (name === 'postal_code') return 'Ingresa el código postal de tu ciudad.';
-  if (name === 'street_address') return 'Ingresa tu dirección de residencia.';
+  if (name === 'postal_code')
+    return t(
+      locale,
+      'Ingresa el código postal de tu ciudad.',
+      'Enter your postal code.',
+    );
+  if (name === 'street_address')
+    return t(
+      locale,
+      'Ingresa tu dirección de residencia.',
+      'Enter your street address.',
+    );
   if (name === 'state')
-    return 'Selecciona tu departamento, estado o provincia.';
-  if (name === 'city') return 'Selecciona tu ciudad de residencia.';
+    return t(
+      locale,
+      'Selecciona tu departamento, estado o provincia.',
+      'Select your state, province, or region.',
+    );
+  if (name === 'city')
+    return t(
+      locale,
+      'Selecciona tu ciudad de residencia.',
+      'Select your city of residence.',
+    );
   if (name === 'customer_agreement')
-    return 'Debes aceptar el Acuerdo de Cliente de Corretaje (obligatorio).';
+    return t(
+      locale,
+      'Debes aceptar el Acuerdo de Cliente de Corretaje (obligatorio).',
+      'You must accept the Brokerage Customer Agreement (required).',
+    );
   if (name === 'terms_accepted')
-    return 'Debes aceptar los términos y condiciones de la plataforma para continuar.';
-  return 'Por favor completa todos los campos obligatorios de este paso.';
+    return t(
+      locale,
+      'Debes aceptar los términos y condiciones de la plataforma para continuar.',
+      'You must accept the platform terms and conditions to continue.',
+    );
+  return t(
+    locale,
+    'Por favor completa todos los campos obligatorios de este paso.',
+    'Please complete all required fields in this step.',
+  );
 }
 
 export function RegistrationForm({ kind }: { kind: RegistrationKind }) {
+  const { locale, tx } = useLocale();
   const broker = kind === 'broker';
   const steps = broker
-    ? ['Datos personales', 'Datos profesionales', 'Preferencias', 'Acuerdos']
+    ? [
+        tx('Datos personales', 'Personal details'),
+        tx('Datos profesionales', 'Professional details'),
+        tx('Preferencias', 'Preferences'),
+        tx('Acuerdos', 'Agreements'),
+      ]
     : [
-        'Datos personales',
-        'Preferencias',
-        'Identidad y domicilio',
-        'Perfil financiero',
-        'Acuerdos',
+        tx('Datos personales', 'Personal details'),
+        tx('Preferencias', 'Preferences'),
+        tx('Identidad y domicilio', 'Identity & address'),
+        tx('Perfil financiero', 'Financial profile'),
+        tx('Acuerdos', 'Agreements'),
       ];
   const [step, setStep] = useState(0);
   const lastStep = steps.length - 1;
@@ -86,23 +176,13 @@ export function RegistrationForm({ kind }: { kind: RegistrationKind }) {
   const draft = useRef<ReturnType<typeof readKyc> | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [invalidField, setInvalidField] = useState<string | null>(null);
   const [status, setStatus] = useState('');
   const [challenge, setChallenge] = useState<Challenge | null>(null);
   const [investorLevel, setInvestorLevel] = useState('');
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
   const [showPassword, setShowPassword] = useState(false);
   const termsDialog = useRef<HTMLDialogElement>(null);
-
-  function toggleTheme() {
-    const next =
-      document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
-    document.documentElement.dataset.theme = next;
-    try {
-      localStorage.setItem('acciones_ud_theme', next);
-    } catch {
-      /* Preferencia opcional. */
-    }
-  }
 
   function toggleInterestSelection(value: string) {
     const trimmed = value.trim();
@@ -181,17 +261,30 @@ export function RegistrationForm({ kind }: { kind: RegistrationKind }) {
           rawDetail,
           invalidFields,
           draft.current ?? undefined,
+          locale,
         );
         setError(
-          `La solicitud KYC fue rechazada. ${reason} Revisa los datos y vuelve a enviarla.`,
+          tx(
+            `La solicitud KYC fue rechazada. ${reason} Revisa los datos y vuelve a enviarla.`,
+            `KYC submission was rejected. ${reason} Review your details and submit again.`,
+          ),
         );
       } else
         setError(
           code === 409
-            ? 'La apertura KYC ya está en proceso. Puedes consultar de nuevo su estado.'
+            ? tx(
+                'La apertura KYC ya está en proceso. Puedes consultar de nuevo su estado.',
+                'KYC onboarding is already in progress. You can check its status again.',
+              )
             : code === 403
-              ? 'Esta cuenta carece de permiso para solicitar la apertura KYC.'
-              : 'Tu usuario ya existe. No pudimos confirmar la apertura KYC.',
+              ? tx(
+                  'Esta cuenta carece de permiso para solicitar la apertura KYC.',
+                  'This account lacks permission to submit KYC onboarding.',
+                )
+              : tx(
+                  'Tu usuario ya existe. No pudimos confirmar la apertura KYC.',
+                  'Your user already exists. We could not confirm KYC onboarding.',
+                ),
         );
     } finally {
       setBusy(false);
@@ -203,11 +296,13 @@ export function RegistrationForm({ kind }: { kind: RegistrationKind }) {
     if (busy) return;
     const form = event.currentTarget;
     setError('');
+    setInvalidField(null);
     for (const control of form.querySelectorAll<
       HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
     >('input,select,textarea')) {
       if (!control.closest('[hidden]') && !control.checkValidity()) {
-        setError(getCustomFieldError(control));
+        setInvalidField(control.name || null);
+        setError(getCustomFieldError(control, locale));
         return;
       }
     }
@@ -225,13 +320,19 @@ export function RegistrationForm({ kind }: { kind: RegistrationKind }) {
     if (!broker && step === 2) {
       const dobError = validateBirthDateAge(
         String(data.get('date_of_birth') ?? ''),
+        locale,
       );
       if (dobError) {
         setError(dobError);
         return;
       }
       if (!data.get('city') || !data.get('state')) {
-        setError('Completa la región y la ciudad de tu domicilio.');
+        setError(
+          tx(
+            'Completa la región y la ciudad de tu domicilio.',
+            'Complete your address region and city.',
+          ),
+        );
         return;
       }
     }
@@ -239,12 +340,15 @@ export function RegistrationForm({ kind }: { kind: RegistrationKind }) {
     if (step < lastStep) {
       if (!broker && step === 3) {
         try {
-          readKyc(data, body);
+          readKyc(data, body, locale);
         } catch (cause) {
           setError(
             cause instanceof Error
               ? cause.message
-              : 'Revisa el perfil financiero.',
+              : tx(
+                  'Revisa el perfil financiero.',
+                  'Check your financial profile.',
+                ),
           );
           return;
         }
@@ -254,10 +358,12 @@ export function RegistrationForm({ kind }: { kind: RegistrationKind }) {
     }
     if (!broker) {
       try {
-        draft.current = readKyc(data, body);
+        draft.current = readKyc(data, body, locale);
       } catch (cause) {
         setError(
-          cause instanceof Error ? cause.message : 'Revisa los datos KYC.',
+          cause instanceof Error
+            ? cause.message
+            : tx('Revisa los datos KYC.', 'Check your KYC details.'),
         );
         return;
       }
@@ -272,7 +378,10 @@ export function RegistrationForm({ kind }: { kind: RegistrationKind }) {
       body.interests.some((i) => [...i].length > 50)
     ) {
       setError(
-        'Selecciona hasta 20 intereses de máximo 50 caracteres cada uno.',
+        tx(
+          'Selecciona hasta 20 intereses de máximo 50 caracteres cada uno.',
+          'Select up to 20 interests of at most 50 characters each.',
+        ),
       );
       return;
     }
@@ -297,7 +406,10 @@ export function RegistrationForm({ kind }: { kind: RegistrationKind }) {
         setChallenge(await startLogin(body.email, body.password));
       } catch {
         setError(
-          'Tu cuenta ya está registrada. Inicia sesión para continuar con la verificación.',
+          tx(
+            'Tu cuenta ya está registrada. Inicia sesión para continuar con la verificación.',
+            'Your account is already registered. Sign in to continue verification.',
+          ),
         );
       }
       setVerify(true);
@@ -305,7 +417,12 @@ export function RegistrationForm({ kind }: { kind: RegistrationKind }) {
       const code =
         cause instanceof ApiError ? cause.metadata.status : undefined;
       if (code === 409)
-        setError('Ya existe una cuenta con este correo electrónico.');
+        setError(
+          tx(
+            'Ya existe una cuenta con este correo electrónico.',
+            'An account with this email address already exists.',
+          ),
+        );
       else if (code === 422 && cause instanceof ApiError) {
         const labels = new Set<string>();
         for (const path of cause.metadata.invalidFields ?? []) {
@@ -313,20 +430,27 @@ export function RegistrationForm({ kind }: { kind: RegistrationKind }) {
             path.replace(/^body\./, '').split('.')[0] ?? '',
           );
           if (field instanceof HTMLElement) {
-            const label = field
-              .closest('label')
-              ?.firstChild?.textContent?.trim();
+            const label =
+              field.closest('label')?.firstChild?.textContent?.trim() ||
+              (field.id
+                ? form
+                    .querySelector(`label[for="${field.id}"]`)
+                    ?.textContent?.trim()
+                : undefined);
             if (label) labels.add(label);
           }
         }
         setError(
           labels.size
-            ? 'Revisa estos campos: ' + [...labels].join(', ') + '.'
-            : 'Revisa los datos del formulario.',
+            ? `${tx('Revisa estos campos', 'Check these fields')}: ${[...labels].join(', ')}.`
+            : tx('Revisa los datos del formulario.', 'Check the form details.'),
         );
       } else
         setError(
-          'No pudimos confirmar el registro. Inténtalo de nuevo más tarde.',
+          tx(
+            'No pudimos confirmar el registro. Inténtalo de nuevo más tarde.',
+            'Could not confirm registration. Please try again later.',
+          ),
         );
     } finally {
       setBusy(false);
@@ -345,63 +469,99 @@ export function RegistrationForm({ kind }: { kind: RegistrationKind }) {
       )}
       <div hidden={verify}>
         <div className={styles.wrapper}>
-          <RegistrationHeader onToggleTheme={toggleTheme} />
+          <RegistrationHeader
+            onToggleTheme={() => {
+              toggleDocumentTheme();
+            }}
+          />
 
           <main className={styles.page}>
             {status && !editing && (
               <section role="status" className={styles.panel}>
                 <span className={styles.badge}>
-                  <span className={styles.dot} /> Registro confirmado
+                  <span className={styles.dot} />{' '}
+                  {tx('Registro confirmado', 'Registration confirmed')}
                 </span>
-                <h1>
-                  {status === 'active' ? 'Cuenta creada' : 'Solicitud recibida'}
+                <h1 className={styles.statusHeading}>
+                  {status === 'active'
+                    ? tx('Cuenta creada', 'Account created')
+                    : tx('Solicitud recibida', 'Application received')}
                 </h1>
                 {kycPending ? (
                   <>
-                    <p>{error || 'Confirmando la apertura KYC…'}</p>
+                    <p className={styles.statusText}>
+                      {error ||
+                        tx(
+                          'Confirmando la apertura KYC…',
+                          'Confirming KYC onboarding…',
+                        )}
+                    </p>
                     {error && (
-                      <button type="button" disabled={busy} onClick={finishKyc}>
-                        Consultar y continuar
+                      <button
+                        type="button"
+                        className={styles.submitButton}
+                        disabled={busy}
+                        onClick={finishKyc}
+                      >
+                        {tx('Consultar y continuar', 'Check and continue')}
                       </button>
                     )}
                   </>
                 ) : error ? (
                   <>
-                    <p>{error}</p>
+                    <p className={styles.statusText}>{error}</p>
                     <Link href="/login" className={styles.submitButton}>
-                      Iniciar sesión
+                      {tx('Iniciar sesión', 'Sign in')}
                     </Link>
                   </>
                 ) : (
-                  <p>Preparando la verificación en dos pasos…</p>
+                  <p className={styles.statusText}>
+                    {tx(
+                      'Preparando la verificación en dos pasos…',
+                      'Preparing two-factor verification…',
+                    )}
+                  </p>
                 )}
               </section>
             )}
             <div hidden={Boolean(status) && !editing}>
               <div className={styles.heroHeader}>
                 <p className={styles.badge}>
-                  <span className={styles.dot} /> Apertura de Cuenta · Bolsas de
-                  Estados Unidos (USD)
+                  <span className={styles.dot} />{' '}
+                  {tx(
+                    'Apertura de Cuenta · Bolsas de Estados Unidos (USD)',
+                    'Account Opening · US Stock Markets (USD)',
+                  )}
                 </p>
-                <h1>Crear cuenta</h1>
+                <h1 className={styles.heroTitle}>
+                  {tx('Crear cuenta', 'Create account')}
+                </h1>
                 <p className={styles.subtitle}>
-                  Opera sin riesgo con capital simulado en acciones y ETFs de
-                  Wall Street (NYSE, NASDAQ y NYSE Arca) bajo seguridad 2FA.
+                  {tx(
+                    'Opera sin riesgo con capital simulado en acciones y ETFs de Wall Street (NYSE, NASDAQ y NYSE Arca) bajo seguridad 2FA.',
+                    'Trade risk-free with simulated capital in Wall Street stocks and ETFs (NYSE, NASDAQ, and NYSE Arca) protected by 2FA.',
+                  )}
                 </p>
               </div>
 
-              <nav className={styles.kinds} aria-label="Tipo de cuenta">
+              <nav
+                className={styles.kinds}
+                aria-label={tx('Tipo de cuenta', 'Account type')}
+              >
                 <Link
                   href="/registro"
                   aria-current={!broker ? 'page' : undefined}
                 >
-                  <Icon name="user" size={18} /> Inversionista
+                  <Icon name="user" size={18} />{' '}
+                  {tx('Inversionista', 'Investor')}
+                  <LinkPendingIndicator />
                 </Link>
                 <Link
                   href="/registro/broker"
                   aria-current={broker ? 'page' : undefined}
                 >
-                  <Icon name="users" size={18} /> Comisionista
+                  <Icon name="users" size={18} /> {tx('Comisionista', 'Broker')}
+                  <LinkPendingIndicator />
                 </Link>
               </nav>
 
@@ -416,7 +576,8 @@ export function RegistrationForm({ kind }: { kind: RegistrationKind }) {
 
                 <fieldset hidden={step !== 0} disabled={busy}>
                   <legend>
-                    <Icon name="user" size={18} /> Datos personales
+                    <Icon name="user" size={18} />{' '}
+                    {tx('Datos personales', 'Personal details')}
                   </legend>
                   <div className={styles.grid}>
                     <div className={styles.field}>
@@ -424,18 +585,27 @@ export function RegistrationForm({ kind }: { kind: RegistrationKind }) {
                         className={styles.fieldLabel}
                         htmlFor="first_names_input"
                       >
-                        Nombres
+                        {tx('Nombres', 'First name(s)')}
                       </label>
                       <div className={styles.fieldControl}>
                         <input
                           id="first_names_input"
                           name="first_names"
+                          aria-invalid={
+                            invalidField === 'first_names' || undefined
+                          }
+                          onChange={() => {
+                            if (invalidField === 'first_names') {
+                              setInvalidField(null);
+                              setError('');
+                            }
+                          }}
                           onBlur={(event) => {
                             event.currentTarget.value = formatPersonName(
                               event.currentTarget.value,
                             );
                           }}
-                          placeholder="Ej. Juan José"
+                          placeholder={tx('Ej. Juan José', 'E.g. John')}
                           autoComplete="given-name"
                           maxLength={100}
                           required
@@ -449,18 +619,27 @@ export function RegistrationForm({ kind }: { kind: RegistrationKind }) {
                         className={styles.fieldLabel}
                         htmlFor="last_names_input"
                       >
-                        Apellidos
+                        {tx('Apellidos', 'Last name(s)')}
                       </label>
                       <div className={styles.fieldControl}>
                         <input
                           id="last_names_input"
                           name="last_names"
+                          aria-invalid={
+                            invalidField === 'last_names' || undefined
+                          }
+                          onChange={() => {
+                            if (invalidField === 'last_names') {
+                              setInvalidField(null);
+                              setError('');
+                            }
+                          }}
                           onBlur={(event) => {
                             event.currentTarget.value = formatPersonName(
                               event.currentTarget.value,
                             );
                           }}
-                          placeholder="Ej. León Gómez"
+                          placeholder={tx('Ej. León Gómez', 'E.g. Smith')}
                           autoComplete="family-name"
                           maxLength={100}
                           required
@@ -474,14 +653,24 @@ export function RegistrationForm({ kind }: { kind: RegistrationKind }) {
                         className={styles.fieldLabel}
                         htmlFor="email_input"
                       >
-                        Correo electrónico
+                        {tx('Correo electrónico', 'Email address')}
                       </label>
                       <div className={styles.fieldControl}>
                         <input
                           id="email_input"
                           type="email"
                           name="email"
-                          placeholder="correo@ejemplo.com"
+                          aria-invalid={invalidField === 'email' || undefined}
+                          onChange={() => {
+                            if (invalidField === 'email') {
+                              setInvalidField(null);
+                              setError('');
+                            }
+                          }}
+                          placeholder={tx(
+                            'correo@ejemplo.com',
+                            'name@example.com',
+                          )}
                           autoComplete="email"
                           maxLength={254}
                           required
@@ -494,7 +683,10 @@ export function RegistrationForm({ kind }: { kind: RegistrationKind }) {
                         className={styles.fieldLabel}
                         htmlFor="phone_input"
                       >
-                        Teléfono con indicativo
+                        {tx(
+                          'Teléfono con indicativo',
+                          'Phone with country code',
+                        )}
                       </label>
                       <div className={styles.fieldControl}>
                         <input
@@ -503,36 +695,56 @@ export function RegistrationForm({ kind }: { kind: RegistrationKind }) {
                           type="tel"
                           inputMode="tel"
                           autoComplete="tel"
-                          placeholder="Ej. +573001234567"
+                          aria-invalid={invalidField === 'phone' || undefined}
+                          onChange={() => {
+                            if (invalidField === 'phone') {
+                              setInvalidField(null);
+                              setError('');
+                            }
+                          }}
+                          placeholder={tx(
+                            'Ej. +573001234567',
+                            'E.g. +573001234567',
+                          )}
                           pattern={'\\+[1-9][0-9]{1,14}'}
-                          title="Debe ser el indicativo de país (+) seguido únicamente de números (ej. +573001234567). No se permiten letras, espacios ni símbolos."
-                          onInvalid={(e) =>
-                            e.currentTarget.setCustomValidity(
-                              'Formato inválido: escribe el indicativo del país (+) seguido solo de números (ej. +573001234567). No ingreses letras, espacios ni símbolos.',
-                            )
-                          }
-                          onInput={(e) => e.currentTarget.setCustomValidity('')}
+                          title={tx(
+                            'Debe ser el indicativo de país (+) seguido únicamente de números (ej. +573001234567). No se permiten letras, espacios ni símbolos.',
+                            'Must be a country code (+) followed by digits only (e.g. +573001234567). Letters, spaces, or symbols are not allowed.',
+                          )}
                           required
                         />
                       </div>
                       <small className={styles.fieldHelp}>
-                        Indicativo de país (+) + número, solo dígitos (sin
-                        letras ni símbolos).
+                        {tx(
+                          'Indicativo de país (+) + número, solo dígitos (sin letras ni símbolos).',
+                          'Country code (+) + number, digits only (no letters or symbols).',
+                        )}
                       </small>
                     </div>
 
                     <div className={styles.field}>
-                      <span className={styles.fieldLabel}>País</span>
+                      <span className={styles.fieldLabel}>
+                        {tx('País', 'Country')}
+                      </span>
                       <div className={styles.fieldControl}>
                         <CountryCombobox
-                          onCountryChange={setCountry}
+                          onCountryChange={(nextCountry) => {
+                            setCountry(nextCountry);
+                            if (invalidField === 'country') {
+                              setInvalidField(null);
+                              setError('');
+                            }
+                          }}
                           countries={countries}
                           defaultValue=""
                           disabled={busy}
                         />
                       </div>
                       <small className={styles.fieldHelp}>
-                        Filtra escribiendo o selecciona tu país de residencia.
+                        {tx(
+                          'Filtra escribiendo o selecciona tu país de residencia.',
+                          'Type to filter or select your country of residence.',
+                        )}
                       </small>
                     </div>
 
@@ -541,14 +753,26 @@ export function RegistrationForm({ kind }: { kind: RegistrationKind }) {
                         className={styles.fieldLabel}
                         htmlFor="password_input"
                       >
-                        Contraseña
+                        {tx('Contraseña', 'Password')}
                       </label>
                       <div className={styles.fieldControl}>
                         <input
                           id="password_input"
                           name="password"
                           type={showPassword ? 'text' : 'password'}
-                          placeholder="Mínimo 8 caracteres (letras y números)"
+                          aria-invalid={
+                            invalidField === 'password' || undefined
+                          }
+                          onChange={() => {
+                            if (invalidField === 'password') {
+                              setInvalidField(null);
+                              setError('');
+                            }
+                          }}
+                          placeholder={tx(
+                            'Mínimo 8 caracteres (letras y números)',
+                            'Minimum 8 characters (letters & digits)',
+                          )}
                           autoComplete="new-password"
                           minLength={8}
                           maxLength={128}
@@ -562,13 +786,13 @@ export function RegistrationForm({ kind }: { kind: RegistrationKind }) {
                           onClick={() => setShowPassword((prev) => !prev)}
                           aria-label={
                             showPassword
-                              ? 'Ocultar contraseña'
-                              : 'Mostrar contraseña'
+                              ? tx('Ocultar contraseña', 'Hide password')
+                              : tx('Mostrar contraseña', 'Show password')
                           }
                           title={
                             showPassword
-                              ? 'Ocultar contraseña'
-                              : 'Mostrar contraseña'
+                              ? tx('Ocultar contraseña', 'Hide password')
+                              : tx('Mostrar contraseña', 'Show password')
                           }
                         >
                           <Icon
@@ -578,8 +802,10 @@ export function RegistrationForm({ kind }: { kind: RegistrationKind }) {
                         </button>
                       </div>
                       <small id="password-help" className={styles.fieldHelp}>
-                        De 8 a 128 caracteres, con al menos una letra y un
-                        dígito.
+                        {tx(
+                          'De 8 a 128 caracteres, con al menos una letra y un dígito.',
+                          '8 to 128 characters, with at least one letter and one digit.',
+                        )}
                       </small>
                     </div>
                   </div>
@@ -588,8 +814,11 @@ export function RegistrationForm({ kind }: { kind: RegistrationKind }) {
                 {broker && (
                   <fieldset hidden={step !== 1} disabled={busy}>
                     <legend>
-                      <Icon name="shield" size={18} /> Datos profesionales (SCB
-                      / AMV)
+                      <Icon name="shield" size={18} />{' '}
+                      {tx(
+                        'Datos profesionales (SCB / AMV)',
+                        'Professional credentials (SCB / AMV)',
+                      )}
                     </legend>
                     <div className={styles.grid}>
                       <div className={styles.field}>
@@ -597,13 +826,25 @@ export function RegistrationForm({ kind }: { kind: RegistrationKind }) {
                           className={styles.fieldLabel}
                           htmlFor="firm_name_input"
                         >
-                          Nombre de la firma
+                          {tx('Nombre de la firma', 'Firm name')}
                         </label>
                         <div className={styles.fieldControl}>
                           <input
                             id="firm_name_input"
                             name="firm_name"
-                            placeholder="Ej. Acciones UD Capital S.A."
+                            aria-invalid={
+                              invalidField === 'firm_name' || undefined
+                            }
+                            onChange={() => {
+                              if (invalidField === 'firm_name') {
+                                setInvalidField(null);
+                                setError('');
+                              }
+                            }}
+                            placeholder={tx(
+                              'Ej. Acciones UD Capital S.A.',
+                              'E.g. Acciones UD Capital S.A.',
+                            )}
                             autoComplete="organization"
                             maxLength={200}
                             required
@@ -617,13 +858,28 @@ export function RegistrationForm({ kind }: { kind: RegistrationKind }) {
                           className={styles.fieldLabel}
                           htmlFor="license_number_input"
                         >
-                          Número de licencia profesional
+                          {tx(
+                            'Número de licencia profesional',
+                            'Professional license number',
+                          )}
                         </label>
                         <div className={styles.fieldControl}>
                           <input
                             id="license_number_input"
                             name="license_number"
-                            placeholder="Ej. AMV-UD-042"
+                            aria-invalid={
+                              invalidField === 'license_number' || undefined
+                            }
+                            onChange={() => {
+                              if (invalidField === 'license_number') {
+                                setInvalidField(null);
+                                setError('');
+                              }
+                            }}
+                            placeholder={tx(
+                              'Ej. AMV-UD-042',
+                              'E.g. AMV-UD-042',
+                            )}
                             maxLength={50}
                             required
                             pattern={'.*\\S.*'}
@@ -662,10 +918,19 @@ export function RegistrationForm({ kind }: { kind: RegistrationKind }) {
                       disabled={busy}
                       type="checkbox"
                       name="terms_accepted"
+                      aria-invalid={
+                        invalidField === 'terms_accepted' || undefined
+                      }
+                      onChange={() => {
+                        if (invalidField === 'terms_accepted') {
+                          setInvalidField(null);
+                          setError('');
+                        }
+                      }}
                       required
                     />
                     <span>
-                      Acepto los{' '}
+                      {tx('Acepto los', 'I accept the')}{' '}
                       <button
                         type="button"
                         className={styles.termsLink}
@@ -674,10 +939,12 @@ export function RegistrationForm({ kind }: { kind: RegistrationKind }) {
                           termsDialog.current?.showModal();
                         }}
                       >
-                        términos y condiciones
+                        {tx('términos y condiciones', 'terms and conditions')}
                       </button>{' '}
-                      de simulación bursátil en mercados de EE. UU. y la
-                      política de tratamiento de datos.
+                      {tx(
+                        'de simulación bursátil en mercados de EE. UU. y la política de tratamiento de datos.',
+                        'for simulated US equity trading and the privacy policy.',
+                      )}
                     </span>
                   </label>
 
@@ -695,10 +962,11 @@ export function RegistrationForm({ kind }: { kind: RegistrationKind }) {
                         disabled={busy}
                         onClick={() => {
                           setError('');
+                          setInvalidField(null);
                           setStep(step - 1);
                         }}
                       >
-                        Atrás
+                        {tx('Atrás', 'Back')}
                       </button>
                     )}
                     <button
@@ -707,18 +975,32 @@ export function RegistrationForm({ kind }: { kind: RegistrationKind }) {
                       disabled={busy}
                     >
                       {busy
-                        ? 'Enviando…'
+                        ? tx('Enviando…', 'Submitting…')
                         : step < lastStep
-                          ? 'Continuar'
+                          ? tx('Continuar', 'Continue')
                           : editing
-                            ? 'Reenviar solicitud KYC'
+                            ? tx(
+                                'Reenviar solicitud KYC',
+                                'Resubmit KYC application',
+                              )
                             : broker
-                              ? 'Solicitar registro de comisionista'
-                              : 'Crear cuenta de inversionista'}
+                              ? tx(
+                                  'Solicitar registro de comisionista',
+                                  'Request broker registration',
+                                )
+                              : tx(
+                                  'Crear cuenta de inversionista',
+                                  'Create investor account',
+                                )}
                     </button>
                     <p className={styles.loginPrompt}>
-                      ¿Ya tienes una cuenta en Acciones UD?{' '}
-                      <Link href="/login">Iniciar sesión</Link>
+                      {tx(
+                        '¿Ya tienes una cuenta en Acciones UD?',
+                        'Already have an Acciones UD account?',
+                      )}{' '}
+                      <Link href="/login">
+                        {tx('Iniciar sesión', 'Sign in')}
+                      </Link>
                     </p>
                   </div>
                 </div>

@@ -2,17 +2,84 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { fetchPortfolioPositions } from '@/features/portfolio';
+import Image from 'next/image';
 import { formatPersonName } from '@/lib/format-person-name';
+import { formatUsd } from '@/lib/formatters';
+import { useLocale } from '@/lib/i18n';
+import type { Locale } from '@/lib/i18n/locale';
 import { Icon } from '@/components/ui/Icon';
 import { LoadingState } from '@/components/ui/LoadingState';
+import { MarketSessionSummary } from '@/features/markets/client';
 import type { WalletBalance } from '@/features/wallet';
 import {
+  advisorsData,
   setGuideDismissedPreference,
   type DashboardSection,
 } from '../dashboard-constants';
-import { dashboardPreview } from '../dashboard-preview';
+import { dashboardPreview, localizeMetricText } from '../dashboard-preview';
 import type { UserProfile } from '../user-api';
 import styles from '../dashboard.module.css';
+
+function getRealMetricContent(
+  idx: number,
+  realWallet: WalletBalance,
+  locale: Locale,
+) {
+  const totalCash =
+    realWallet.total_cash_usd ??
+    realWallet.available_balance_usd + realWallet.reserved_balance_usd;
+  const buyingPower =
+    realWallet.buying_power_usd ?? realWallet.available_balance_usd;
+  const isEn = locale === 'en';
+
+  const cards = [
+    {
+      title: isEn ? 'Total Account Value' : 'Dinero total de tu cuenta',
+      description: isEn
+        ? 'Total cash + U.S. equities value'
+        : 'Efectivo total + valor de acciones en EE. UU.',
+      value: formatUsd(totalCash + realWallet.invested_equity_usd),
+      note: isEn ? 'Synced with your Wallet' : 'Sincronizado con tu Billetera',
+    },
+    {
+      title: isEn ? 'Available to Invest' : 'Disponible para invertir',
+      description: isEn
+        ? 'Active buying power on NYSE & NASDAQ'
+        : 'Poder de compra activo en NYSE y NASDAQ',
+      value: formatUsd(buyingPower),
+      note: isEn
+        ? 'Ready to buy U.S. stocks'
+        : 'Listo para comprar acciones en EE. UU.',
+    },
+    {
+      title: isEn ? 'Withdrawable Cash to Bank' : 'Efectivo retirable a banco',
+      description: isEn
+        ? 'Settled cash after ACH / T+1 clearing'
+        : 'Saldo liberado tras liquidación ACH / T+1',
+      value: formatUsd(realWallet.available_balance_usd),
+      note:
+        realWallet.reserved_balance_usd > 0
+          ? isEn
+            ? `In ACH clearing: ${formatUsd(realWallet.reserved_balance_usd)} USD`
+            : `En liquidación bancaria: ${formatUsd(realWallet.reserved_balance_usd)} USD`
+          : isEn
+            ? 'Available for bank withdrawal'
+            : 'Disponible para retiro bancario',
+    },
+    {
+      title: isEn ? 'Invested in Equities' : 'Valor invertido en acciones',
+      description: isEn
+        ? 'Open positions on U.S. exchanges'
+        : 'Posiciones abiertas en bolsas de EE. UU.',
+      value: formatUsd(realWallet.invested_equity_usd),
+      note: isEn
+        ? 'Current portfolio market value'
+        : 'Valorización actual de tu portafolio',
+    },
+  ];
+
+  return cards[idx] ?? cards[0];
+}
 
 export interface DashboardOverviewSectionProps {
   user: UserProfile | undefined;
@@ -25,13 +92,6 @@ export interface DashboardOverviewSectionProps {
   onOpenKycModal: () => void;
 }
 
-function formatUsdValue(value: number): string {
-  return `$${value.toLocaleString('en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-}
-
 export function DashboardOverviewSection({
   user,
   realWallet,
@@ -42,6 +102,7 @@ export function DashboardOverviewSection({
   onStartOrderForSymbol,
   onOpenKycModal,
 }: DashboardOverviewSectionProps) {
+  const { locale, tx } = useLocale();
   const positions = useQuery({
     queryKey: ['portfolio', 'positions'],
     queryFn: ({ signal }) => fetchPortfolioPositions(signal),
@@ -49,7 +110,7 @@ export function DashboardOverviewSection({
     retry: false,
     refetchInterval: 30000,
   });
-  const stocks = [...(positions.data?.positions ?? [])]
+  const stocks = [...(hasRealAccount ? (positions.data?.positions ?? []) : [])]
     .sort((a, b) => Number(b.market_value) - Number(a.market_value))
     .slice(0, 5)
     .map((position) => {
@@ -62,18 +123,24 @@ export function DashboardOverviewSection({
       return {
         symbol: position.symbol,
         name: position.symbol,
-        sector: `${position.qty} acciones · ${position.sector ?? 'Sector no informado'}`,
+        sector: `${position.qty} ${tx('acciones', 'shares')} · ${position.sector ?? tx('Sector no informado', 'Sector unavailable')}`,
         exchange: position.exchange,
-        price: formatUsdValue(Number(position.price)) + ' USD',
+        price: formatUsd(Number(position.price), { withCode: true }),
         negative: pnl < 0,
-        change: `${pnl > 0 ? '+' : ''}${pct} (${pnl > 0 ? '+' : ''}${formatUsdValue(pnl)})`,
+        change: `${pnl > 0 ? '+' : ''}${pct} (${pnl > 0 ? '+' : ''}${formatUsd(pnl)})`,
       };
     });
   if (isLoadingData) {
     return (
       <LoadingState
-        label="Sincronizando tu resumen financiero…"
-        detail="Consultando perfil de usuario, verificación KYC y saldos reales de tu billetera."
+        label={tx(
+          'Sincronizando tu resumen financiero…',
+          'Syncing your financial summary…',
+        )}
+        detail={tx(
+          'Consultando perfil de usuario, verificación KYC y saldos reales de tu billetera.',
+          'Fetching your profile, KYC status, and live wallet balances.',
+        )}
       />
     );
   }
@@ -83,87 +150,99 @@ export function DashboardOverviewSection({
       <div className={styles.welcome}>
         <div>
           <h2>
-            ¡Hola, {user ? formatPersonName(user.first_names) : 'Inversionista'}
+            {tx('¡Hola,', 'Hello,')}{' '}
+            {user
+              ? formatPersonName(user.first_names)
+              : tx('Inversionista', 'Investor')}
             !
           </h2>
-          <p>
-            Cuenta de Inversión y Trading · Supervisión en vivo de tu actividad
-            en mercados de EE. UU.
-          </p>
         </div>
-        <div className={styles.marketStatus}>
-          <span className={styles.statusPillLive}>
-            Wall Street (NYSE / NASDAQ): Abierta ahora
-          </span>
-          <span className={styles.statusPillNeutral}>
-            Operación simulada en USD
-          </span>
-          <span className={styles.statusPillLevel}>
-            Nivel:{' '}
-            {user?.investor_level === 'experienced'
-              ? 'Con experiencia'
-              : 'Principiante'}
-          </span>
-        </div>
+        <MarketSessionSummary />
       </div>
 
       {user?.investor_level !== 'experienced' &&
         (guideDismissed ? (
           <div className={styles.didacticCollapsedBar}>
-            <span>🎓 Modo Principiante activo · Guía didáctica oculta</span>
+            <span>
+              {tx(
+                '🎓 Modo Principiante activo · Guía didáctica oculta',
+                '🎓 Beginner Mode active · Learning guide hidden',
+              )}
+            </span>
             <button
               type="button"
               className={styles.didacticToggleBtn}
               onClick={() => setGuideDismissedPreference(false)}
             >
-              Mostrar Guía
+              {tx('Mostrar Guía', 'Show Guide')}
             </button>
           </div>
         ) : (
           <section
             className={styles.didacticGuide}
-            aria-label="Guía pedagógica para principiantes"
+            aria-label={tx(
+              'Guía pedagógica para principiantes',
+              'Beginner learning guide',
+            )}
           >
             <div className={styles.didacticHeader}>
               <div className={styles.didacticBadge}>
-                🎓 Guía Didáctica Activa · Modo Principiante
+                {tx(
+                  '🎓 Guía Didáctica Activa · Modo Principiante',
+                  '🎓 Learning Guide Active · Beginner Mode',
+                )}
               </div>
               <span className={styles.didacticNote}>
-                Protección activa: Activos de alta volatilidad y derivados
-                complejos están filtrados para proteger tu curva de aprendizaje.
+                {tx(
+                  'Protección activa: Activos de alta volatilidad y derivados complejos están filtrados para proteger tu curva de aprendizaje.',
+                  'Active protection: High-volatility assets and complex derivatives are filtered to support your learning curve.',
+                )}
               </span>
               <button
                 type="button"
                 className={styles.didacticDismissBtn}
                 onClick={() => setGuideDismissedPreference(true)}
-                title="Ocultar guía didáctica"
-                aria-label="Ocultar guía didáctica"
+                title={tx('Ocultar guía didáctica', 'Hide learning guide')}
+                aria-label={tx('Ocultar guía didáctica', 'Hide learning guide')}
               >
-                ✕ Ocultar
+                {tx('✕ Ocultar', '✕ Hide')}
               </button>
             </div>
             <div className={styles.didacticGrid}>
               <div className={styles.didacticCard}>
-                <strong>1. Órdenes de Mercado (Market)</strong>
+                <strong>
+                  {tx('1. Órdenes de Mercado (Market)', '1. Market Orders')}
+                </strong>
                 <p>
-                  Se ejecutan al instante al mejor precio de oferta en Wall
-                  Street (NYSE/NASDAQ). Ideales para tomar posiciones de forma
-                  inmediata en USD.
+                  {tx(
+                    'Se ejecutan al instante al mejor precio de oferta en Wall Street (NYSE/NASDAQ). Ideales para tomar posiciones de forma inmediata en USD.',
+                    'Execute immediately at the best available price on Wall Street (NYSE/NASDAQ). Ideal for instant entries in USD.',
+                  )}
                 </p>
               </div>
               <div className={styles.didacticCard}>
-                <strong>2. Órdenes Límite (Limit)</strong>
+                <strong>
+                  {tx('2. Órdenes Límite (Limit)', '2. Limit Orders')}
+                </strong>
                 <p>
-                  Tú estableces el precio máximo a pagar o el mínimo a recibir.
-                  La orden solo se ejecuta si el mercado toca tu cotización
-                  objetivo.
+                  {tx(
+                    'Tú estableces el precio máximo a pagar o el mínimo a recibir. La orden solo se ejecuta si el mercado toca tu cotización objetivo.',
+                    'You set the maximum buy price or minimum sell price. The order executes only if the market reaches your target price.',
+                  )}
                 </p>
               </div>
               <div className={styles.didacticCard}>
-                <strong>3. Comisión del 2% y Acompañamiento</strong>
+                <strong>
+                  {tx(
+                    '3. Comisión del 2% y Acompañamiento',
+                    '3. 2% Commission & Advisory Split',
+                  )}
+                </strong>
                 <p>
-                  Desglose transparente: 60% para la plataforma de simulación
-                  Acciones UD y 40% para tu asesor comisionista asignado.
+                  {tx(
+                    'Desglose transparente: 60% para la plataforma de simulación Acciones UD y 40% para tu asesor comisionista asignado.',
+                    'Transparent breakdown: 60% goes to the Acciones UD platform and 40% to your assigned broker advisor.',
+                  )}
                 </p>
               </div>
             </div>
@@ -174,12 +253,16 @@ export function DashboardOverviewSection({
         <div className={styles.kycActionBanner}>
           <div>
             <strong>
-              🛡️ Completa tu verificación de identidad (KYC) en EE. UU.
+              {tx(
+                '🛡️ Completa tu verificación de identidad (KYC) en EE. UU.',
+                '🛡️ Complete your U.S. KYC identity verification',
+              )}
             </strong>
             <p>
-              Tu usuario ya está activo, pero aún falta radicar el formulario
-              KYC ante el custodio para habilitar saldo real, depósitos y envío
-              de órdenes.
+              {tx(
+                'Tu usuario ya está activo, pero aún falta radicar el formulario KYC ante el custodio para habilitar saldo real, depósitos y envío de órdenes.',
+                'Your login is active, but the custodian KYC application must still be submitted to unlock wallet balances, deposits, and live trading.',
+              )}
             </p>
           </div>
           <button
@@ -187,30 +270,28 @@ export function DashboardOverviewSection({
             className={styles.primary}
             onClick={onOpenKycModal}
           >
-            Completar Trámite KYC →
+            {tx('Completar Trámite KYC →', 'Complete KYC Form →')}
           </button>
         </div>
       )}
 
-      <section className={styles.metrics} aria-label="Resumen financiero">
+      <section
+        className={styles.metrics}
+        aria-label={tx('Resumen financiero', 'Financial summary')}
+      >
         {dashboardPreview.metrics.map((metric, idx) => {
-          const displayValue = realWallet
-            ? idx === 0
-              ? formatUsdValue(
-                  realWallet.available_balance_usd +
-                    realWallet.reserved_balance_usd +
-                    realWallet.invested_equity_usd,
-                )
-              : idx === 1
-                ? formatUsdValue(realWallet.available_balance_usd)
-                : idx === 2
-                  ? formatUsdValue(realWallet.reserved_balance_usd)
-                  : formatUsdValue(realWallet.invested_equity_usd)
-            : metric.value;
-          const displayTitle =
-            realWallet && idx === 3
-              ? 'VALOR INVERTIDO EN ACCIONES'
-              : metric.title;
+          const liveMetric = realWallet
+            ? getRealMetricContent(idx, realWallet, locale)
+            : null;
+          const previewText = localizeMetricText(metric, locale);
+          const displayTitle = liveMetric
+            ? liveMetric.title
+            : previewText.title;
+          const displayDescription = liveMetric
+            ? liveMetric.description
+            : previewText.description;
+          const displayValue = liveMetric ? liveMetric.value : metric.value;
+          const displayNote = liveMetric ? liveMetric.note : previewText.note;
           return (
             <article
               key={metric.title}
@@ -219,7 +300,7 @@ export function DashboardOverviewSection({
               <div className={styles.metricHeading}>
                 <div>
                   <h3>{displayTitle}</h3>
-                  <p>{metric.description}</p>
+                  <p>{displayDescription}</p>
                 </div>
                 <div className={styles.metricIcon}>
                   <Icon name={metric.icon} size={18} />
@@ -228,9 +309,7 @@ export function DashboardOverviewSection({
               <div className={styles.amount}>
                 {displayValue} <small>USD</small>
               </div>
-              <div className={styles.metricNote}>
-                {realWallet ? 'Sincronizado con tu Billetera' : metric.note}
-              </div>
+              <div className={styles.metricNote}>{displayNote}</div>
             </article>
           );
         })}
@@ -241,39 +320,48 @@ export function DashboardOverviewSection({
           <section className={styles.panel}>
             <div className={styles.panelHeading}>
               <h2>
-                <Icon name="trend" size={18} /> Tus Inversiones Activas ·
-                Principales posiciones de tu portafolio
+                <Icon name="trend" size={18} />{' '}
+                {tx(
+                  'Tus inversiones activas · Principales posiciones',
+                  'Your active investments · Top holdings',
+                )}
               </h2>
               <button
                 type="button"
                 onClick={() => onNavigate('markets')}
                 className={styles.liveMarketsLink}
               >
-                Ver cotizaciones en vivo →
+                {tx('Ver cotizaciones en vivo →', 'View live quotes →')}
               </button>
             </div>
             <div className={styles.tableScroll}>
               <table>
                 <thead>
                   <tr>
-                    <th>Activo</th>
-                    <th>Bolsa</th>
-                    <th>Precio (USD)</th>
-                    <th>Ganancia / pérdida</th>
-                    <th>Operación</th>
+                    <th>{tx('Activo', 'Asset')}</th>
+                    <th>{tx('Bolsa', 'Exchange')}</th>
+                    <th>{tx('Precio (USD)', 'Price (USD)')}</th>
+                    <th>{tx('Ganancia / pérdida', 'Profit / loss')}</th>
+                    <th>{tx('Operación', 'Action')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {!hasRealAccount ? (
                     <tr>
                       <td colSpan={5}>
-                        Vincula tu cuenta KYC para consultar tus inversiones.
+                        {tx(
+                          'Vincula tu cuenta KYC para consultar tus inversiones.',
+                          'Complete your account verification to see your investments.',
+                        )}
                       </td>
                     </tr>
                   ) : positions.isPending ? (
                     <tr>
                       <td colSpan={5} role="status">
-                        Consultando tus inversiones…
+                        {tx(
+                          'Consultando tus inversiones…',
+                          'Loading your investments…',
+                        )}
                       </td>
                     </tr>
                   ) : positions.isError && !positions.data ? (
@@ -286,15 +374,17 @@ export function DashboardOverviewSection({
                             void positions.refetch();
                           }}
                         >
-                          Reintentar
+                          {tx('Reintentar', 'Retry')}
                         </button>
                       </td>
                     </tr>
                   ) : stocks.length === 0 ? (
                     <tr>
                       <td colSpan={5}>
-                        Todavía no tienes posiciones abiertas. Tus compras
-                        aparecerán cuando se ejecuten.
+                        {tx(
+                          'Todavía no tienes posiciones abiertas. Tus compras aparecerán cuando se ejecuten.',
+                          'You have no open positions yet. Purchases appear once executed.',
+                        )}
                       </td>
                     </tr>
                   ) : null}
@@ -309,16 +399,22 @@ export function DashboardOverviewSection({
                           </div>
                         </div>
                       </td>
-                      <td>
+                      <td data-label={tx('Bolsa', 'Exchange')}>
                         <span className={styles.exchange}>
                           {stock.exchange}
                         </span>
                       </td>
-                      <td className={styles.price}>{stock.price}</td>
+                      <td
+                        className={styles.price}
+                        data-label={tx('Precio (USD)', 'Price (USD)')}
+                      >
+                        {stock.price}
+                      </td>
                       <td
                         className={
                           stock.negative ? styles.negative : styles.positive
                         }
+                        data-label={tx('Ganancia / pérdida', 'Profit / loss')}
                       >
                         {stock.change}
                       </td>
@@ -328,7 +424,7 @@ export function DashboardOverviewSection({
                           onClick={() => onStartOrderForSymbol(stock.symbol)}
                           className={styles.invest}
                         >
-                          Operar
+                          {tx('Operar', 'Trade')}
                         </button>
                       </td>
                     </tr>
@@ -350,18 +446,27 @@ export function DashboardOverviewSection({
             )}
             {positions.isError && positions.data && (
               <p role="alert">
-                No se pudo actualizar. Se conserva la última información
-                recibida.
+                {tx(
+                  'No se pudo actualizar. Se conserva la última información recibida.',
+                  'Could not refresh. Showing the last received information.',
+                )}
               </p>
             )}
           </section>
 
           <section className={styles.portfolio}>
             <div>
-              <h2>¿Quieres ver el detalle completo de tus inversiones?</h2>
+              <h2>
+                {tx(
+                  '¿Quieres ver el detalle completo de tus inversiones?',
+                  'Want to inspect the full breakdown of your investments?',
+                )}
+              </h2>
               <p>
-                Consulta tus gráficos de rendimiento, la distribución de tus
-                activos, tu perfil de riesgo y tus órdenes ejecutadas.
+                {tx(
+                  'Consulta tus gráficos de rendimiento, la distribución de tus activos, tu perfil de riesgo y tus órdenes ejecutadas.',
+                  'View your return charts, asset allocation, risk profile, and executed orders.',
+                )}
               </p>
             </div>
             <button
@@ -369,7 +474,8 @@ export function DashboardOverviewSection({
               onClick={() => onNavigate('portfolio')}
               className={styles.primary}
             >
-              Ver Mi Portafolio Completo <Icon name="arrow" size={18} />
+              {tx('Ver Mi Portafolio Completo', 'Open Full Portfolio')}{' '}
+              <Icon name="arrow" size={18} />
             </button>
           </section>
         </div>
@@ -377,39 +483,81 @@ export function DashboardOverviewSection({
         <div className={styles.rightColumn}>
           <section className={styles.panel}>
             <h2>
-              <span className={styles.percent}>%</span> Comisión de Operación
-              (2% Total)
+              <span className={styles.percent}>%</span>{' '}
+              {tx(
+                'Comisión de Operación (2% Total)',
+                'Trading Commission (2% Total)',
+              )}
             </h2>
             <p className={styles.commissionDescription}>
-              Cada vez que compras o vendes acciones en NYSE o NASDAQ, se aplica
-              una comisión fija del <strong>2.0%</strong> distribuida de forma
-              transparente:
+              {tx(
+                'Cada vez que compras o vendes acciones en NYSE o NASDAQ, se aplica una comisión fija del ',
+                'Every time you buy or sell stocks on NYSE or NASDAQ, a flat ',
+              )}
+              <strong>2.0%</strong>{' '}
+              {tx(
+                'distribuida de forma transparente:',
+                'fee applies and is transparently allocated:',
+              )}
             </p>
             <div className={styles.split}>
-              <span>Para la Plataforma Acciones UD:</span>
-              <strong>60% (1.2% total)</strong>
+              <span>
+                {tx(
+                  'Para la Plataforma Acciones UD:',
+                  'Acciones UD Platform Fee:',
+                )}
+              </span>
+              <strong>{tx('60% (1.2% total)', '60% (1.2% of trade)')}</strong>
             </div>
             <div className={styles.split}>
-              <span>Para tu Asesor de Inversión:</span>
-              <strong>40% (0.8% total)</strong>
+              <span>
+                {tx(
+                  'Para tu Asesor de Inversión:',
+                  'Your Investment Broker Fee:',
+                )}
+              </span>
+              <strong>{tx('40% (0.8% total)', '40% (0.8% of trade)')}</strong>
             </div>
             <p className={styles.finePrint}>
-              Sin cargos sorpresa ni cobros ocultos por apertura o
-              mantenimiento.
+              {tx(
+                'Sin cargos sorpresa ni cobros ocultos por apertura o mantenimiento.',
+                'No surprise fees or hidden account opening or maintenance charges.',
+              )}
             </p>
           </section>
 
           <section className={styles.panel}>
             <div className={styles.panelHeading}>
-              <h2>Tu Asesor Bursátil</h2>
-              <span className={styles.assigned}>Asignado</span>
+              <h2>{tx('Tu Asesor Bursátil', 'Your Stock Broker')}</h2>
+              <span className={styles.assigned}>
+                {tx('Asignado', 'Assigned')}
+              </span>
             </div>
             <div className={styles.advisor}>
-              <span>CR</span>
+              <Image
+                src={advisorsData[0]?.photo ?? '/advisors/advisor-1.jpg'}
+                alt={`Foto ${advisorsData[0]?.name ?? 'Carlos Rodríguez, CFA'}`}
+                width={48}
+                height={48}
+                className={styles.advisorAvatar}
+              />
               <div>
-                <strong>Carlos Rodríguez, CFA</strong>
-                <small>Registro Oficial #UD-ADV-042</small>
-                <b>★ 4.9 de 5.0 (184 propuestas exitosas)</b>
+                <strong>
+                  {advisorsData[0]?.name ?? 'Carlos Rodríguez, CFA'}
+                </strong>
+                <small>
+                  {locale === 'en'
+                    ? (advisorsData[0]?.licenseEn ??
+                      'Official Registry #UD-ADV-042')
+                    : (advisorsData[0]?.license ??
+                      'Registro Oficial #UD-ADV-042')}
+                </small>
+                <b>
+                  ★ {advisorsData[0]?.rating ?? '4.9'}{' '}
+                  {tx('de 5.0', 'out of 5.0')} (
+                  {advisorsData[0]?.proposals ?? 184}{' '}
+                  {tx('propuestas exitosas', 'successful proposals')})
+                </b>
               </div>
             </div>
             <button
@@ -417,7 +565,10 @@ export function DashboardOverviewSection({
               onClick={() => onNavigate('advisors')}
               className={styles.advisorButton}
             >
-              Consultar Asesores &amp; Estrategias
+              {tx(
+                'Consultar Asesores & Estrategias',
+                'Explore Advisors & Strategies',
+              )}
             </button>
           </section>
         </div>

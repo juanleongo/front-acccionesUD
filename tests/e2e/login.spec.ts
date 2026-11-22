@@ -64,9 +64,7 @@ for (const firstAccess of [true, false]) {
         .click();
       if (firstAccess) {
         await expect(page.getByText('XYZ1234567')).toBeVisible();
-        await page
-          .getByRole('link', { name: 'Continuar al dashboard' })
-          .click();
+        await page.getByRole('button', { name: 'Continuar al panel' }).click();
       }
       await expect(page).toHaveURL(/\/dashboard$/);
     },

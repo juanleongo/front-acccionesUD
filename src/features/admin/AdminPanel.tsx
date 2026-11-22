@@ -1,10 +1,12 @@
 'use client';
 
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { SessionClosedOverlay } from '@/components/ui/SessionClosedOverlay';
 import { ApiError, subscribeSessionExpired } from '@/lib/api';
 import { formatPersonName } from '@/lib/format-person-name';
+import { useLocale } from '@/lib/i18n';
+import { toggleDocumentTheme } from '@/lib/theme';
 import {
   activateBroker,
   createAdministrator,
@@ -46,7 +48,14 @@ const EMPTY_ADMIN_FORM: AdminCreateAdminIn = {
   password: '',
 };
 
+interface AuditState {
+  items: AuditEntry[];
+  loadedForFilter: string | null;
+  isLive: boolean;
+}
+
 export function AdminPanel() {
+  const { tx } = useLocale();
   const [activeTab, setActiveTab] = useState<AdminTab>('kpi');
   const [brokers, setBrokers] = useState<PendingBrokerItem[]>(
     initialPendingBrokers,
@@ -55,12 +64,17 @@ export function AdminPanel() {
   const [overrides, setOverrides] = useState<ScheduleOverride[]>(
     initialMarketOverrides,
   );
-  const [auditLogs, setAuditLogs] = useState<AuditEntry[]>(initialAuditLogs);
   const [auditFilterAction, setAuditFilterAction] = useState('');
+  const [auditState, setAuditState] = useState<AuditState>({
+    items: initialAuditLogs,
+    loadedForFilter: null,
+    isLive: false,
+  });
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [sessionClosed, setSessionClosed] = useState(false);
+  const notificationTimerRef = useRef<number | null>(null);
 
   // Horarios de mercado por defecto
   const [selectedMarket, setSelectedMarket] = useState('NYSE');
@@ -97,9 +111,7 @@ export function AdminPanel() {
               role: item.roles[0] ?? 'investor',
               isPremium: item.is_premium,
               accountStatus: item.account_status,
-              registeredAt: new Date(item.registered_at).toLocaleDateString(
-                'es-CO',
-              ),
+              registeredAt: item.registered_at,
             })),
           );
           const brokerEntries = page.items.filter(
@@ -120,9 +132,7 @@ export function AdminPanel() {
                 country: item.country ?? 'CO',
                 licenseAMV: `AMV-${item.user_id.slice(0, 6).toUpperCase()}`,
                 specialty: 'Renta Variable & ETFs en NYSE / NASDAQ',
-                requestedAt: new Date(item.registered_at).toLocaleDateString(
-                  'es-CO',
-                ),
+                requestedAt: item.registered_at,
                 status:
                   item.account_status === 'pending_broker_activation'
                     ? 'pending_broker_activation'
@@ -140,35 +150,54 @@ export function AdminPanel() {
         /* Mantiene respaldo inicial si aún no hay sesión admin */
       });
 
-    getAdminAuditLog(undefined, controller.signal)
+    return () => {
+      unsubscribe();
+      controller.abort();
+      if (notificationTimerRef.current !== null) {
+        window.clearTimeout(notificationTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    getAdminAuditLog(auditFilterAction || undefined, controller.signal)
       .then((page) => {
-        if (page.items.length > 0) setAuditLogs(page.items);
+        setAuditState({
+          items: page.items,
+          loadedForFilter: auditFilterAction,
+          isLive: true,
+        });
       })
       .catch((err: unknown) => {
         if (err instanceof ApiError && err.metadata.status === 401) {
           setSessionClosed(true);
+          return;
         }
-        /* Mantiene bitácora inicial */
+        if (controller.signal.aborted) return;
+        setAuditState((prev) => ({
+          items: prev.isLive ? prev.items : initialAuditLogs,
+          loadedForFilter: auditFilterAction,
+          isLive: prev.isLive,
+        }));
       });
 
-    return () => {
-      unsubscribe();
-      controller.abort();
-    };
-  }, []);
+    return () => controller.abort();
+  }, [auditFilterAction]);
 
-  function toggleTheme() {
-    const next =
-      document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
-    document.documentElement.dataset.theme = next;
-    try {
-      localStorage.setItem('acciones_ud_theme', next);
-    } catch {
-      /* Preferencia opcional */
+  function clearNotification() {
+    if (notificationTimerRef.current !== null) {
+      window.clearTimeout(notificationTimerRef.current);
+      notificationTimerRef.current = null;
     }
+    setSuccessMsg('');
+    setErrorMsg('');
   }
 
   function showNotification(msg: string, isError = false) {
+    if (notificationTimerRef.current !== null) {
+      window.clearTimeout(notificationTimerRef.current);
+    }
     if (isError) {
       setErrorMsg(msg);
       setSuccessMsg('');
@@ -176,9 +205,10 @@ export function AdminPanel() {
       setSuccessMsg(msg);
       setErrorMsg('');
     }
-    setTimeout(() => {
+    notificationTimerRef.current = window.setTimeout(() => {
       setSuccessMsg('');
       setErrorMsg('');
+      notificationTimerRef.current = null;
     }, 6000);
   }
 
@@ -195,10 +225,19 @@ export function AdminPanel() {
         ),
       );
       showNotification(
-        `Comisionista ${broker.fullName} verificado y activado formalmente. Licencia AMV confirmada.`,
+        tx(
+          `Comisionista ${broker.fullName} verificado y activado formalmente. Licencia AMV confirmada.`,
+          `Broker ${broker.fullName} verified and officially activated. AMV license confirmed.`,
+        ),
       );
     } catch {
-      showNotification('Error al activar comisionista en el servidor.', true);
+      showNotification(
+        tx(
+          'Error al activar comisionista en el servidor.',
+          'Failed to activate broker on server.',
+        ),
+        true,
+      );
     } finally {
       setProcessingId(null);
     }
@@ -218,11 +257,17 @@ export function AdminPanel() {
         ),
       );
       showNotification(
-        `Plan Prémium ${nextVal ? 'concedido' : 'revocado'} para ${user.fullName} (${user.email}).`,
+        tx(
+          `Plan Prémium ${nextVal ? 'concedido' : 'revocado'} para ${user.fullName} (${user.email}).`,
+          `Premium Plan ${nextVal ? 'granted' : 'revoked'} for ${user.fullName} (${user.email}).`,
+        ),
       );
     } catch {
       showNotification(
-        'Error al actualizar plan prémium en el servidor.',
+        tx(
+          'Error al actualizar plan prémium en el servidor.',
+          'Failed to update premium plan on server.',
+        ),
         true,
       );
     } finally {
@@ -232,6 +277,16 @@ export function AdminPanel() {
 
   async function handleSaveMarketSchedule(e: FormEvent) {
     e.preventDefault();
+    if (!openTime || !closeTime || openTime >= closeTime) {
+      showNotification(
+        tx(
+          'Ingresa un horario válido donde la hora de apertura sea anterior al cierre.',
+          'Enter a valid schedule where the open time is before close time.',
+        ),
+        true,
+      );
+      return;
+    }
     try {
       await setMarketDefaultSchedule(selectedMarket, openTime, closeTime).catch(
         () => {
@@ -239,17 +294,47 @@ export function AdminPanel() {
         },
       );
       showNotification(
-        `Horario oficial de ${selectedMarket} actualizado: Apertura ${openTime} EST · Cierre ${closeTime} EST.`,
+        tx(
+          `Horario oficial de ${selectedMarket} actualizado: Apertura ${openTime} EST · Cierre ${closeTime} EST.`,
+          `${selectedMarket} official hours updated: Open ${openTime} EST · Close ${closeTime} EST.`,
+        ),
       );
     } catch {
-      showNotification('Error al configurar horario del mercado.', true);
+      showNotification(
+        tx(
+          'Error al configurar horario del mercado.',
+          'Failed to configure market hours.',
+        ),
+        true,
+      );
     }
   }
 
   async function handleCreateOverride(e: FormEvent) {
     e.preventDefault();
     if (!newOverrideDate) {
-      showNotification('Debes seleccionar una fecha para la excepción.', true);
+      showNotification(
+        tx(
+          'Debes seleccionar una fecha para la excepción.',
+          'Select a date for the calendar override.',
+        ),
+        true,
+      );
+      return;
+    }
+    if (
+      !newOverrideClosed &&
+      (!newOverrideOpenTime ||
+        !newOverrideCloseTime ||
+        newOverrideOpenTime >= newOverrideCloseTime)
+    ) {
+      showNotification(
+        tx(
+          'Ingresa un horario especial válido donde la apertura sea anterior al cierre.',
+          'Enter valid special hours where open is before close.',
+        ),
+        true,
+      );
       return;
     }
     const payload: ScheduleOverride = {
@@ -272,10 +357,19 @@ export function AdminPanel() {
       setOverrides((prev) => [payload, ...prev]);
       setNewOverrideDate('');
       showNotification(
-        `Excepción registrada para ${selectedMarket} en fecha ${payload.date} (${payload.closed ? 'Mercado Cerrado' : `Horario Especial ${payload.open_time} - ${payload.close_time}`}).`,
+        tx(
+          `Excepción registrada para ${selectedMarket} en fecha ${payload.date} (${payload.closed ? 'Mercado Cerrado' : `Horario Especial ${payload.open_time} - ${payload.close_time}`}).`,
+          `Override registered for ${selectedMarket} on ${payload.date} (${payload.closed ? 'Market Closed' : `Special Hours ${payload.open_time} - ${payload.close_time}`}).`,
+        ),
       );
     } catch {
-      showNotification('Error al crear excepción de mercado.', true);
+      showNotification(
+        tx(
+          'Error al crear excepción de mercado.',
+          'Failed to create market override.',
+        ),
+        true,
+      );
     }
   }
 
@@ -285,20 +379,61 @@ export function AdminPanel() {
         /* Fallback */
       });
       setOverrides((prev) => prev.filter((o) => o.id !== overrideId));
-      showNotification('Excepción eliminada del calendario bursátil.');
+      showNotification(
+        tx(
+          'Excepción eliminada del calendario bursátil.',
+          'Override removed from trading calendar.',
+        ),
+      );
     } catch {
-      showNotification('Error al eliminar excepción.', true);
+      showNotification(
+        tx('Error al eliminar excepción.', 'Failed to delete override.'),
+        true,
+      );
     }
   }
 
   async function handleCreateAdministrator(e: FormEvent) {
     e.preventDefault();
+    if (!newAdmin.first_names.trim() || !newAdmin.last_names.trim()) {
+      showNotification(
+        tx(
+          'Ingresa los nombres y apellidos completos del administrador.',
+          'Enter the administrator’s full first and last name.',
+        ),
+        true,
+      );
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newAdmin.email.trim())) {
+      showNotification(
+        tx(
+          'Ingresa un correo electrónico institucional válido.',
+          'Enter a valid institutional email address.',
+        ),
+        true,
+      );
+      return;
+    }
+    if (!/^\+[1-9][0-9]{1,14}$/.test(newAdmin.phone.trim())) {
+      showNotification(
+        tx(
+          'El teléfono debe incluir indicativo (+) seguido solo de dígitos (ej. +573001234567).',
+          'Phone must include country code (+) followed by digits only (e.g. +573001234567).',
+        ),
+        true,
+      );
+      return;
+    }
     if (
       newAdmin.password.length < 8 ||
       !/(?=.*\p{L})(?=.*\p{N})/u.test(newAdmin.password)
     ) {
       showNotification(
-        'La contraseña debe tener mínimo 8 caracteres e incluir al menos una letra y un número.',
+        tx(
+          'La contraseña debe tener mínimo 8 caracteres e incluir al menos una letra y un número.',
+          'Password must be at least 8 characters with at least one letter and one digit.',
+        ),
         true,
       );
       return;
@@ -321,10 +456,19 @@ export function AdminPanel() {
       ]);
       setNewAdmin(EMPTY_ADMIN_FORM);
       showNotification(
-        `La cuenta de ${newAdmin.email} se creó correctamente. Ya tiene acceso como administrador.`,
+        tx(
+          `La cuenta de ${newAdmin.email} se creó correctamente. Ya tiene acceso como administrador.`,
+          `Account ${newAdmin.email} created successfully with administrator access.`,
+        ),
       );
     } catch {
-      showNotification('Error al crear administrador en el servidor.', true);
+      showNotification(
+        tx(
+          'Error al crear administrador en el servidor.',
+          'Failed to create administrator on server.',
+        ),
+        true,
+      );
     }
   }
 
@@ -334,11 +478,17 @@ export function AdminPanel() {
     try {
       const res = await reconcileUserKyc(user.userId);
       showNotification(
-        `Cuenta KYC de ${user.fullName} reconciliada con Alpaca (${res.alpaca_account_id} · estado ${res.status ?? 'ACTIVE'}).`,
+        tx(
+          `Cuenta KYC de ${user.fullName} reconciliada con Alpaca (${res.alpaca_account_id} · estado ${res.status ?? 'ACTIVE'}).`,
+          `KYC account for ${user.fullName} reconciled with Alpaca (${res.alpaca_account_id} · status ${res.status ?? 'ACTIVE'}).`,
+        ),
       );
     } catch {
       showNotification(
-        `Solicitud de reconciliación KYC ejecutada para ${user.fullName} (${user.email}).`,
+        tx(
+          `Solicitud de reconciliación KYC ejecutada para ${user.fullName} (${user.email}).`,
+          `KYC reconciliation requested for ${user.fullName} (${user.email}).`,
+        ),
       );
     } finally {
       setProcessingId(null);
@@ -348,6 +498,7 @@ export function AdminPanel() {
   const pendingCount = brokers.filter(
     (b) => b.status === 'pending_broker_activation',
   ).length;
+  const auditLoading = auditState.loadedForFilter !== auditFilterAction;
 
   if (sessionClosed) {
     return <SessionClosedOverlay />;
@@ -355,7 +506,7 @@ export function AdminPanel() {
 
   return (
     <div className={styles.container}>
-      <AdminHeader onToggleTheme={toggleTheme} />
+      <AdminHeader onToggleTheme={toggleDocumentTheme} />
 
       <div className={styles.mainLayout}>
         <AdminSidebar
@@ -367,17 +518,40 @@ export function AdminPanel() {
         <main className={styles.contentArea}>
           {successMsg && (
             <div className={styles.alertSuccess} role="status">
-              <Icon name="check" size={20} />
-              <div>
-                <strong>Operación completada</strong>
-                <p>{successMsg}</p>
+              <div className={styles.alertBody}>
+                <Icon name="check" size={20} />
+                <div>
+                  <strong>
+                    {tx('Operación completada', 'Operation completed')}
+                  </strong>
+                  <p>{successMsg}</p>
+                </div>
               </div>
+              <button
+                type="button"
+                className={styles.alertDismissBtn}
+                onClick={clearNotification}
+                aria-label={tx('Cerrar mensaje', 'Dismiss message')}
+              >
+                <Icon name="close" size={14} />
+              </button>
             </div>
           )}
 
           {errorMsg && (
             <div className={styles.alertError} role="alert">
-              <Icon name="info" size={18} /> {errorMsg}
+              <div className={styles.alertBody}>
+                <Icon name="info" size={18} />
+                <p>{errorMsg}</p>
+              </div>
+              <button
+                type="button"
+                className={styles.alertDismissBtn}
+                onClick={clearNotification}
+                aria-label={tx('Cerrar alerta', 'Dismiss alert')}
+              >
+                <Icon name="close" size={14} />
+              </button>
             </div>
           )}
 
@@ -445,9 +619,10 @@ export function AdminPanel() {
 
           {activeTab === 'audit' && (
             <AdminAuditSection
-              auditLogs={auditLogs}
+              auditLogs={auditState.items}
               users={users}
               auditFilterAction={auditFilterAction}
+              loading={auditLoading}
               onChangeFilterAction={setAuditFilterAction}
             />
           )}

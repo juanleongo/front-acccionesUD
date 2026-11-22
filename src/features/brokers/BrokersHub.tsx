@@ -1,6 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { Icon } from '@/components/ui/Icon';
+import { useLocale } from '@/lib/i18n';
 import {
   INITIAL_BROKER_CLIENTS,
   INITIAL_BROKER_REQUESTS,
@@ -17,6 +19,20 @@ import {
   type ProposalChatMessage,
   type ProposalItem,
 } from './brokers-mock';
+import { BrokerWorkspaceOverview } from './components/BrokerWorkspaceOverview';
+import { BrokerPortalClientsTab } from './components/BrokerPortalClientsTab';
+import {
+  BrokerPortalNewProposalTab,
+  type BrokerProposalDraft,
+} from './components/BrokerPortalNewProposalTab';
+import {
+  BrokerPortalProfileTab,
+  BrokerPortalReviewsTab,
+  type PendingOrderReviewItem,
+} from './components/BrokerPortalReportsTab';
+import { InvestorCurrentLinkTab } from './components/InvestorCurrentLinkTab';
+import { InvestorDirectoryTab } from './components/InvestorDirectoryTab';
+import { InvestorProposalsTab } from './components/InvestorProposalsTab';
 import styles from './brokers.module.css';
 
 export interface BrokersHubProps {
@@ -28,40 +44,31 @@ type InvestorSubTab = 'current-link' | 'directory' | 'proposals';
 type BrokerSubTab =
   'clients' | 'new-proposal' | 'reviews-reports' | 'my-profile';
 
-const linkStatusLabels: Record<string, string> = {
-  requested: 'Solicitud enviada',
-  active: 'Vínculo activo',
-  declined: 'Declinado',
-  canceled: 'Cancelado',
-  expired: 'Expirado',
-  ended: 'Finalizado',
-};
+const INITIAL_PENDING_ORDER_REVIEWS: PendingOrderReviewItem[] = [
+  {
+    id: 'ord-rev-101',
+    investor_name: 'Juan José León Gómez',
+    symbol: 'TSLA',
+    side: 'buy',
+    qty: '25',
+    type: 'limit',
+    limit_price: '242.50',
+    notional_usd: '6062.50',
+    status: 'pending_broker_review',
+  },
+];
 
-const proposalStatusLabels: Record<string, string> = {
-  sent: 'Pendiente de firma',
-  accepted: 'Aceptada',
-  rejected: 'Rechazada',
-  withdrawn: 'Retirada',
-  approved: 'Ejecutada',
-  declined_by_broker: 'Declinada',
-  conversion_failed: 'Con observaciones',
-  expired: 'Expirada',
-};
-
-function getInitials(name: string): string {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((p) => p[0]?.toUpperCase() ?? '')
-    .join('');
-}
-
-export function BrokersHub({ userRoles = [] }: BrokersHubProps) {
-  const defaultRoleMode = userRoles.includes('broker') ? 'broker' : 'investor';
-  const [roleMode, setRoleMode] = useState<'investor' | 'broker'>(
+export function BrokersHub({
+  userRoles = [],
+  onNavigateToOrder,
+}: BrokersHubProps) {
+  const { tx } = useLocale();
+  const canAccessBrokerPortal = userRoles.includes('broker');
+  const defaultRoleMode = canAccessBrokerPortal ? 'broker' : 'investor';
+  const [preferredRoleMode, setRoleMode] = useState<'investor' | 'broker'>(
     defaultRoleMode,
   );
+  const roleMode = canAccessBrokerPortal ? preferredRoleMode : 'investor';
   const [investorTab, setInvestorTab] =
     useState<InvestorSubTab>('current-link');
   const [brokerTab, setBrokerTab] = useState<BrokerSubTab>('clients');
@@ -83,54 +90,15 @@ export function BrokersHub({ userRoles = [] }: BrokersHubProps) {
     Record<string, BrokerReviewItem[]>
   >(INITIAL_BROKER_REVIEWS);
 
-  // Forms (Investor)
-  const [chatInput, setChatInput] = useState('');
-  const [totpInput, setTotpInput] = useState('');
-  const [decisionComment, setDecisionComment] = useState('');
-  const [ratingStars, setRatingStars] = useState(5);
-  const [ratingComment, setRatingComment] = useState('');
-
-  // Portal Broker states
   const [pendingRequests, setPendingRequests] = useState<
     BrokerPendingRequest[]
   >(INITIAL_BROKER_REQUESTS);
   const [brokerClients, setBrokerClients] = useState<BrokerClientItem[]>(
     INITIAL_BROKER_CLIENTS,
   );
-  const [propClientId, setPropClientId] = useState(
-    INITIAL_BROKER_CLIENTS[0]?.investor_id ?? '',
-  );
-  const [propSymbol, setPropSymbol] = useState('NVDA');
-  const [propSide, setPropSide] = useState<'buy' | 'sell'>('buy');
-  const [propQty, setPropQty] = useState('10');
-  const [propType, setPropType] = useState<'market' | 'limit'>('limit');
-  const [propLimitPrice, setPropLimitPrice] = useState('885.00');
-
-  const [profSpecialty, setProfSpecialty] = useState(
-    'Tecnología, Semiconductores & S&P 500 (NASDAQ / NYSE)',
-  );
-  const [profYears, setProfYears] = useState(11);
-  const [profCerts, setProfCerts] = useState(
-    'FINRA Series 7, CFA Level III, AMV Renta Variable',
-  );
-  const [profDesc, setProfDesc] = useState(
-    'Estratega senior en acciones de gran capitalización en EE. UU., cobertura cambiaria USD y carteras de crecimiento tecnológico.',
-  );
-
-  const [pendingOrderReviews, setPendingOrderReviews] = useState([
-    {
-      id: 'ord-rev-101',
-      investor_name: 'Juan José León Gómez',
-      symbol: 'TSLA',
-      side: 'buy',
-      qty: '25',
-      type: 'limit',
-      limit_price: '242.50',
-      notional_usd: '6062.50',
-      status: 'pending_broker_review',
-    },
-  ]);
-
+  const [pendingOrderReviews, setPendingOrderReviews] = useState<
+    PendingOrderReviewItem[]
+  >(INITIAL_PENDING_ORDER_REVIEWS);
   const [statusToast, setStatusToast] = useState<string | null>(null);
 
   const activeLink = currentLinkData.link;
@@ -138,14 +106,32 @@ export function BrokersHub({ userRoles = [] }: BrokersHubProps) {
     Boolean(currentLinkData.trading_authorization) &&
     !currentLinkData.trading_authorization?.revoked_at;
 
-  const selectedProposal =
-    proposals.find((p) => p.id === selectedProposalId) ?? proposals[0] ?? null;
+  const selectedProposal = useMemo(
+    () =>
+      proposals.find((p) => p.id === selectedProposalId) ??
+      proposals[0] ??
+      null,
+    [proposals, selectedProposalId],
+  );
 
-  const currentMessages = selectedProposal
-    ? (messagesByProposal[selectedProposal.id] ?? [])
-    : [];
+  const currentMessages = useMemo(
+    () =>
+      selectedProposal ? (messagesByProposal[selectedProposal.id] ?? []) : [],
+    [messagesByProposal, selectedProposal],
+  );
 
-  const handleToggleTradingAuth = () => {
+  const filteredDirectory = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return directory;
+    return directory.filter(
+      (b) =>
+        b.name.toLowerCase().includes(q) ||
+        b.firm_name.toLowerCase().includes(q) ||
+        b.specialty.toLowerCase().includes(q),
+    );
+  }, [directory, searchQuery]);
+
+  function handleToggleTradingAuth() {
     if (!activeLink) return;
     setCurrentLinkData((prev) => ({
       ...prev,
@@ -162,12 +148,18 @@ export function BrokersHub({ userRoles = [] }: BrokersHubProps) {
     }));
     setStatusToast(
       tradingAuthorized
-        ? 'Autorización de operación delegada revocada correctamente.'
-        : 'Autorización de operación delegada activada para tu comisionista.',
+        ? tx(
+            'Autorización de operación delegada revocada correctamente.',
+            'Delegated trading authorization revoked.',
+          )
+        : tx(
+            'Autorización de operación delegada activada para tu comisionista.',
+            'Delegated trading authorization enabled for your broker.',
+          ),
     );
-  };
+  }
 
-  const handleToggleOrderReview = () => {
+  function handleToggleOrderReview() {
     if (!activeLink) return;
     const nextEnabled = !activeLink.order_review_enabled;
     setCurrentLinkData((prev) =>
@@ -180,12 +172,18 @@ export function BrokersHub({ userRoles = [] }: BrokersHubProps) {
     );
     setStatusToast(
       nextEnabled
-        ? 'Revisión previa de órdenes por el comisionista activada.'
-        : 'Revisión previa de órdenes desactivada.',
+        ? tx(
+            'Revisión previa de órdenes por el comisionista activada.',
+            'Broker pre-trade order review enabled.',
+          )
+        : tx(
+            'Revisión previa de órdenes desactivada.',
+            'Broker pre-trade order review disabled.',
+          ),
     );
-  };
+  }
 
-  const handleRequestLink = (broker: BrokerDirectoryItem) => {
+  function handleRequestLink(broker: BrokerDirectoryItem) {
     setCurrentLinkData((prev) => ({
       ...prev,
       link: {
@@ -212,11 +210,14 @@ export function BrokersHub({ userRoles = [] }: BrokersHubProps) {
     }));
     setInvestorTab('current-link');
     setStatusToast(
-      `Solicitud de vinculación confirmada con ${broker.name} (${broker.firm_name}).`,
+      tx(
+        `Solicitud de vinculación confirmada con ${broker.name} (${broker.firm_name}).`,
+        `Advisory link confirmed with ${broker.name} (${broker.firm_name}).`,
+      ),
     );
-  };
+  }
 
-  const handleEndLink = () => {
+  function handleEndLink() {
     if (!activeLink) return;
     setCurrentLinkData((prev) => ({
       ...prev,
@@ -225,18 +226,24 @@ export function BrokersHub({ userRoles = [] }: BrokersHubProps) {
       pending_broker_selection: true,
     }));
     setStatusToast(
-      'Vínculo con el comisionista finalizado. Puedes elegir un nuevo asesor en el directorio.',
+      tx(
+        'Vínculo con el comisionista finalizado. Puedes elegir un nuevo asesor en el directorio.',
+        'Broker relationship ended. You may choose a new advisor in the directory.',
+      ),
     );
-  };
+  }
 
-  const handleRateBroker = () => {
+  function handleRateBroker(stars: number, comment: string) {
     if (!activeLink) return;
     const brokerId = activeLink.broker_id;
     const newReview: BrokerReviewItem = {
-      stars: ratingStars,
+      stars,
       comment:
-        ratingComment.trim() ||
-        'Excelente asesoría financiera en mercados de EE. UU.',
+        comment.trim() ||
+        tx(
+          'Excelente asesoría financiera en mercados de EE. UU.',
+          'Excellent financial advisory in US markets.',
+        ),
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
@@ -244,13 +251,18 @@ export function BrokersHub({ userRoles = [] }: BrokersHubProps) {
       ...prev,
       [brokerId]: [newReview, ...(prev[brokerId] ?? [])],
     }));
-    setRatingComment('');
     setStatusToast(
-      `Calificación de ${ratingStars} estrellas registrada para ${activeLink.broker.name}.`,
+      tx(
+        `Calificación de ${stars} estrellas registrada para ${activeLink.broker.name}.`,
+        `${stars}-star rating saved for ${activeLink.broker.name}.`,
+      ),
     );
-  };
+  }
 
-  const handleProposalDecision = (decision: 'accept' | 'reject') => {
+  function handleProposalDecision(
+    decision: 'accept' | 'reject',
+    comment: string,
+  ) {
     if (!selectedProposal) return;
     setProposals((prev) =>
       prev.map((p) =>
@@ -264,19 +276,24 @@ export function BrokersHub({ userRoles = [] }: BrokersHubProps) {
           : p,
       ),
     );
-    setTotpInput('');
-    setDecisionComment('');
+    if (comment) {
+      handleSendMessage(comment);
+    }
     setStatusToast(
       decision === 'accept'
-        ? `Propuesta de ${selectedProposal.symbol} aceptada y firmada con tu código 2FA.`
-        : `Propuesta de ${selectedProposal.symbol} rechazada.`,
+        ? tx(
+            `Propuesta de ${selectedProposal.symbol} aceptada y firmada con tu código 2FA.`,
+            `${selectedProposal.symbol} proposal accepted and signed with 2FA.`,
+          )
+        : tx(
+            `Propuesta de ${selectedProposal.symbol} rechazada.`,
+            `${selectedProposal.symbol} proposal rejected.`,
+          ),
     );
-  };
+  }
 
-  const handleSendMessage = () => {
-    if (!selectedProposal || !chatInput.trim()) return;
-    const text = chatInput.trim();
-    setChatInput('');
+  function handleSendMessage(body: string) {
+    if (!selectedProposal) return;
     const localMsg: ProposalChatMessage = {
       id: `msg-${Date.now()}`,
       proposal_id: selectedProposal.id,
@@ -284,16 +301,16 @@ export function BrokersHub({ userRoles = [] }: BrokersHubProps) {
         roleMode === 'broker'
           ? selectedProposal.broker.id
           : selectedProposal.investor.id,
-      body: text,
+      body,
       created_at: new Date().toISOString(),
     };
     setMessagesByProposal((prev) => ({
       ...prev,
       [selectedProposal.id]: [...(prev[selectedProposal.id] ?? []), localMsg],
     }));
-  };
+  }
 
-  const handleBrokerAcceptRequest = (req: BrokerPendingRequest) => {
+  function handleBrokerAcceptRequest(req: BrokerPendingRequest) {
     setPendingRequests((prev) => prev.filter((r) => r.id !== req.id));
     setBrokerClients((prev) => [
       {
@@ -307,20 +324,30 @@ export function BrokersHub({ userRoles = [] }: BrokersHubProps) {
       ...prev,
     ]);
     setStatusToast(
-      `Solicitud de vinculación de ${req.investor_name} aceptada.`,
+      tx(
+        `Solicitud de vinculación de ${req.investor_name} aceptada.`,
+        `Link request from ${req.investor_name} accepted.`,
+      ),
     );
-  };
+  }
 
-  const handleBrokerDeclineRequest = (req: BrokerPendingRequest) => {
+  function handleBrokerDeclineRequest(req: BrokerPendingRequest) {
     setPendingRequests((prev) => prev.filter((r) => r.id !== req.id));
-    setStatusToast(`Solicitud de ${req.investor_name} declinada.`);
-  };
+    setStatusToast(
+      tx(
+        `Solicitud de ${req.investor_name} declinada.`,
+        `Request from ${req.investor_name} declined.`,
+      ),
+    );
+  }
 
-  const handleCreateBrokerProposal = () => {
-    const clientObj = brokerClients.find((c) => c.investor_id === propClientId);
+  function handleCreateBrokerProposal(draft: BrokerProposalDraft) {
+    const clientObj = brokerClients.find(
+      (c) => c.investor_id === draft.clientId,
+    );
     const estCost = (
-      (Number(propQty) || 1) *
-      (propType === 'limit' ? Number(propLimitPrice) || 150 : 175) *
+      (Number(draft.qty) || 1) *
+      (draft.type === 'limit' ? Number(draft.limitPrice) || 150 : 175) *
       1.02
     ).toFixed(2);
     const newProp: ProposalItem = {
@@ -337,14 +364,14 @@ export function BrokersHub({ userRoles = [] }: BrokersHubProps) {
         name: 'Carlos Andrés Rodríguez MSc.',
       },
       investor: {
-        id: propClientId,
-        name: clientObj?.name ?? 'Inversionista',
+        id: draft.clientId,
+        name: clientObj?.name ?? tx('Inversionista', 'Investor'),
       },
-      symbol: propSymbol.toUpperCase(),
-      side: propSide,
-      qty: propQty,
-      type: propType,
-      limit_price: propType === 'limit' ? propLimitPrice : null,
+      symbol: draft.symbol,
+      side: draft.side,
+      qty: draft.qty,
+      type: draft.type,
+      limit_price: draft.type === 'limit' ? draft.limitPrice : null,
       estimated_cost: estCost,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -353,1045 +380,350 @@ export function BrokersHub({ userRoles = [] }: BrokersHubProps) {
     setProposals((prev) => [newProp, ...prev]);
     setSelectedProposalId(newProp.id);
     setStatusToast(
-      `Propuesta de ${propSide === 'buy' ? 'compra' : 'venta'} de ${propQty} ${propSymbol.toUpperCase()} enviada a ${clientObj?.name ?? 'el cliente'}.`,
+      tx(
+        `Propuesta de ${draft.side === 'buy' ? 'compra' : 'venta'} de ${draft.qty} ${draft.symbol} enviada a ${clientObj?.name ?? 'el cliente'}.`,
+        `${draft.side === 'buy' ? 'Buy' : 'Sell'} proposal for ${draft.qty} ${draft.symbol} sent to ${clientObj?.name ?? 'the client'}.`,
+      ),
     );
-  };
-
-  const handleSaveBrokerProfile = () => {
-    setStatusToast(
-      'Perfil profesional de comisionista actualizado correctamente.',
-    );
-  };
-
-  const filteredDirectory = searchQuery.trim()
-    ? directory.filter(
-        (b) =>
-          b.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          b.firm_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          b.specialty.toLowerCase().includes(searchQuery.toLowerCase()),
-      )
-    : directory;
+  }
 
   return (
-    <div className={styles.container}>
+    <section
+      className={styles.container}
+      aria-label={tx(
+        'Módulo de Comisionistas y Propuestas',
+        'Brokers and Proposals Hub',
+      )}
+    >
       <div className={styles.topBar}>
         <div className={styles.topTitleGroup}>
+          <span className={styles.topEyebrow}>
+            <Icon name="shield" size={13} />
+            {tx(
+              'Asesoría Bursátil & Custodia 2FA',
+              'Brokerage Advisory & 2FA Custody',
+            )}
+          </span>
           <h2 className={styles.topTitle}>
-            Comisionistas y Propuestas de Inversión
+            {tx(
+              roleMode === 'broker'
+                ? 'Portal del comisionista'
+                : 'Comisionistas y propuestas de inversión',
+              roleMode === 'broker'
+                ? 'Broker workspace'
+                : 'Brokers & investment proposals',
+            )}
           </h2>
           <p className={styles.topSubtitle}>
-            Gestiona tu asesor asignado, explora el directorio de profesionales
-            certificados y autoriza propuestas bursátiles en Wall Street.
+            {tx(
+              roleMode === 'broker'
+                ? 'Gestiona tus vínculos de asesoría, propuestas y revisiones desde un solo lugar.'
+                : 'Gestiona tu asesor asignado, explora el directorio y consulta tus propuestas de inversión.',
+              roleMode === 'broker'
+                ? 'Manage advisory links, proposals, and reviews in one place.'
+                : 'Manage your assigned advisor, explore the directory, and review investment proposals.',
+            )}
           </p>
         </div>
 
-        <div className={styles.roleSwitcher}>
-          <button
-            type="button"
-            className={`${styles.roleSwitchBtn} ${roleMode === 'investor' ? styles.roleSwitchBtnActive : ''}`}
-            onClick={() => setRoleMode('investor')}
+        {canAccessBrokerPortal && (
+          <div
+            className={styles.roleSwitcher}
+            role="group"
+            aria-label={tx('Selector de perfil', 'View mode switcher')}
           >
-            Vista Inversionista
-          </button>
-          <button
-            type="button"
-            className={`${styles.roleSwitchBtn} ${roleMode === 'broker' ? styles.roleSwitchBtnActive : ''}`}
-            onClick={() => setRoleMode('broker')}
-          >
-            Portal Comisionista
-          </button>
-        </div>
+            <button
+              type="button"
+              aria-pressed={roleMode === 'investor'}
+              className={`${styles.roleSwitchBtn} ${
+                roleMode === 'investor' ? styles.roleSwitchBtnActive : ''
+              }`}
+              onClick={() => setRoleMode('investor')}
+            >
+              <Icon name="user" size={15} />
+              {tx('Vista Inversionista', 'Investor View')}
+            </button>
+            <button
+              type="button"
+              aria-pressed={roleMode === 'broker'}
+              className={`${styles.roleSwitchBtn} ${
+                roleMode === 'broker' ? styles.roleSwitchBtnActive : ''
+              }`}
+              onClick={() => setRoleMode('broker')}
+            >
+              <Icon name="users" size={15} />
+              {tx('Portal Comisionista', 'Broker Portal')}
+            </button>
+          </div>
+        )}
       </div>
 
       {statusToast && (
         <div className={styles.statusToast} role="status">
-          {statusToast}
+          <div className={styles.statusToastBody}>
+            <Icon name="check" size={18} />
+            <span className={styles.statusToastText}>{statusToast}</span>
+          </div>
+          <button
+            type="button"
+            className={styles.toastDismissBtn}
+            onClick={() => setStatusToast(null)}
+            aria-label={tx('Cerrar notificación', 'Dismiss notification')}
+          >
+            <Icon name="close" size={14} />
+          </button>
         </div>
       )}
 
-      {/* =========================================================
-          VISTA INVERSIONISTA
-         ========================================================= */}
       {roleMode === 'investor' && (
         <>
-          <div className={styles.subTabs} role="tablist">
+          <div
+            className={styles.subTabs}
+            role="tablist"
+            aria-label={tx('Vistas de inversionista', 'Investor sections')}
+          >
             <button
               type="button"
               role="tab"
               aria-selected={investorTab === 'current-link'}
-              className={`${styles.subTabBtn} ${investorTab === 'current-link' ? styles.subTabBtnActive : ''}`}
+              className={`${styles.subTabBtn} ${
+                investorTab === 'current-link' ? styles.subTabBtnActive : ''
+              }`}
               onClick={() => setInvestorTab('current-link')}
             >
-              1. Mi Comisionista y Permisos
+              <Icon name="shield" size={15} />
+              <span>
+                {tx(
+                  '1. Mi Comisionista y Permisos',
+                  '1. My Broker & Permissions',
+                )}
+              </span>
             </button>
             <button
               type="button"
               role="tab"
               aria-selected={investorTab === 'directory'}
-              className={`${styles.subTabBtn} ${investorTab === 'directory' ? styles.subTabBtnActive : ''}`}
+              className={`${styles.subTabBtn} ${
+                investorTab === 'directory' ? styles.subTabBtnActive : ''
+              }`}
               onClick={() => setInvestorTab('directory')}
             >
-              2. Directorio de Comisionistas ({directory.length})
+              <Icon name="users" size={15} />
+              <span>
+                {tx('2. Directorio de Comisionistas', '2. Broker Directory')}
+              </span>
+              <span className={styles.tabCount}>{directory.length}</span>
             </button>
             <button
               type="button"
               role="tab"
               aria-selected={investorTab === 'proposals'}
-              className={`${styles.subTabBtn} ${investorTab === 'proposals' ? styles.subTabBtnActive : ''}`}
+              className={`${styles.subTabBtn} ${
+                investorTab === 'proposals' ? styles.subTabBtnActive : ''
+              }`}
               onClick={() => setInvestorTab('proposals')}
             >
-              3. Propuestas Recibidas y Chat ({proposals.length})
+              <Icon name="file" size={15} />
+              <span>
+                {tx('3. Propuestas Recibidas y Chat', '3. Proposals & Chat')}
+              </span>
+              <span className={styles.tabCount}>{proposals.length}</span>
             </button>
           </div>
 
           {investorTab === 'current-link' && (
-            <div className={styles.card}>
-              <div className={styles.cardHeader}>
-                <div>
-                  <h3 className={styles.cardTitle}>
-                    Estado de Vinculación y Permisos de Operación
-                  </h3>
-                  <p className={styles.cardDesc}>
-                    Configura las autorizaciones de acompañamiento y supervisión
-                    de órdenes con tu asesor asignado.
-                  </p>
-                </div>
-                {activeLink && (
-                  <span className={styles.badgeSuccess}>
-                    {linkStatusLabels[activeLink.status] ?? 'Vínculo activo'}
-                  </span>
-                )}
-              </div>
-
-              {activeLink ? (
-                <>
-                  <div className={styles.controlsGrid}>
-                    <div className={styles.controlBox}>
-                      <div>
-                        <div className={styles.controlTitle}>
-                          Asesor Asignado: {activeLink.broker.name}
-                        </div>
-                        <div className={styles.controlHint}>
-                          Firma: {activeLink.broker.firm_name} · Activo desde:{' '}
-                          {new Date(
-                            activeLink.started_at ?? activeLink.requested_at,
-                          ).toLocaleDateString('es-CO')}
-                        </div>
-                      </div>
-                      <div className={styles.btnRow}>
-                        <button
-                          type="button"
-                          className={styles.secondaryBtn}
-                          onClick={() => setInvestorTab('proposals')}
-                        >
-                          Ver Propuestas y Chat →
-                        </button>
-                        <button
-                          type="button"
-                          className={styles.dangerBtn}
-                          onClick={handleEndLink}
-                        >
-                          Finalizar Vínculo
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className={styles.controlBox}>
-                      <div>
-                        <div className={styles.controlTitle}>
-                          Autorización de Operación Delegada
-                        </div>
-                        <div className={styles.controlHint}>
-                          Permite que tu comisionista estructure propuestas y
-                          ejecute órdenes previamente aceptadas con tu 2FA.
-                        </div>
-                      </div>
-                      <div className={styles.btnRow}>
-                        <span
-                          className={
-                            tradingAuthorized
-                              ? styles.badgeSuccess
-                              : styles.badgeWarning
-                          }
-                        >
-                          {tradingAuthorized ? 'Autorizado' : 'Revocado'}
-                        </span>
-                        <button
-                          type="button"
-                          className={styles.primaryBtn}
-                          onClick={handleToggleTradingAuth}
-                        >
-                          {tradingAuthorized
-                            ? 'Revocar Autorización'
-                            : 'Autorizar Operación'}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className={styles.controlBox}>
-                      <div>
-                        <div className={styles.controlTitle}>
-                          Revisión de Órdenes por el Comisionista
-                        </div>
-                        <div className={styles.controlHint}>
-                          Cuando está activa, las órdenes de alto monto
-                          requieren visto bueno de tu comisionista antes de
-                          enviarse al mercado.
-                        </div>
-                      </div>
-                      <div className={styles.btnRow}>
-                        <span
-                          className={
-                            activeLink.order_review_enabled
-                              ? styles.badgeSuccess
-                              : styles.badgeWarning
-                          }
-                        >
-                          {activeLink.order_review_enabled
-                            ? 'Activa'
-                            : 'Desactivada'}
-                        </span>
-                        <button
-                          type="button"
-                          className={styles.secondaryBtn}
-                          onClick={handleToggleOrderReview}
-                        >
-                          {activeLink.order_review_enabled
-                            ? 'Desactivar Revisión'
-                            : 'Activar Revisión'}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Calificar al comisionista */}
-                  <div className={styles.controlBox}>
-                    <div className={styles.controlTitle}>
-                      Calificar Desempeño de tu Comisionista
-                    </div>
-                    <div className={styles.formGrid}>
-                      <div className={styles.fieldGroup}>
-                        <label className={styles.fieldLabel}>
-                          Puntuación (1 a 5 estrellas)
-                        </label>
-                        <select
-                          className={styles.inputField}
-                          value={ratingStars}
-                          onChange={(e) =>
-                            setRatingStars(Number(e.target.value))
-                          }
-                        >
-                          <option value={5}>★★★★★ (5 - Excelente)</option>
-                          <option value={4}>★★★★☆ (4 - Muy Bueno)</option>
-                          <option value={3}>★★★☆☆ (3 - Aceptable)</option>
-                          <option value={2}>★★☆☆☆ (2 - Regular)</option>
-                          <option value={1}>★☆☆☆☆ (1 - Deficiente)</option>
-                        </select>
-                      </div>
-                      <div className={styles.fieldGroup}>
-                        <label className={styles.fieldLabel}>
-                          Reseña de Acompañamiento
-                        </label>
-                        <input
-                          type="text"
-                          className={styles.inputField}
-                          placeholder="Escribe tu comentario sobre la asesoría recibida..."
-                          value={ratingComment}
-                          onChange={(e) => setRatingComment(e.target.value)}
-                        />
-                      </div>
-                    </div>
-                    <div className={styles.btnRow}>
-                      <button
-                        type="button"
-                        className={styles.primaryBtn}
-                        onClick={handleRateBroker}
-                      >
-                        Enviar Calificación
-                      </button>
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <div className={styles.controlBox}>
-                  <div className={styles.controlTitle}>
-                    No tienes un comisionista vinculado actualmente
-                  </div>
-                  <div className={styles.controlHint}>
-                    Explora el directorio oficial de comisionistas verificados
-                    para solicitar acompañamiento en Wall Street.
-                  </div>
-                  <div className={styles.btnRow}>
-                    <button
-                      type="button"
-                      className={styles.primaryBtn}
-                      onClick={() => setInvestorTab('directory')}
-                    >
-                      Explorar Directorio de Comisionistas →
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
+            <InvestorCurrentLinkTab
+              activeLink={activeLink}
+              tradingAuthorized={tradingAuthorized}
+              onOpenDirectory={() => setInvestorTab('directory')}
+              onOpenProposals={() => setInvestorTab('proposals')}
+              onToggleTradingAuth={handleToggleTradingAuth}
+              onToggleOrderReview={handleToggleOrderReview}
+              onEndLink={handleEndLink}
+              onRateBroker={handleRateBroker}
+            />
           )}
 
           {investorTab === 'directory' && (
-            <div className={styles.card}>
-              <div className={styles.cardHeader}>
-                <div>
-                  <h3 className={styles.cardTitle}>
-                    Directorio Oficial de Comisionistas Certificados
-                  </h3>
-                  <p className={styles.cardDesc}>
-                    Conoce la trayectoria, especialidad y calificaciones de los
-                    asesores disponibles para acompañarte en NYSE y NASDAQ.
-                  </p>
-                </div>
-                <input
-                  type="search"
-                  className={styles.inputField}
-                  style={{ maxWidth: '300px' }}
-                  placeholder="Buscar por nombre, firma o especialidad..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-
-              <div className={styles.directoryGrid}>
-                {filteredDirectory.map((broker) => {
-                  const isLinked = activeLink?.broker_id === broker.id;
-                  const brokerReviews = reviewsByBroker[broker.id] ?? [];
-                  return (
-                    <div key={broker.id} className={styles.brokerCard}>
-                      <div
-                        style={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '0.75rem',
-                        }}
-                      >
-                        <div className={styles.brokerHeader}>
-                          <div className={styles.brokerAvatar}>
-                            {broker.avatarUrl ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
-                                src={broker.avatarUrl}
-                                alt={broker.name}
-                                className={styles.brokerAvatarImg}
-                              />
-                            ) : (
-                              getInitials(broker.name)
-                            )}
-                          </div>
-                          <div>
-                            <div className={styles.brokerName}>
-                              {broker.name}
-                            </div>
-                            <div className={styles.brokerFirm}>
-                              {broker.firm_name}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className={styles.brokerSpecialty}>
-                          {broker.specialty}
-                        </div>
-                        {broker.description && (
-                          <div className={styles.controlHint}>
-                            {broker.description}
-                          </div>
-                        )}
-
-                        <div className={styles.certRow}>
-                          {broker.certifications.map((cert) => (
-                            <span key={cert} className={styles.certChip}>
-                              {cert}
-                            </span>
-                          ))}
-                        </div>
-
-                        <div className={styles.statsRow}>
-                          <div className={styles.statItem}>
-                            <span className={styles.statLabel}>Reputación</span>
-                            <span className={styles.statVal}>
-                              ★ {broker.reputation.average ?? '5.0'} (
-                              {broker.reputation.reviews_count})
-                            </span>
-                          </div>
-                          <div className={styles.statItem}>
-                            <span className={styles.statLabel}>
-                              Experiencia
-                            </span>
-                            <span className={styles.statVal}>
-                              {broker.years_experience} años
-                            </span>
-                          </div>
-                          <div className={styles.statItem}>
-                            <span className={styles.statLabel}>
-                              Propuestas Éxito
-                            </span>
-                            <span className={styles.statVal}>
-                              {broker.reputation.converted_proposals}
-                            </span>
-                          </div>
-                        </div>
-
-                        {brokerReviews[0] && (
-                          <div
-                            className={styles.controlHint}
-                            style={{ fontStyle: 'italic' }}
-                          >
-                            “{brokerReviews[0].comment}” (★{' '}
-                            {brokerReviews[0].stars}/5)
-                          </div>
-                        )}
-                      </div>
-
-                      <div className={styles.btnRow}>
-                        {isLinked ? (
-                          <span className={styles.badgeSuccess}>
-                            ✓ Tu Comisionista Actual
-                          </span>
-                        ) : (
-                          <button
-                            type="button"
-                            className={styles.primaryBtn}
-                            onClick={() => handleRequestLink(broker)}
-                          >
-                            Solicitar Vinculación
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+            <InvestorDirectoryTab
+              directory={filteredDirectory}
+              totalCount={directory.length}
+              activeBrokerId={activeLink?.broker_id ?? null}
+              reviewsByBroker={reviewsByBroker}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              onRequestLink={handleRequestLink}
+            />
           )}
 
           {investorTab === 'proposals' && (
-            <div className={styles.card}>
-              <div className={styles.cardHeader}>
-                <div>
-                  <h3 className={styles.cardTitle}>
-                    Bandeja de Propuestas de Inversión y Mensajería
-                  </h3>
-                  <p className={styles.cardDesc}>
-                    Revisa las recomendaciones enviadas por tu comisionista,
-                    conversa en el hilo de la propuesta y autoriza su ejecución
-                    con tu código 2FA.
-                  </p>
-                </div>
-              </div>
-
-              <div className={styles.proposalsLayout}>
-                <div
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '0.85rem',
-                  }}
-                >
-                  {proposals.map((prop) => (
-                    <div
-                      key={prop.id}
-                      className={`${styles.proposalCard} ${selectedProposal?.id === prop.id ? styles.proposalCardActive : ''}`}
-                      onClick={() => setSelectedProposalId(prop.id)}
-                    >
-                      <div className={styles.cardHeader}>
-                        <div>
-                          <strong style={{ fontSize: '0.96rem' }}>
-                            {prop.side === 'buy' ? 'Compra' : 'Venta'}{' '}
-                            {prop.qty} {prop.symbol}
-                          </strong>{' '}
-                          <span className={styles.certChip}>
-                            {prop.type === 'limit' ? 'Límite' : 'Mercado'}
-                          </span>
-                        </div>
-                        <span
-                          className={
-                            prop.status === 'approved' ||
-                            prop.status === 'accepted'
-                              ? styles.badgeSuccess
-                              : styles.badgeWarning
-                          }
-                        >
-                          {proposalStatusLabels[prop.status] ?? prop.status} (v
-                          {prop.current_version})
-                        </span>
-                      </div>
-
-                      <div className={styles.controlHint}>
-                        Comisionista: <strong>{prop.broker.name}</strong> ·
-                        Costo estimado:{' '}
-                        <strong>
-                          ${Number(prop.estimated_cost).toLocaleString('en-US')}{' '}
-                          USD
-                        </strong>
-                        {prop.limit_price
-                          ? ` · Precio Límite: $${prop.limit_price} USD`
-                          : ''}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {selectedProposal && (
-                  <div className={styles.chatBox}>
-                    <div className={styles.controlTitle}>
-                      Detalle y Decisión sobre {selectedProposal.symbol}{' '}
-                      (Versión {selectedProposal.current_version})
-                    </div>
-
-                    {selectedProposal.status === 'sent' && (
-                      <div
-                        className={styles.controlBox}
-                        style={{ background: 'var(--surface-secondary)' }}
-                      >
-                        <div className={styles.controlTitle}>
-                          Autorizar o Rechazar Propuesta (Confirmación 2FA)
-                        </div>
-                        <div className={styles.formGrid}>
-                          <div className={styles.fieldGroup}>
-                            <label className={styles.fieldLabel}>
-                              Código 2FA (6 dígitos)
-                            </label>
-                            <input
-                              type="text"
-                              className={styles.inputField}
-                              placeholder="Ej. 123456"
-                              value={totpInput}
-                              onChange={(e) => setTotpInput(e.target.value)}
-                            />
-                          </div>
-                          <div className={styles.fieldGroup}>
-                            <label className={styles.fieldLabel}>
-                              Comentario para el asesor
-                            </label>
-                            <input
-                              type="text"
-                              className={styles.inputField}
-                              placeholder="Autorizo ejecución en NASDAQ..."
-                              value={decisionComment}
-                              onChange={(e) =>
-                                setDecisionComment(e.target.value)
-                              }
-                            />
-                          </div>
-                        </div>
-                        <div className={styles.btnRow}>
-                          <button
-                            type="button"
-                            className={styles.primaryBtn}
-                            onClick={() => handleProposalDecision('accept')}
-                          >
-                            ✓ Aceptar y Firmar Propuesta
-                          </button>
-                          <button
-                            type="button"
-                            className={styles.dangerBtn}
-                            onClick={() => handleProposalDecision('reject')}
-                          >
-                            ✕ Rechazar Propuesta
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    <div className={styles.controlTitle}>
-                      Conversación de la Propuesta
-                    </div>
-                    <div className={styles.messagesList}>
-                      {currentMessages.length === 0 ? (
-                        <div className={styles.controlHint}>
-                          Aún no hay mensajes en esta propuesta. Escribe abajo
-                          para conversar con tu asesor.
-                        </div>
-                      ) : (
-                        currentMessages.map((m) => (
-                          <div key={m.id} className={styles.messageBubble}>
-                            <div className={styles.messageMeta}>
-                              <span>
-                                {m.author_id === selectedProposal.broker.id
-                                  ? `Asesor: ${selectedProposal.broker.name}`
-                                  : 'Tú (Inversionista)'}
-                              </span>
-                              <span>
-                                {new Date(m.created_at).toLocaleTimeString(
-                                  'es-CO',
-                                  {
-                                    hour: '2-digit',
-                                    minute: '2-digit',
-                                  },
-                                )}
-                              </span>
-                            </div>
-                            <div className={styles.messageText}>{m.body}</div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-
-                    <div className={styles.btnRow}>
-                      <input
-                        type="text"
-                        className={styles.inputField}
-                        style={{ flex: 1 }}
-                        placeholder="Escribe un mensaje a tu comisionista sobre esta operación..."
-                        value={chatInput}
-                        onChange={(e) => setChatInput(e.target.value)}
-                      />
-                      <button
-                        type="button"
-                        className={styles.primaryBtn}
-                        onClick={handleSendMessage}
-                      >
-                        Enviar Mensaje
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
+            <InvestorProposalsTab
+              proposals={proposals}
+              selectedProposal={selectedProposal}
+              messages={currentMessages}
+              onSelectProposal={setSelectedProposalId}
+              onDecision={handleProposalDecision}
+              onSendMessage={handleSendMessage}
+              onNavigateToOrder={onNavigateToOrder}
+            />
           )}
         </>
       )}
 
-      {/* =========================================================
-          VISTA PORTAL COMISIONISTA (BROKER)
-         ========================================================= */}
       {roleMode === 'broker' && (
         <>
-          <div className={styles.subTabs} role="tablist">
+          <BrokerWorkspaceOverview
+            requests={pendingRequests.length}
+            clients={brokerClients.length}
+            reviews={pendingOrderReviews.length}
+            onOpen={setBrokerTab}
+          />
+          <div
+            className={styles.subTabs}
+            role="tablist"
+            aria-label={tx(
+              'Vistas de portal comisionista',
+              'Broker portal sections',
+            )}
+          >
             <button
               type="button"
               role="tab"
               aria-selected={brokerTab === 'clients'}
-              className={`${styles.subTabBtn} ${brokerTab === 'clients' ? styles.subTabBtnActive : ''}`}
+              className={`${styles.subTabBtn} ${
+                brokerTab === 'clients' ? styles.subTabBtnActive : ''
+              }`}
               onClick={() => setBrokerTab('clients')}
             >
-              1. Solicitudes ({pendingRequests.length}) y Cartera (
-              {brokerClients.length})
+              <Icon name="users" size={15} />
+              <span>
+                {tx('1. Solicitudes y Cartera', '1. Requests & Clients')}
+              </span>
+              <span className={styles.tabCount}>
+                {pendingRequests.length}/{brokerClients.length}
+              </span>
             </button>
             <button
               type="button"
               role="tab"
               aria-selected={brokerTab === 'new-proposal'}
-              className={`${styles.subTabBtn} ${brokerTab === 'new-proposal' ? styles.subTabBtnActive : ''}`}
+              className={`${styles.subTabBtn} ${
+                brokerTab === 'new-proposal' ? styles.subTabBtnActive : ''
+              }`}
               onClick={() => setBrokerTab('new-proposal')}
             >
-              2. Emitir Propuesta de Inversión
+              <Icon name="trend" size={15} />
+              <span>
+                {tx(
+                  '2. Emitir Propuesta de Inversión',
+                  '2. Issue Investment Proposal',
+                )}
+              </span>
             </button>
             <button
               type="button"
               role="tab"
               aria-selected={brokerTab === 'reviews-reports'}
-              className={`${styles.subTabBtn} ${brokerTab === 'reviews-reports' ? styles.subTabBtnActive : ''}`}
+              className={`${styles.subTabBtn} ${
+                brokerTab === 'reviews-reports' ? styles.subTabBtnActive : ''
+              }`}
               onClick={() => setBrokerTab('reviews-reports')}
             >
-              3. Revisión de Órdenes y Comisiones
+              <Icon name="check" size={15} />
+              <span>
+                {tx(
+                  '3. Revisión de Órdenes y Comisiones',
+                  '3. Order Review & Commissions',
+                )}
+              </span>
+              {pendingOrderReviews.length > 0 && (
+                <span className={styles.tabCount}>
+                  {pendingOrderReviews.length}
+                </span>
+              )}
             </button>
             <button
               type="button"
               role="tab"
               aria-selected={brokerTab === 'my-profile'}
-              className={`${styles.subTabBtn} ${brokerTab === 'my-profile' ? styles.subTabBtnActive : ''}`}
+              className={`${styles.subTabBtn} ${
+                brokerTab === 'my-profile' ? styles.subTabBtnActive : ''
+              }`}
               onClick={() => setBrokerTab('my-profile')}
             >
-              4. Mi Perfil Profesional
+              <Icon name="user" size={15} />
+              <span>
+                {tx('4. Mi Perfil Profesional', '4. My Professional Profile')}
+              </span>
             </button>
           </div>
 
           {brokerTab === 'clients' && (
-            <div className={styles.card}>
-              <div className={styles.cardHeader}>
-                <div>
-                  <h3 className={styles.cardTitle}>
-                    Solicitudes de Vinculación Pendientes
-                  </h3>
-                  <p className={styles.cardDesc}>
-                    Acepta o declina nuevos clientes que han solicitado tu
-                    asesoría bursátil.
-                  </p>
-                </div>
-              </div>
-
-              {pendingRequests.length === 0 ? (
-                <div className={styles.controlHint}>
-                  No tienes solicitudes pendientes por responder en este
-                  momento.
-                </div>
-              ) : (
-                <div className={styles.controlsGrid}>
-                  {pendingRequests.map((req) => (
-                    <div key={req.id} className={styles.controlBox}>
-                      <div>
-                        <div className={styles.controlTitle}>
-                          {req.investor_name}
-                        </div>
-                        <div className={styles.controlHint}>
-                          Solicitado:{' '}
-                          {new Date(req.requested_at).toLocaleString('es-CO')}
-                        </div>
-                      </div>
-                      <div className={styles.btnRow}>
-                        <button
-                          type="button"
-                          className={styles.primaryBtn}
-                          onClick={() => handleBrokerAcceptRequest(req)}
-                        >
-                          ✓ Aceptar Cliente
-                        </button>
-                        <button
-                          type="button"
-                          className={styles.dangerBtn}
-                          onClick={() => handleBrokerDeclineRequest(req)}
-                        >
-                          ✕ Declinar
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <div className={styles.cardHeader} style={{ marginTop: '1rem' }}>
-                <div>
-                  <h3 className={styles.cardTitle}>
-                    Cartera de Inversionistas Asignados
-                  </h3>
-                  <p className={styles.cardDesc}>
-                    Clientes activos bajo tu acompañamiento y estado de sus
-                    permisos operativos.
-                  </p>
-                </div>
-              </div>
-
-              <div className={styles.controlsGrid}>
-                {brokerClients.map((cli) => (
-                  <div key={cli.investor_id} className={styles.controlBox}>
-                    <div>
-                      <div className={styles.controlTitle}>{cli.name}</div>
-                      <div className={styles.controlHint}>
-                        Cliente desde:{' '}
-                        {new Date(cli.since).toLocaleDateString('es-CO')}
-                      </div>
-                    </div>
-                    <div className={styles.btnRow}>
-                      <span
-                        className={
-                          cli.trading_authorized
-                            ? styles.badgeSuccess
-                            : styles.badgeWarning
-                        }
-                      >
-                        Operación:{' '}
-                        {cli.trading_authorized ? 'Autorizada' : 'Pendiente'}
-                      </span>
-                      <span
-                        className={
-                          cli.order_review_enabled
-                            ? styles.badgeSuccess
-                            : styles.badgeWarning
-                        }
-                      >
-                        Revisión Órdenes:{' '}
-                        {cli.order_review_enabled ? 'Activa' : 'No'}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <BrokerPortalClientsTab
+              pendingRequests={pendingRequests}
+              brokerClients={brokerClients}
+              onAcceptRequest={handleBrokerAcceptRequest}
+              onDeclineRequest={handleBrokerDeclineRequest}
+            />
           )}
 
           {brokerTab === 'new-proposal' && (
-            <div className={styles.card}>
-              <div className={styles.cardHeader}>
-                <div>
-                  <h3 className={styles.cardTitle}>
-                    Estructurar y Enviar Nueva Propuesta a un Cliente
-                  </h3>
-                  <p className={styles.cardDesc}>
-                    La propuesta quedará disponible en la bandeja del
-                    inversionista para su revisión y firma con código 2FA.
-                  </p>
-                </div>
-              </div>
-
-              <div className={styles.formGrid}>
-                <div className={styles.fieldGroup}>
-                  <label className={styles.fieldLabel}>
-                    Cliente Inversionista
-                  </label>
-                  <select
-                    className={styles.inputField}
-                    value={propClientId}
-                    onChange={(e) => setPropClientId(e.target.value)}
-                  >
-                    {brokerClients.map((c) => (
-                      <option key={c.investor_id} value={c.investor_id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className={styles.fieldGroup}>
-                  <label className={styles.fieldLabel}>
-                    Símbolo (NYSE / NASDAQ)
-                  </label>
-                  <input
-                    type="text"
-                    className={styles.inputField}
-                    value={propSymbol}
-                    onChange={(e) => setPropSymbol(e.target.value)}
-                  />
-                </div>
-
-                <div className={styles.fieldGroup}>
-                  <label className={styles.fieldLabel}>Tipo de Operación</label>
-                  <select
-                    className={styles.inputField}
-                    value={propSide}
-                    onChange={(e) =>
-                      setPropSide(e.target.value as 'buy' | 'sell')
-                    }
-                  >
-                    <option value="buy">Compra</option>
-                    <option value="sell">Venta</option>
-                  </select>
-                </div>
-
-                <div className={styles.fieldGroup}>
-                  <label className={styles.fieldLabel}>
-                    Cantidad de Acciones
-                  </label>
-                  <input
-                    type="number"
-                    className={styles.inputField}
-                    value={propQty}
-                    onChange={(e) => setPropQty(e.target.value)}
-                  />
-                </div>
-
-                <div className={styles.fieldGroup}>
-                  <label className={styles.fieldLabel}>Tipo de Orden</label>
-                  <select
-                    className={styles.inputField}
-                    value={propType}
-                    onChange={(e) =>
-                      setPropType(e.target.value as 'market' | 'limit')
-                    }
-                  >
-                    <option value="limit">Orden Límite (Limit)</option>
-                    <option value="market">Orden de Mercado (Market)</option>
-                  </select>
-                </div>
-
-                {propType === 'limit' && (
-                  <div className={styles.fieldGroup}>
-                    <label className={styles.fieldLabel}>
-                      Precio Límite (USD)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      className={styles.inputField}
-                      value={propLimitPrice}
-                      onChange={(e) => setPropLimitPrice(e.target.value)}
-                    />
-                  </div>
-                )}
-              </div>
-
-              <div className={styles.btnRow}>
-                <button
-                  type="button"
-                  className={styles.primaryBtn}
-                  onClick={handleCreateBrokerProposal}
-                >
-                  Enviar Propuesta al Cliente
-                </button>
-              </div>
-            </div>
+            <BrokerPortalNewProposalTab
+              brokerClients={brokerClients}
+              onCreateProposal={handleCreateBrokerProposal}
+            />
           )}
 
           {brokerTab === 'reviews-reports' && (
-            <div className={styles.card}>
-              <div className={styles.cardHeader}>
-                <div>
-                  <h3 className={styles.cardTitle}>
-                    Bandeja de Órdenes en Revisión y Comisiones del Asesor
-                  </h3>
-                  <p className={styles.cardDesc}>
-                    Supervisa las órdenes enviadas por tus clientes y consulta
-                    el consolidado de tus comisiones devengadas.
-                  </p>
-                </div>
-              </div>
-
-              <div className={styles.controlsGrid}>
-                {pendingOrderReviews.length === 0 ? (
-                  <div className={styles.controlBox}>
-                    <div className={styles.controlTitle}>
-                      Sin órdenes pendientes de firma
-                    </div>
-                    <div className={styles.controlHint}>
-                      Todas las órdenes de tus clientes han sido revisadas.
-                    </div>
-                  </div>
-                ) : (
-                  pendingOrderReviews.map((ord) => (
-                    <div key={ord.id} className={styles.controlBox}>
-                      <div>
-                        <div className={styles.controlTitle}>
-                          {ord.side === 'buy' ? 'Compra' : 'Venta'} {ord.qty}{' '}
-                          {ord.symbol} · {ord.investor_name}
-                        </div>
-                        <div className={styles.controlHint}>
-                          Tipo: {ord.type === 'limit' ? 'Límite' : 'Mercado'} ($
-                          {ord.limit_price} USD) · Monto estimado: $
-                          {ord.notional_usd} USD
-                        </div>
-                      </div>
-                      <div className={styles.btnRow}>
-                        <button
-                          type="button"
-                          className={styles.primaryBtn}
-                          onClick={() => {
-                            setPendingOrderReviews((prev) =>
-                              prev.filter((o) => o.id !== ord.id),
-                            );
-                            setStatusToast(
-                              `Orden de ${ord.symbol} para ${ord.investor_name} aprobada.`,
-                            );
-                          }}
-                        >
-                          ✓ Aprobar Orden del Cliente
-                        </button>
-                        <button
-                          type="button"
-                          className={styles.dangerBtn}
-                          onClick={() => {
-                            setPendingOrderReviews((prev) =>
-                              prev.filter((o) => o.id !== ord.id),
-                            );
-                            setStatusToast(
-                              `Orden de ${ord.symbol} rechazada con observaciones.`,
-                            );
-                          }}
-                        >
-                          ✕ Rechazar
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                )}
-
-                <div className={styles.controlBox}>
-                  <div>
-                    <div className={styles.controlTitle}>
-                      Liquidación de Comisiones del Asesor (40% del 2% Total)
-                    </div>
-                    <div className={styles.controlHint}>
-                      Volumen gestionado en el mes:{' '}
-                      <strong>$64,572.00 USD</strong> · Comisión acumulada para
-                      el comisionista (0.8% neto): <strong>$516.58 USD</strong>.
-                    </div>
-                  </div>
-                  <div className={styles.btnRow}>
-                    <button
-                      type="button"
-                      className={styles.secondaryBtn}
-                      onClick={() =>
-                        setStatusToast(
-                          'Certificado consolidado de comisiones generado correctamente.',
-                        )
-                      }
-                    >
-                      + Generar Certificado de Comisiones
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <BrokerPortalReviewsTab
+              pendingOrderReviews={pendingOrderReviews}
+              onApproveOrder={(ord) => {
+                setPendingOrderReviews((prev) =>
+                  prev.filter((o) => o.id !== ord.id),
+                );
+                setStatusToast(
+                  tx(
+                    `Orden de ${ord.symbol} para ${ord.investor_name} aprobada.`,
+                    `${ord.symbol} order for ${ord.investor_name} approved.`,
+                  ),
+                );
+              }}
+              onRejectOrder={(ord) => {
+                setPendingOrderReviews((prev) =>
+                  prev.filter((o) => o.id !== ord.id),
+                );
+                setStatusToast(
+                  tx(
+                    `Orden de ${ord.symbol} rechazada con observaciones.`,
+                    `${ord.symbol} order rejected with feedback.`,
+                  ),
+                );
+              }}
+              onGenerateCertificate={() =>
+                setStatusToast(
+                  tx(
+                    'Certificado consolidado de comisiones generado correctamente.',
+                    'Consolidated commission statement generated.',
+                  ),
+                )
+              }
+            />
           )}
 
           {brokerTab === 'my-profile' && (
-            <div className={styles.card}>
-              <div className={styles.cardHeader}>
-                <div>
-                  <h3 className={styles.cardTitle}>
-                    Actualizar Mi Perfil Profesional en el Directorio
-                  </h3>
-                  <p className={styles.cardDesc}>
-                    Estos datos son públicos en el directorio de asesores e
-                    impulsan las recomendaciones para nuevos inversionistas.
-                  </p>
-                </div>
-              </div>
-
-              <div className={styles.formGrid}>
-                <div className={styles.fieldGroup}>
-                  <label className={styles.fieldLabel}>
-                    Especialidad Bursátil
-                  </label>
-                  <input
-                    type="text"
-                    className={styles.inputField}
-                    value={profSpecialty}
-                    onChange={(e) => setProfSpecialty(e.target.value)}
-                  />
-                </div>
-                <div className={styles.fieldGroup}>
-                  <label className={styles.fieldLabel}>
-                    Años de Experiencia (0–60)
-                  </label>
-                  <input
-                    type="number"
-                    className={styles.inputField}
-                    value={profYears}
-                    onChange={(e) => setProfYears(Number(e.target.value))}
-                  />
-                </div>
-                <div className={styles.fieldGroup}>
-                  <label className={styles.fieldLabel}>
-                    Certificaciones (separadas por coma)
-                  </label>
-                  <input
-                    type="text"
-                    className={styles.inputField}
-                    value={profCerts}
-                    onChange={(e) => setProfCerts(e.target.value)}
-                  />
-                </div>
-                <div className={styles.fieldGroup}>
-                  <label className={styles.fieldLabel}>
-                    Descripción / Biografía Profesional
-                  </label>
-                  <input
-                    type="text"
-                    className={styles.inputField}
-                    value={profDesc}
-                    onChange={(e) => setProfDesc(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className={styles.btnRow}>
-                <button
-                  type="button"
-                  className={styles.primaryBtn}
-                  onClick={handleSaveBrokerProfile}
-                >
-                  Guardar Perfil de Comisionista
-                </button>
-              </div>
-            </div>
+            <BrokerPortalProfileTab
+              onSaveProfile={() =>
+                setStatusToast(
+                  tx(
+                    'Perfil profesional de comisionista actualizado correctamente.',
+                    'Broker professional profile updated.',
+                  ),
+                )
+              }
+            />
           )}
         </>
       )}
-    </div>
+    </section>
   );
 }

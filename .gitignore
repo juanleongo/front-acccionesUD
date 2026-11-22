@@ -1,6 +1,7 @@
 node_modules/
 .next/
 .build-cache-profile-*/
+.dev-cache-backup-*/
 out/
 coverage/
 playwright-report/

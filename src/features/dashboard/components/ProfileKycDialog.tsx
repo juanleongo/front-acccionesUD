@@ -8,8 +8,9 @@ import {
   KycFields,
   marketInterestsCatalog,
 } from '@/features/registration';
+import { useLocale } from '@/lib/i18n';
 import {
-  accountStatusLabels,
+  formatAccountStatusLabel,
   formatKycStatus,
   formatUserRoles,
 } from '../dashboard-constants';
@@ -69,18 +70,23 @@ export function ProfileKycDialog({
   onSubmitKyc,
   onLogout,
 }: ProfileKycDialogProps) {
+  const { locale, tx } = useLocale();
   const countryName = user?.country
     ? (countries.find((c) => c.code === user.country)?.name ?? user.country)
     : 'Colombia';
 
-  const accountStatusLabel = user?.account_status
-    ? (accountStatusLabels[user.account_status] ?? 'Activa')
-    : 'Activa';
+  const accountStatusLabel = formatAccountStatusLabel(
+    user?.account_status,
+    locale,
+  );
 
   return (
     <dialog ref={dialogRef} className={styles.profileDialog}>
       <form method="dialog">
-        <button className={styles.modalCloseBtn} aria-label="Cerrar ventana">
+        <button
+          className={styles.modalCloseBtn}
+          aria-label={tx('Cerrar ventana', 'Close dialog')}
+        >
           <Icon name="close" size={16} />
         </button>
       </form>
@@ -91,10 +97,13 @@ export function ProfileKycDialog({
           <h2>{displayName}</h2>
           <div className={styles.profileBadges}>
             <span className={styles.profileBadgeActive}>
-              Cuenta {accountStatusLabel}
+              {tx(
+                `Cuenta ${accountStatusLabel}`,
+                `${accountStatusLabel} Account`,
+              )}
             </span>
             <span className={styles.profileBadgeRole}>
-              {formatUserRoles(user?.roles)}
+              {formatUserRoles(user?.roles, locale)}
             </span>
           </div>
         </div>
@@ -106,21 +115,22 @@ export function ProfileKycDialog({
           className={`${styles.profileTab} ${profileTab === 'info' ? styles.profileTabActive : ''}`}
           onClick={() => onChangeProfileTab('info')}
         >
-          Datos &amp; Seguridad
+          {tx('Datos & Seguridad', 'Profile & Security')}
         </button>
         <button
           type="button"
           className={`${styles.profileTab} ${profileTab === 'edit' ? styles.profileTabActive : ''}`}
           onClick={() => onChangeProfileTab('edit')}
         >
-          Editar Intereses &amp; Nivel
+          {tx('Editar Intereses & Nivel', 'Edit Interests & Level')}
         </button>
         <button
           type="button"
           className={`${styles.profileTab} ${profileTab === 'kyc' ? styles.profileTabActive : ''}`}
           onClick={() => onChangeProfileTab('kyc')}
         >
-          Trámite KYC {hasRealAccount ? '✓' : '· Pendiente'}
+          {tx('Trámite KYC', 'KYC Verification')}{' '}
+          {hasRealAccount ? '✓' : tx('· Pendiente', '· Pending')}
         </button>
       </div>
 
@@ -129,7 +139,7 @@ export function ProfileKycDialog({
           <div className={styles.profileCardsGrid}>
             <div className={styles.profileCard}>
               <span className={styles.profileCardTitle}>
-                Correo Electrónico
+                {tx('Correo Electrónico', 'Email Address')}
               </span>
               <span className={styles.profileCardValue}>
                 {user?.email ?? 'correo@ejemplo.com'}
@@ -138,7 +148,7 @@ export function ProfileKycDialog({
 
             <div className={styles.profileCard}>
               <span className={styles.profileCardTitle}>
-                Teléfono de Contacto
+                {tx('Teléfono de Contacto', 'Contact Phone')}
               </span>
               <span className={styles.profileCardValue}>
                 {user?.phone ?? '+57 300 000 0000'}
@@ -147,35 +157,41 @@ export function ProfileKycDialog({
 
             <div className={styles.profileCard}>
               <span className={styles.profileCardTitle}>
-                País de Residencia
+                {tx('País de Residencia', 'Country of Residence')}
               </span>
               <span className={styles.profileCardValue}>{countryName}</span>
             </div>
 
             <div className={styles.profileCard}>
-              <span className={styles.profileCardTitle}>Nivel de Inversor</span>
+              <span className={styles.profileCardTitle}>
+                {tx('Nivel de Inversor', 'Investor Level')}
+              </span>
               <span className={styles.profileCardValue}>
                 {user?.investor_level === 'experienced'
-                  ? 'Con experiencia (Wall Street)'
-                  : 'Principiante (Formación)'}
+                  ? tx(
+                      'Con experiencia (Wall Street)',
+                      'Experienced (Wall Street)',
+                    )
+                  : tx('Principiante (Formación)', 'Beginner (Learning mode)')}
               </span>
             </div>
 
             <div className={styles.profileCard}>
               <span className={styles.profileCardTitle}>
-                Estado KYC / Identidad
+                {tx('Estado KYC / Identidad', 'KYC / Identity Status')}
               </span>
               <span className={styles.profileCardValue}>
                 {formatKycStatus(
                   kycData?.status ?? user?.kyc_status,
                   hasRealAccount,
+                  locale,
                 )}
               </span>
             </div>
 
             <div className={styles.profileCard}>
               <span className={styles.profileCardTitle}>
-                Seguridad 2FA / MFA
+                {tx('Seguridad 2FA / MFA', '2FA / MFA Security')}
               </span>
               <span className={styles.profileCardValue}>
                 <span
@@ -185,7 +201,9 @@ export function ProfileKycDialog({
                       : styles.badgeInactiveSimple
                   }
                 >
-                  {user?.mfa_enrolled ? '● Activa' : '○ Inactiva'}
+                  {user?.mfa_enrolled
+                    ? tx('● Activa', '● Active')
+                    : tx('○ Inactiva', '○ Inactive')}
                 </span>
               </span>
             </div>
@@ -194,7 +212,10 @@ export function ProfileKycDialog({
           {!hasRealAccount && !kycMsg && (
             <div className={styles.kycInlineCallout}>
               <span>
-                Tu verificación de identidad KYC aún está pendiente de envío.
+                {tx(
+                  'Tu verificación de identidad KYC aún está pendiente de envío.',
+                  'Your KYC identity verification has not been submitted yet.',
+                )}
               </span>
               <button
                 type="button"
@@ -204,14 +225,17 @@ export function ProfileKycDialog({
                   onChangeProfileTab('kyc');
                 }}
               >
-                Completar formulario KYC →
+                {tx('Completar formulario KYC →', 'Complete KYC form →')}
               </button>
             </div>
           )}
 
           <div className={styles.profileInterestsSection}>
             <span className={styles.profileCardTitle}>
-              Sectores de Interés Bursátil Registrados
+              {tx(
+                'Sectores de Interés Bursátil Registrados',
+                'Saved Market Sectors of Interest',
+              )}
             </span>
             <div className={styles.interestsChips}>
               {user?.interests && user.interests.length > 0 ? (
@@ -222,17 +246,20 @@ export function ProfileKycDialog({
                 ))
               ) : (
                 <span className={styles.emptyInterestsText}>
-                  No has seleccionado sectores de interés aún.
+                  {tx(
+                    'No has seleccionado sectores de interés aún.',
+                    'You have not selected any sectors of interest yet.',
+                  )}
                 </span>
               )}
             </div>
           </div>
 
           <p className={styles.profileBackendHint}>
-            Tus datos de identificación personal están protegidos bajo tu perfil
-            de custodia. Puedes actualizar tu nivel de experiencia, tus sectores
-            de interés o completar tu verificación KYC en las pestañas
-            superiores.
+            {tx(
+              'Tus datos de identificación personal están protegidos bajo tu perfil de custodia. Puedes actualizar tu nivel de experiencia, tus sectores de interés o completar tu verificación KYC en las pestañas superiores.',
+              'Your personal identification records are protected under your custody profile. You can update your experience level, market interests, or complete your KYC application using the tabs above.',
+            )}
           </p>
         </>
       ) : profileTab === 'edit' ? (
@@ -253,11 +280,13 @@ export function ProfileKycDialog({
               className={styles.editorLabel}
               htmlFor="profile_investor_level"
             >
-              Nivel de Inversor
+              {tx('Nivel de Inversor', 'Investor Level')}
             </label>
             <span className={styles.editorHelp}>
-              El nivel principiante activa las guías didácticas y filtra
-              instrumentos de alto riesgo en Wall Street.
+              {tx(
+                'El nivel principiante activa las guías didácticas y filtra instrumentos de alto riesgo en Wall Street.',
+                'Beginner mode enables guided tooltips and filters high-risk Wall Street instruments.',
+              )}
             </span>
             <CustomSelect
               id="profile_investor_level"
@@ -265,11 +294,17 @@ export function ProfileKycDialog({
               options={[
                 {
                   value: 'beginner',
-                  label: 'Principiante (Con guías didácticas de apoyo)',
+                  label: tx(
+                    'Principiante (Con guías didácticas de apoyo)',
+                    'Beginner (With guided learning tooltips)',
+                  ),
                 },
                 {
                   value: 'experienced',
-                  label: 'Con experiencia (Operación activa sin restricciones)',
+                  label: tx(
+                    'Con experiencia (Operación activa sin restricciones)',
+                    'Experienced (Full unrestricted trading access)',
+                  ),
                 },
               ]}
               value={editableLevel}
@@ -281,19 +316,30 @@ export function ProfileKycDialog({
           </div>
 
           <div className={styles.editorField}>
-            <label className={styles.editorLabel}>
-              Mercados Bursátiles Principales de EE. UU.
-            </label>
-            <span className={styles.editorHelp}>
-              Selecciona las bolsas de valores que deseas priorizar en tu panel:
+            <span id="profile-exchanges-label" className={styles.editorLabel}>
+              {tx(
+                'Mercados Bursátiles Principales de EE. UU.',
+                'Primary U.S. Stock Exchanges',
+              )}
             </span>
-            <div className={`${styles.chipsGrid} ${styles.chipsGridSpaced}`}>
+            <span className={styles.editorHelp}>
+              {tx(
+                'Selecciona las bolsas de valores que deseas priorizar en tu panel:',
+                'Choose the stock exchanges to highlight in your workspace:',
+              )}
+            </span>
+            <div
+              role="group"
+              aria-labelledby="profile-exchanges-label"
+              className={`${styles.chipsGrid} ${styles.chipsGridSpaced}`}
+            >
               {['NYSE', 'NASDAQ', 'AMEX'].map((mkt) => {
                 const isSelected = editableInterests.includes(mkt);
                 return (
                   <button
                     key={mkt}
                     type="button"
+                    aria-pressed={isSelected}
                     className={`${styles.chipBtn} ${isSelected ? styles.chipBtnSelected : ''}`}
                     onClick={() => onToggleInterest(mkt)}
                   >
@@ -303,19 +349,30 @@ export function ProfileKycDialog({
               })}
             </div>
 
-            <label className={styles.editorLabel}>
-              Sectores Bursátiles de Interés
-            </label>
-            <span className={styles.editorHelp}>
-              Seleccionados: {editableInterests.length} de 20 permitidos
+            <span id="profile-sectors-label" className={styles.editorLabel}>
+              {tx(
+                'Sectores Bursátiles de Interés',
+                'Stock Sectors of Interest',
+              )}
             </span>
-            <div className={styles.chipsGrid}>
+            <span className={styles.editorHelp}>
+              {tx(
+                `Seleccionados: ${editableInterests.length} de 20 permitidos`,
+                `Selected: ${editableInterests.length} of 20 maximum`,
+              )}
+            </span>
+            <div
+              role="group"
+              aria-labelledby="profile-sectors-label"
+              className={styles.chipsGrid}
+            >
               {marketInterestsCatalog.map((cat) => {
                 const isSelected = editableInterests.includes(cat.value);
                 return (
                   <button
                     key={cat.value}
                     type="button"
+                    aria-pressed={isSelected}
                     className={`${styles.chipBtn} ${isSelected ? styles.chipBtnSelected : ''}`}
                     onClick={() => onToggleInterest(cat.value)}
                   >
@@ -334,15 +391,18 @@ export function ProfileKycDialog({
               onClick={onSavePreferences}
             >
               {savingPreferences
-                ? 'Guardando…'
-                : 'Guardar Preferencias en Cuenta'}
+                ? tx('Guardando…', 'Saving…')
+                : tx(
+                    'Guardar Preferencias en Cuenta',
+                    'Save Account Preferences',
+                  )}
             </button>
             <button
               type="button"
               className={styles.chipBtn}
               onClick={() => onChangeProfileTab('info')}
             >
-              Ver datos
+              {tx('Ver datos', 'View profile')}
             </button>
           </div>
         </div>
@@ -352,10 +412,19 @@ export function ProfileKycDialog({
             <>
               <div className={styles.profileSuccessMessage} role="status">
                 <strong>
-                  {kycMsg || '✓ Tu verificación KYC ya fue radicada.'}
+                  {kycMsg ||
+                    tx(
+                      '✓ Tu verificación KYC ya fue radicada.',
+                      '✓ Your KYC verification has been submitted.',
+                    )}
                 </strong>{' '}
-                Estado actual:{' '}
-                {formatKycStatus(kycData?.status ?? user?.kyc_status, true)}.
+                {tx('Estado actual:', 'Current status:')}{' '}
+                {formatKycStatus(
+                  kycData?.status ?? user?.kyc_status,
+                  true,
+                  locale,
+                )}
+                .
               </div>
               <div className={styles.kycModalActions}>
                 <button
@@ -363,7 +432,10 @@ export function ProfileKycDialog({
                   className={styles.primary}
                   onClick={() => onChangeProfileTab('info')}
                 >
-                  Ver resumen de mi perfil →
+                  {tx(
+                    'Ver resumen de mi perfil →',
+                    'View my profile summary →',
+                  )}
                 </button>
               </div>
             </>
@@ -389,21 +461,21 @@ export function ProfileKycDialog({
                     kycModalStep === 2 ? styles.kycStepActive : styles.kycStep
                   }
                 >
-                  1. Identidad y domicilio
+                  {tx('1. Identidad y domicilio', '1. Identity & address')}
                 </span>
                 <span
                   className={
                     kycModalStep === 3 ? styles.kycStepActive : styles.kycStep
                   }
                 >
-                  2. Perfil financiero
+                  {tx('2. Perfil financiero', '2. Financial profile')}
                 </span>
                 <span
                   className={
                     kycModalStep === 4 ? styles.kycStepActive : styles.kycStep
                   }
                 >
-                  3. Acuerdos de corretaje
+                  {tx('3. Acuerdos de corretaje', '3. Brokerage agreements')}
                 </span>
               </div>
 
@@ -425,7 +497,7 @@ export function ProfileKycDialog({
                       onChangeKycStep(kycModalStep - 1);
                     }}
                   >
-                    ← Anterior
+                    {tx('← Anterior', '← Previous')}
                   </button>
                 )}
                 <button
@@ -434,10 +506,10 @@ export function ProfileKycDialog({
                   disabled={kycBusy}
                 >
                   {kycBusy
-                    ? 'Enviando solicitud…'
+                    ? tx('Enviando solicitud…', 'Submitting application…')
                     : kycModalStep < 4
-                      ? 'Continuar →'
-                      : 'Radicar solicitud KYC'}
+                      ? tx('Continuar →', 'Continue →')
+                      : tx('Radicar solicitud KYC', 'Submit KYC application')}
                 </button>
               </div>
             </form>
@@ -451,7 +523,7 @@ export function ProfileKycDialog({
           className={styles.logoutActionBtn}
           onClick={onLogout}
         >
-          Cerrar Sesión
+          {tx('Cerrar Sesión', 'Sign Out')}
         </button>
       </div>
     </dialog>

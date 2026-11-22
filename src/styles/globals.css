@@ -1,44 +1,119 @@
 @import './tokens.css';
 
-* {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
+
 html {
   scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
 }
+
 body {
   margin: 0;
+  min-height: 100dvh;
   background: var(--color-background);
   color: var(--color-text);
   font-family: var(--font-family-body);
   font-size: var(--font-size-base);
   line-height: var(--line-height-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
+
+h1,
+h2,
+h3,
+h4 {
+  color: var(--color-text);
+  font-family: var(--font-family-body);
+  letter-spacing: var(--letter-spacing-tight);
+  line-height: var(--line-height-tight);
+  overflow-wrap: break-word;
+}
+
 h1 {
   font-size: var(--font-size-title);
-  line-height: 1.2;
+  font-weight: 800;
   margin-block: var(--space-2) var(--space-4);
 }
-p {
+
+h2 {
+  font-size: var(--font-size-2xl);
+  font-weight: 800;
+  margin-block: var(--space-2) var(--space-3);
+}
+
+h3 {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  line-height: var(--line-height-snug);
   margin-block: var(--space-2);
 }
+
+h4 {
+  font-size: var(--font-size-base);
+  font-weight: 700;
+  line-height: var(--line-height-snug);
+  margin-block: var(--space-1);
+}
+
+p {
+  margin-block: var(--space-2);
+  color: var(--color-text-secondary);
+}
+
+small {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-subtle);
+}
+
 a {
   color: var(--color-primary);
+  text-underline-offset: 0.2em;
 }
+
+img,
+svg {
+  max-width: 100%;
+}
+
 button,
 input,
 select,
 textarea {
   font: inherit;
+  color: inherit;
 }
+
+dialog {
+  max-width: calc(100vw - 1.5rem);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-modal-gradient);
+  color: var(--color-text);
+  box-shadow: var(--shadow-modal);
+}
+
+dialog::backdrop {
+  background: var(--color-backdrop);
+  backdrop-filter: var(--blur-backdrop);
+  -webkit-backdrop-filter: var(--blur-backdrop);
+}
+
 :focus-visible {
   outline: var(--focus-width) solid var(--color-focus);
   outline-offset: var(--focus-offset);
 }
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
   }
 }

@@ -2,18 +2,23 @@
 
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { CustomSelect } from '@/components/ui/CustomSelect';
 import { LoadingState } from '@/components/ui/LoadingState';
+import { QUERY_STALE_TIMES, queryKeys } from '@/lib/api';
+import { useLocale } from '@/lib/i18n';
 import { ActiveOrdersTable } from './ActiveOrdersTable';
 import { PositionsCard } from './components/PositionsCard';
 import { OrderDetails } from './OrderDetails';
 import { OrderForm } from './OrderForm';
 import { listOrders, getPositions, type OrderDetail } from './trading-api';
-import { ORDER_STATUS_OPTIONS } from './trading-labels';
+import { getOrderStatusOptions } from './trading-labels';
 import styles from './trading.module.css';
 
 export function TradingTerminal({
   initialSymbol,
 }: { initialSymbol?: string | undefined } = {}) {
+  const { locale, tx } = useLocale();
+  const statusOptions = getOrderStatusOptions(locale);
   const client = useQueryClient();
   const [selected, setSelected] = useState<string | null>(null);
   const [editing, setEditing] = useState<OrderDetail | undefined>();
@@ -30,21 +35,23 @@ export function TradingTerminal({
     queryFn: ({ signal }) =>
       listOrders(cursor, symbol, status, signal, fromDate, toDate),
     enabled: !invalidDates,
+    staleTime: QUERY_STALE_TIMES.realtime,
     retry: false,
     refetchInterval: 15000,
   });
 
   const positions = useQuery({
-    queryKey: ['trading-positions'],
+    queryKey: queryKeys.orders.positions(),
     queryFn: ({ signal }) => getPositions(signal),
+    staleTime: QUERY_STALE_TIMES.realtime,
     retry: false,
     refetchInterval: 15000,
   });
 
   function refresh() {
-    void client.invalidateQueries({ queryKey: ['orders'] });
-    void client.invalidateQueries({ queryKey: ['trading-positions'] });
-    void client.invalidateQueries({ queryKey: ['wallet'] });
+    void client.invalidateQueries({ queryKey: queryKeys.orders.all });
+    void client.invalidateQueries({ queryKey: queryKeys.orders.positions() });
+    void client.invalidateQueries({ queryKey: queryKeys.wallet.all });
   }
 
   return (
@@ -71,10 +78,14 @@ export function TradingTerminal({
       <section className={styles.card}>
         <div className={styles.cardHeader}>
           <div>
-            <h2 className={styles.cardTitle}>Órdenes y ejecuciones</h2>
+            <h2 className={styles.cardTitle}>
+              {tx('Órdenes y ejecuciones', 'Orders & executions')}
+            </h2>
             <p className={styles.cardSubtitle}>
-              Seguimiento de órdenes activas, programadas, devueltas e historial
-              reciente.
+              {tx(
+                'Seguimiento de órdenes activas, programadas, devueltas e historial reciente.',
+                'Track active, scheduled, returned orders and recent history.',
+              )}
             </p>
           </div>
           <button
@@ -83,16 +94,18 @@ export function TradingTerminal({
             disabled={invalidDates || orders.isFetching}
             onClick={refresh}
           >
-            Actualizar
+            {tx('Actualizar', 'Refresh')}
           </button>
         </div>
 
         <div className={styles.filterBar}>
           <label className={styles.fieldGroup}>
-            Filtrar por símbolo
+            <span className={styles.fieldLabel}>
+              {tx('Filtrar por símbolo', 'Filter by symbol')}
+            </span>
             <input
               className={styles.input}
-              placeholder="Ej. AAPL, MSFT…"
+              placeholder={tx('Ej. AAPL, MSFT…', 'E.g. AAPL, MSFT…')}
               value={symbol}
               onChange={(e) => {
                 setSymbol(e.target.value.toUpperCase());
@@ -100,26 +113,25 @@ export function TradingTerminal({
               }}
             />
           </label>
-          <label className={styles.fieldGroup}>
-            Estado
-            <select
-              className={styles.select}
+          <div className={styles.fieldGroup}>
+            <label htmlFor="orders-filter-status" className={styles.fieldLabel}>
+              {tx('Estado', 'Status')}
+            </label>
+            <CustomSelect
+              id="orders-filter-status"
               value={status}
-              onChange={(e) => {
-                setStatus(e.target.value);
+              onChange={(val) => {
+                setStatus(val);
                 setCursors(['']);
               }}
-            >
-              <option value="">Todos</option>
-              {ORDER_STATUS_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
+              options={[
+                { value: '', label: tx('Todos', 'All') },
+                ...statusOptions,
+              ]}
+            />
+          </div>
           <label className={styles.fieldGroup}>
-            Desde
+            {tx('Desde', 'From')}
             <input
               className={styles.input}
               type="date"
@@ -132,7 +144,7 @@ export function TradingTerminal({
             />
           </label>
           <label className={styles.fieldGroup}>
-            Hasta
+            {tx('Hasta', 'To')}
             <input
               className={styles.input}
               type="date"
@@ -154,30 +166,41 @@ export function TradingTerminal({
               setCursors(['']);
             }}
           >
-            Limpiar fechas
+            {tx('Limpiar fechas', 'Clear dates')}
           </button>
         </div>
         <p className={styles.cardSubtitle}>
-          Fecha de creación de la orden · Hora de Colombia (UTC−5). Incluye
-          ambos días.
+          {tx(
+            'Fecha de creación de la orden · Hora de Colombia (UTC−5). Incluye ambos días.',
+            'Order creation date · Colombia time (UTC−5). Both dates included.',
+          )}
         </p>
         {invalidDates && (
           <p role="alert" className={styles.alertError}>
-            La fecha Desde no puede ser posterior a Hasta.
+            {tx(
+              'La fecha Desde no puede ser posterior a Hasta.',
+              'From date cannot be after To date.',
+            )}
           </p>
         )}
 
         {!invalidDates && orders.isPending && (
           <LoadingState
             mode="compact"
-            label="Consultando órdenes…"
-            detail="Sincronizando órdenes activas e historial reciente."
+            label={tx('Consultando órdenes…', 'Loading orders…')}
+            detail={tx(
+              'Sincronizando órdenes activas e historial reciente.',
+              'Syncing active orders and recent history.',
+            )}
           />
         )}
 
         {orders.isError && (
           <p role="alert" className={styles.alertError}>
-            No se pudieron consultar las órdenes.
+            {tx(
+              'No se pudieron consultar las órdenes.',
+              'Could not load orders.',
+            )}
           </p>
         )}
 
@@ -195,10 +218,10 @@ export function TradingTerminal({
             disabled={invalidDates || cursors.length === 1 || orders.isFetching}
             onClick={() => setCursors((previous) => previous.slice(0, -1))}
           >
-            Anterior
+            {tx('Anterior', 'Previous')}
           </button>
           <span className={styles.pageLabel}>
-            Página {cursors.length} · Máximo 10 órdenes
+            {tx(`Página ${cursors.length}`, `Page ${cursors.length}`)}
           </span>
           <button
             type="button"
@@ -214,7 +237,7 @@ export function TradingTerminal({
                 ]);
             }}
           >
-            Siguiente
+            {tx('Siguiente', 'Next')}
           </button>
         </div>
       </section>

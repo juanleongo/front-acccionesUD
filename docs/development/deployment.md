@@ -31,6 +31,30 @@ un servidor de producción que esté usando ese artefacto. No es una instalació
 fría completa: las cachés del sistema operativo y de npm siguen disponibles.
 Comparar mediciones en el mismo runner, con las mismas versiones y recursos.
 
+## Diagnóstico de navegación en desarrollo
+
+`Failed to fetch RSC payload` significa que el navegador no pudo descargar la
+respuesta de navegación de Next. No identifica por sí solo un fallo de FastAPI,
+Alpaca ni de la base de datos. Revisar primero la petición `?_rsc=…` en Network,
+el proceso de Next y `.next/dev/logs/next-development.log`. No borrar `.next`
+mientras un proceso la esté utilizando ni ocultar el error de consola.
+
+En la revisión local del 21/11/2026, Next registró un disco lento (517 ms en su
+comprobación) y una escritura de caché de 26,4 s durante la primera compilación
+de la portada. El proceso seguía activo y las navegaciones posteriores recibieron
+RSC 200; no se pudo reproducir el corte de red original. Estos datos evidencian
+latencia de desarrollo, pero no prueban la causa exacta de la petición fallida.
+
+Los enlaces de recuperación de sesión abren un documento nuevo y desactivan su
+prefetch para no depender del router RSC que estaba activo al expirar la sesión.
+Conservan las preferencias de idioma y tema. Una prueba E2E bloquea expresamente
+RSC y comprueba que ambos destinos siguen abriendo mediante HTML 200.
+
+Para revisar la aplicación sin compilaciones por visita, ejecutar `npm run build`
+y después `npm run start` en un puerto libre. `npm run test:production` comprueba
+automáticamente el artefacto en un puerto independiente; `npm run dev` conserva
+la compilación bajo demanda para editar el código.
+
 ## Artefacto y configuración
 
 El proyecto usa un servidor Node, no una exportación estática. La base operativa

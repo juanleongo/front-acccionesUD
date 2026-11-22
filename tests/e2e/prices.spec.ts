@@ -60,6 +60,9 @@ test('grafica cierres paginados y cambia el período sin inventar precios', asyn
                 timestamp: next
                   ? '2026-01-03T16:00:00Z'
                   : '2026-01-02T16:00:00Z',
+                open: next ? '98.5' : '99',
+                high: next ? '99.2' : '101',
+                low: next ? '96.1' : '98.5',
                 close: next ? '96.84' : '100',
               },
             ],
@@ -74,20 +77,21 @@ test('grafica cierres paginados y cambia el período sin inventar precios', asyn
   await expect(select).toHaveValue('ABC');
   await select.selectOption('SPY');
   await expect(
-    page.getByRole('img', { name: /Evolución de SPY/ }),
+    page.getByRole('img', { name: /Histórico de SPY/ }),
   ).toBeVisible();
   await expect(
     page.locator('article[data-direction="down"] strong'),
   ).toContainText(/3,16/);
-  await expect(page.getByLabel('Escala de precios')).toContainText('96,84');
-  const graph = page.getByRole('img', { name: /Evolución de SPY/ });
-  const box = await graph.boundingBox();
-  await graph.hover({ position: { x: 2, y: 60 } });
-  await expect(page.getByRole('tooltip')).toContainText('100 USD');
-  await graph.hover({ position: { x: Math.floor(box!.width) - 2, y: 60 } });
-  await expect(page.getByRole('tooltip')).toContainText('96,84 USD');
-  await select.hover();
-  await expect(page.getByRole('tooltip')).toHaveCount(0);
+  const graph = page.getByRole('img', { name: /Histórico de SPY/ });
+  await graph.focus();
+  await graph.press('ArrowLeft');
+  await expect(page.getByLabel('Lectura del gráfico')).toContainText(
+    'Cierre 100',
+  );
+  await graph.press('ArrowRight');
+  await expect(page.getByLabel('Lectura del gráfico')).toContainText(
+    'Cierre 96,84',
+  );
   await page.getByRole('button', { name: '1D', exact: true }).click();
   await expect(
     page.getByText('Sin precios disponibles para este período.'),

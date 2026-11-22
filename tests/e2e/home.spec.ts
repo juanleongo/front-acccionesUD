@@ -4,7 +4,7 @@ test('la portada enlaza al explorador y al registro móvil', async ({
 }) => {
   await page.goto('/');
   await page.getByRole('link', { name: 'Explorar mercados' }).click();
-  await expect(page).toHaveURL(/\/markets$/);
+  await expect(page).toHaveURL(/\/login$/);
   await page.goto('/');
   await page.setViewportSize({ width: 375, height: 812 });
   await page.getByRole('button', { name: 'Abrir menú' }).click();

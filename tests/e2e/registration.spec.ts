@@ -220,6 +220,9 @@ for (const broker of [false, true]) {
       await page
         .getByRole('button', { name: 'Verificar', exact: true })
         .click();
+      await expect(page.getByText('XYZ1234567')).toBeVisible();
+      await page.getByRole('button', { name: 'Continuar al panel' }).click();
+      await expect(page.getByText('XYZ1234567')).toHaveCount(0);
       if (!broker) {
         await expect(
           page.getByText(/La solicitud KYC fue rechazada/),
@@ -234,9 +237,6 @@ for (const broker of [false, true]) {
       await expect(page).toHaveURL(/\/dashboard$/);
       expect(submissions).toBe(broker ? 0 : 2);
       expect(attempts).toBe(2);
-      await expect(page.getByText('XYZ1234567')).toBeVisible();
-      await page.getByRole('button', { name: 'Ya guardé los códigos' }).click();
-      await expect(page.getByText('XYZ1234567')).toHaveCount(0);
     },
   );
 }

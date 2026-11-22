@@ -2,12 +2,15 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from '@/components/ui/Icon';
+import { useLocale } from '@/lib/i18n';
 import {
   formatSpanishDate,
   getDaysInMonth,
   getFirstWeekdayMondayStart,
+  MONTHS_EN,
   MONTHS_ES,
   validateBirthDateAge,
+  WEEKDAYS_EN,
   WEEKDAYS_ES,
 } from '../kyc-catalog';
 import styles from '../registration.module.css';
@@ -18,12 +21,15 @@ export interface BirthDatePickerProps {
   onChange: (nextDob: string) => void;
 }
 
-const MONTH_OPTIONS = MONTHS_ES.map((m, idx) => ({
-  value: String(idx),
-  label: m,
-}));
-
 export function BirthDatePicker({ value, onChange }: BirthDatePickerProps) {
+  const { locale, tx } = useLocale();
+  const monthOptions = (locale === 'en' ? MONTHS_EN : MONTHS_ES).map(
+    (m, idx) => ({
+      value: String(idx),
+      label: m,
+    }),
+  );
+  const weekdays = locale === 'en' ? WEEKDAYS_EN : WEEKDAYS_ES;
   const currentYear = new Date().getFullYear();
   const maxAdultYear = currentYear - 18;
   const minAdultYear = currentYear - 100;
@@ -32,6 +38,7 @@ export function BirthDatePicker({ value, onChange }: BirthDatePickerProps) {
   const [viewYear, setViewYear] = useState(maxAdultYear - 4);
   const [viewMonth, setViewMonth] = useState(0);
   const calendarRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!calendarOpen) return;
@@ -43,8 +50,18 @@ export function BirthDatePicker({ value, onChange }: BirthDatePickerProps) {
         setCalendarOpen(false);
       }
     }
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setCalendarOpen(false);
+        triggerRef.current?.focus();
+      }
+    }
     document.addEventListener('mousedown', handleOutside);
-    return () => document.removeEventListener('mousedown', handleOutside);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleOutside);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
   }, [calendarOpen]);
 
   const yearOptions: { value: string; label: string }[] = [];
@@ -65,7 +82,7 @@ export function BirthDatePicker({ value, onChange }: BirthDatePickerProps) {
   return (
     <div className={styles.field} ref={calendarRef}>
       <label className={styles.fieldLabel} htmlFor="kyc_dob">
-        Fecha de nacimiento
+        {tx('Fecha de nacimiento', 'Date of birth')}
       </label>
       <div className={styles.customDateWrapper}>
         <input
@@ -82,12 +99,13 @@ export function BirthDatePicker({ value, onChange }: BirthDatePickerProps) {
               setViewMonth(Number(match[2]) - 1);
             }
           }}
-          placeholder="AAAA-MM-DD"
+          placeholder={tx('AAAA-MM-DD', 'YYYY-MM-DD')}
           className={styles.srOnly}
           tabIndex={-1}
           required
         />
         <button
+          ref={triggerRef}
           type="button"
           className={`${styles.customDateTrigger} ${
             calendarOpen ? styles.customDateTriggerOpen : ''
@@ -100,7 +118,9 @@ export function BirthDatePicker({ value, onChange }: BirthDatePickerProps) {
               value ? styles.customDateValue : styles.customDatePlaceholder
             }
           >
-            {value ? formatSpanishDate(value) : 'Selecciona fecha (+18 años)'}
+            {value
+              ? formatSpanishDate(value, locale)
+              : tx('Selecciona fecha (+18 años)', 'Select date (+18 years)')}
           </span>
           <span className={styles.customDateIcon} aria-hidden="true">
             <Icon name="calendar" size={16} />
@@ -111,18 +131,21 @@ export function BirthDatePicker({ value, onChange }: BirthDatePickerProps) {
           <div
             className={styles.customCalendarPopover}
             role="dialog"
-            aria-label="Selector de fecha de nacimiento"
+            aria-label={tx(
+              'Calendario selector de nacimiento',
+              'Birth calendar picker',
+            )}
           >
             <div className={styles.customCalendarHeader}>
               <CustomSelect
                 id="calendar_month_select"
                 name="calendar_month"
-                options={MONTH_OPTIONS}
+                options={monthOptions}
                 value={String(viewMonth)}
                 onChange={(next) => setViewMonth(Number(next))}
                 compact
                 searchable={false}
-                ariaLabel="Mes de nacimiento"
+                ariaLabel={tx('Mes de nacimiento', 'Birth month')}
               />
               <CustomSelect
                 id="calendar_year_select"
@@ -132,12 +155,12 @@ export function BirthDatePicker({ value, onChange }: BirthDatePickerProps) {
                 onChange={(next) => setViewYear(Number(next))}
                 compact
                 searchable
-                ariaLabel="Año de nacimiento"
+                ariaLabel={tx('Año de nacimiento', 'Birth year')}
               />
             </div>
 
             <div className={styles.customCalendarWeekdays}>
-              {WEEKDAYS_ES.map((wd) => (
+              {weekdays.map((wd) => (
                 <span key={wd} className={styles.customCalendarWeekday}>
                   {wd}
                 </span>
@@ -175,14 +198,19 @@ export function BirthDatePicker({ value, onChange }: BirthDatePickerProps) {
             </div>
 
             <div className={styles.customCalendarFooter}>
-              <span>Requisito legal: Mayor de 18 años</span>
+              <span>
+                {tx(
+                  'Requisito legal: Mayor de 18 años',
+                  'Legal requirement: Age 18+',
+                )}
+              </span>
               {value ? (
                 <button
                   type="button"
                   className={styles.customCalendarClearBtn}
                   onClick={() => onChange('')}
                 >
-                  Limpiar
+                  {tx('Limpiar', 'Clear')}
                 </button>
               ) : null}
             </div>

@@ -1,5 +1,6 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import {
   useEffect,
@@ -9,21 +10,25 @@ import {
   type FormEvent,
 } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { LoadingState } from '@/components/ui/LoadingState';
 import { SessionClosedOverlay } from '@/components/ui/SessionClosedOverlay';
-import { BrokersHub } from '@/features/brokers';
-import { DashboardRecoveryCodes } from '@/features/login';
-import { Markets } from '@/features/markets';
-import { PortfolioDashboard } from '@/features/portfolio';
+import { DashboardRecoveryCodes } from '@/features/login/client';
 import {
   formatKycSubmissionError,
   readKyc,
   validateBirthDateAge,
 } from '@/features/registration';
-import { TradingTerminal } from '@/features/trading';
-import { fetchWalletBalance, WalletDashboard } from '@/features/wallet';
-import { ApiError, subscribeSessionExpired } from '@/lib/api';
+import { fetchWalletBalance } from '@/features/wallet';
+import {
+  ApiError,
+  QUERY_STALE_TIMES,
+  queryKeys,
+  subscribeSessionExpired,
+} from '@/lib/api';
 import { formatPersonName } from '@/lib/format-person-name';
-import { DashboardAdvisorsGallery } from './components/DashboardAdvisorsGallery';
+import { formatUsd } from '@/lib/formatters';
+import { useLocale } from '@/lib/i18n';
+import { toggleDocumentTheme } from '@/lib/theme';
 import { DashboardHeader } from './components/DashboardHeader';
 import { DashboardOverviewSection } from './components/DashboardOverviewSection';
 import { DashboardSidebar } from './components/DashboardSidebar';
@@ -47,6 +52,52 @@ import styles from './dashboard.module.css';
 
 export type { DashboardSection } from './dashboard-constants';
 
+function DashboardTabLoading() {
+  const { tx } = useLocale();
+  return (
+    <LoadingState
+      label={tx('Cargando módulo…', 'Loading workspace module…')}
+      detail={tx(
+        'Preparando vista y datos en tiempo real.',
+        'Preparing view and real-time data.',
+      )}
+    />
+  );
+}
+
+const DynamicMarkets = dynamic(
+  () => import('@/features/markets').then((mod) => mod.Markets),
+  { loading: () => <DashboardTabLoading /> },
+);
+
+const DynamicTradingTerminal = dynamic(
+  () => import('@/features/trading').then((mod) => mod.TradingTerminal),
+  { loading: () => <DashboardTabLoading /> },
+);
+
+const DynamicPortfolioDashboard = dynamic(
+  () => import('@/features/portfolio').then((mod) => mod.PortfolioDashboard),
+  { loading: () => <DashboardTabLoading /> },
+);
+
+const DynamicWalletDashboard = dynamic(
+  () => import('@/features/wallet').then((mod) => mod.WalletDashboard),
+  { loading: () => <DashboardTabLoading /> },
+);
+
+const DynamicBrokersHub = dynamic(
+  () => import('@/features/brokers').then((mod) => mod.BrokersHub),
+  { loading: () => <DashboardTabLoading /> },
+);
+
+const DynamicAdvisorsGallery = dynamic(
+  () =>
+    import('./components/DashboardAdvisorsGallery').then(
+      (mod) => mod.DashboardAdvisorsGallery,
+    ),
+  { loading: () => <DashboardTabLoading /> },
+);
+
 function subscribeMobile(callback: () => void) {
   const query = window.matchMedia('(max-width: 64rem)');
   query.addEventListener('change', callback);
@@ -63,6 +114,7 @@ export function Dashboard({
   initialSection?: DashboardSection;
 } = {}) {
   const router = useRouter();
+  const { tx } = useLocale();
   const mobile = useSyncExternalStore(subscribeMobile, isMobile, () => false);
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -102,21 +154,24 @@ export function Dashboard({
   const queryClient = useQueryClient();
 
   const userQuery = useQuery({
-    queryKey: ['users', 'me'],
+    queryKey: queryKeys.users.me(),
     queryFn: ({ signal }) => getCurrentUser(signal),
+    staleTime: QUERY_STALE_TIMES.session,
     retry: false,
   });
   const user = localUser ?? userQuery.data;
 
   const kycQuery = useQuery({
-    queryKey: ['kyc', 'status'],
+    queryKey: queryKeys.kyc.status(),
     queryFn: ({ signal }) => fetchKycStatus(signal),
+    staleTime: QUERY_STALE_TIMES.session,
     retry: false,
   });
 
   const walletQuery = useQuery({
-    queryKey: ['wallet', 'balances', 'summary'],
+    queryKey: queryKeys.wallet.summary(),
     queryFn: ({ signal }) => fetchWalletBalance(signal),
+    staleTime: QUERY_STALE_TIMES.realtime,
     retry: false,
   });
 
@@ -168,14 +223,11 @@ export function Dashboard({
     });
   }, [queryClient]);
   const headerAccountTotal = realWallet
-    ? `$${(
+    ? formatUsd(
         realWallet.available_balance_usd +
-        realWallet.reserved_balance_usd +
-        realWallet.invested_equity_usd
-      ).toLocaleString('en-US', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      })}`
+          realWallet.reserved_balance_usd +
+          realWallet.invested_equity_usd,
+      )
     : hasRealAccount || user
       ? '$0.00'
       : dashboardPreview.accountValue;
@@ -215,7 +267,12 @@ export function Dashboard({
   async function handleSavePreferences(e: FormEvent) {
     e.preventDefault();
     if (editableInterests.length === 0) {
-      setSaveError('Selecciona al menos un interés bursátil.');
+      setSaveError(
+        tx(
+          'Selecciona al menos un interés bursátil.',
+          'Select at least one market interest.',
+        ),
+      );
       return;
     }
     setSavingPreferences(true);
@@ -227,7 +284,10 @@ export function Dashboard({
         level: editableLevel,
       });
       setSaveSuccess(
-        '¡Preferencias e intereses actualizados con éxito en tu cuenta!',
+        tx(
+          '¡Preferencias e intereses actualizados con éxito en tu cuenta!',
+          'Your preferences and interests have been updated!',
+        ),
       );
       if (user) {
         setLocalUser({
@@ -239,11 +299,17 @@ export function Dashboard({
     } catch (cause) {
       if (cause instanceof ApiError && cause.metadata.status === 422) {
         setSaveError(
-          'Algunas preferencias seleccionadas aún no están habilitadas en el catálogo activo. Selecciona bolsas principales (NYSE, NASDAQ, AMEX) para guardar.',
+          tx(
+            'Algunas preferencias seleccionadas aún no están habilitadas en el catálogo activo. Selecciona bolsas principales (NYSE, NASDAQ, AMEX) para guardar.',
+            'Some selected preferences are not enabled in the active catalog yet. Choose primary exchanges (NYSE, NASDAQ, AMEX) to save.',
+          ),
         );
       } else {
         setSaveError(
-          'No se pudieron guardar las preferencias en este momento. Inténtalo de nuevo.',
+          tx(
+            'No se pudieron guardar las preferencias en este momento. Inténtalo de nuevo.',
+            'Could not save preferences right now. Please try again.',
+          ),
         );
       }
     } finally {
@@ -262,7 +328,10 @@ export function Dashboard({
     >('input,select,textarea')) {
       if (!control.closest('[hidden]') && !control.checkValidity()) {
         setKycErr(
-          'Completa todos los campos obligatorios de este paso antes de continuar.',
+          tx(
+            'Completa todos los campos obligatorios de este paso antes de continuar.',
+            'Please fill in all required fields for this step before continuing.',
+          ),
         );
         return;
       }
@@ -277,7 +346,12 @@ export function Dashboard({
         return;
       }
       if (!data.get('state') || !data.get('city')) {
-        setKycErr('Selecciona tu departamento/estado y ciudad.');
+        setKycErr(
+          tx(
+            'Selecciona tu departamento/estado y ciudad.',
+            'Select your state/region and city.',
+          ),
+        );
         return;
       }
       setKycModalStep(3);
@@ -306,7 +380,10 @@ export function Dashboard({
         setKycErr(
           cause instanceof Error
             ? cause.message
-            : 'Revisa tu perfil financiero.',
+            : tx(
+                'Revisa tu perfil financiero.',
+                'Review your financial profile.',
+              ),
         );
         return;
       }
@@ -321,7 +398,7 @@ export function Dashboard({
       setKycErr(
         cause instanceof Error
           ? cause.message
-          : 'Revisa los datos del trámite KYC.',
+          : tx('Revisa los datos del trámite KYC.', 'Review your KYC details.'),
       );
       return;
     }
@@ -330,15 +407,18 @@ export function Dashboard({
     try {
       const res = await submitKycApplication(payload);
       setKycMsg(
-        '¡Trámite KYC radicado exitosamente! Tu solicitud quedó registrada y en proceso de validación.',
+        tx(
+          '¡Trámite KYC radicado exitosamente! Tu solicitud quedó registrada y en proceso de validación.',
+          'KYC application submitted! Your verification is now registered and pending review.',
+        ),
       );
       setLocalUser((prev) =>
         prev ? { ...prev, kyc_status: res.status } : null,
       );
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['kyc'] }),
-        queryClient.invalidateQueries({ queryKey: ['users'] }),
-        queryClient.invalidateQueries({ queryKey: ['wallet'] }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.kyc.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.users.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.wallet.all }),
       ]);
       await Promise.all([
         kycQuery.refetch(),
@@ -353,7 +433,10 @@ export function Dashboard({
               cause.metadata.invalidFields,
               payload,
             )
-          : 'No se pudo enviar la solicitud KYC al servidor.',
+          : tx(
+              'No se pudo enviar la solicitud KYC al servidor.',
+              'Could not submit the KYC application to the server.',
+            ),
       );
     } finally {
       setKycBusy(false);
@@ -373,14 +456,7 @@ export function Dashboard({
   }
 
   function toggleTheme() {
-    const value =
-      document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
-    document.documentElement.dataset.theme = value;
-    try {
-      localStorage.setItem('acciones_ud_theme', value);
-    } catch {
-      /* Preferencia opcional. */
-    }
+    toggleDocumentTheme();
   }
 
   function closeMenu() {
@@ -412,12 +488,12 @@ export function Dashboard({
   return (
     <div className={`${styles.dashboard} ${collapsed ? styles.collapsed : ''}`}>
       <a className={styles.skip} href="#dashboard-content">
-        Saltar al contenido
+        {tx('Saltar al contenido', 'Skip to content')}
       </a>
       {mobileOpen && (
         <button
           className={styles.backdrop}
-          aria-label="Cerrar navegación"
+          aria-label={tx('Cerrar navegación', 'Close navigation')}
           onClick={closeMenu}
         />
       )}
@@ -479,27 +555,29 @@ export function Dashboard({
             />
           )}
 
-          {activeSection === 'markets' && <Markets />}
+          {activeSection === 'markets' && <DynamicMarkets />}
 
           {activeSection === 'orders' && (
-            <TradingTerminal initialSymbol={orderSymbol} />
+            <DynamicTradingTerminal initialSymbol={orderSymbol} />
           )}
 
           {activeSection === 'portfolio' && (
-            <PortfolioDashboard onNavigateToOrder={startOrderForSymbol} />
+            <DynamicPortfolioDashboard
+              onNavigateToOrder={startOrderForSymbol}
+            />
           )}
 
-          {activeSection === 'funds' && <WalletDashboard />}
+          {activeSection === 'funds' && <DynamicWalletDashboard />}
 
           {activeSection === 'advisors' && (
             <div>
               <div className={styles.sectionSpacing}>
-                <BrokersHub
+                <DynamicBrokersHub
                   {...(user?.roles ? { userRoles: user.roles } : {})}
                   onNavigateToOrder={startOrderForSymbol}
                 />
               </div>
-              <DashboardAdvisorsGallery onNavigate={navigateToSection} />
+              <DynamicAdvisorsGallery onNavigate={navigateToSection} />
             </div>
           )}
         </main>

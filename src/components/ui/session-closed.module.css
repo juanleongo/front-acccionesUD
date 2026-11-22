@@ -5,30 +5,24 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1.5rem;
-  background:
-    radial-gradient(
-      circle at 50% 35%,
-      rgba(56, 75, 255, 0.16),
-      rgba(6, 9, 15, 0.94) 60%
-    ),
-    #06090f;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  padding: clamp(0.75rem, 3vw, 1.5rem);
+  background: var(--color-backdrop-strong);
+  backdrop-filter: var(--blur-backdrop-strong);
+  -webkit-backdrop-filter: var(--blur-backdrop-strong);
   animation: backdropFadeIn 200ms ease-out;
 }
 
 .card {
   position: relative;
   width: min(100%, 29.5rem);
-  padding: 2.25rem 2rem;
-  border-radius: 1.25rem;
+  max-height: calc(100dvh - 1.5rem);
+  overflow-y: auto;
+  padding: clamp(1.5rem, 4vw, 2.25rem) clamp(1.15rem, 4vw, 2rem);
+  border-radius: var(--radius-2xl);
   border: 1px solid var(--color-border-strong);
-  background:
-    radial-gradient(circle at 50% 0%, rgba(56, 75, 255, 0.16), transparent 58%),
-    var(--color-surface);
+  background: var(--color-modal-gradient);
   color: var(--color-text);
-  box-shadow: 0 28px 64px -18px rgba(0, 0, 0, 0.72);
+  box-shadow: var(--shadow-modal);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -74,17 +68,18 @@
 
 .title {
   margin: 0;
-  font-size: 1.45rem;
+  font-size: clamp(1.35rem, 3.5vw, 1.65rem);
   font-weight: 800;
   line-height: 1.25;
-  letter-spacing: -0.02em;
+  letter-spacing: var(--letter-spacing-tight);
   color: var(--color-text);
+  overflow-wrap: anywhere;
 }
 
 .message {
   margin: 0;
   font-size: 0.94rem;
-  line-height: 1.55;
+  line-height: 1.65;
   color: var(--color-text-muted);
   max-width: 24rem;
 }
@@ -94,7 +89,7 @@
   flex-direction: column;
   width: 100%;
   gap: 0.65rem;
-  margin-top: 0.5rem;
+  margin-top: 0.75rem;
 }
 
 .primaryAction,
@@ -119,7 +114,7 @@
   background: var(--color-button);
   color: var(--color-on-button);
   border: 1px solid transparent;
-  box-shadow: 0 10px 24px -10px rgba(56, 75, 255, 0.7);
+  box-shadow: var(--shadow-primary-md);
 }
 
 .primaryAction:hover {

@@ -1,6 +1,8 @@
 'use client';
 
 import { Icon } from '@/components/ui/Icon';
+import { formatDecimalNumber } from '@/lib/formatters';
+import { useLocale } from '@/lib/i18n';
 import type { PendingBrokerItem } from '../admin-api';
 import styles from '../admin.module.css';
 
@@ -21,6 +23,7 @@ export function AdminKpiSection({
   onViewAllBrokers,
   onActivateBroker,
 }: AdminKpiSectionProps) {
+  const { locale, tx } = useLocale();
   const pendingBrokers = brokers.filter(
     (b) => b.status === 'pending_broker_activation',
   );
@@ -28,10 +31,18 @@ export function AdminKpiSection({
   return (
     <div>
       <div className={styles.pageHeader}>
-        <h1>Resumen de administración</h1>
+        <span className={styles.pageEyebrow}>
+          {tx(
+            'Consola Ejecutiva · Wall Street',
+            'Executive Console · Wall Street',
+          )}
+        </span>
+        <h1>{tx('Resumen de administración', 'Administration Overview')}</h1>
         <p>
-          Consulta las cuentas, los mercados y las solicitudes que requieren tu
-          atención.
+          {tx(
+            'Consulta las cuentas, los mercados y las solicitudes que requieren tu atención.',
+            'Review accounts, market schedules, and broker applications requiring attention.',
+          )}
         </p>
       </div>
 
@@ -41,9 +52,11 @@ export function AdminKpiSection({
             <Icon name="users" size={24} />
           </div>
           <div className={styles.kpiInfo}>
-            <small>Comisionistas Pendientes</small>
-            <strong>{pendingCount}</strong>
-            <span>Solicitudes por revisar</span>
+            <small>{tx('Comisionistas Pendientes', 'Pending Brokers')}</small>
+            <strong>{formatDecimalNumber(pendingCount, locale, 0)}</strong>
+            <span>
+              {tx('Solicitudes por revisar', 'Applications to review')}
+            </span>
           </div>
         </div>
 
@@ -52,9 +65,9 @@ export function AdminKpiSection({
             <Icon name="user" size={24} />
           </div>
           <div className={styles.kpiInfo}>
-            <small>Usuarios Registrados</small>
-            <strong>{usersCount}</strong>
-            <span>Cuentas en la plataforma</span>
+            <small>{tx('Usuarios Registrados', 'Registered Users')}</small>
+            <strong>{formatDecimalNumber(usersCount, locale, 0)}</strong>
+            <span>{tx('Cuentas en la plataforma', 'Platform accounts')}</span>
           </div>
         </div>
 
@@ -63,8 +76,8 @@ export function AdminKpiSection({
             <Icon name="trend" size={24} />
           </div>
           <div className={styles.kpiInfo}>
-            <small>Mercados Bursátiles</small>
-            <strong>3 Bolsas</strong>
+            <small>{tx('Mercados Bursátiles', 'Stock Markets')}</small>
+            <strong>{tx('3 Bolsas', '3 Exchanges')}</strong>
             <span>NYSE · NASDAQ · NYSE Arca</span>
           </div>
         </div>
@@ -74,33 +87,39 @@ export function AdminKpiSection({
             <Icon name="shield" size={24} />
           </div>
           <div className={styles.kpiInfo}>
-            <small>Políticas de Seguridad</small>
-            <strong>2FA Obligatorio</strong>
-            <span>Protección RBAC y TOTP Activa</span>
+            <small>{tx('Políticas de Seguridad', 'Security Policies')}</small>
+            <strong>{tx('2FA Obligatorio', 'Mandatory 2FA')}</strong>
+            <span>
+              {tx(
+                'Protección RBAC y TOTP Activa',
+                'RBAC & TOTP Protection Active',
+              )}
+            </span>
           </div>
         </div>
       </div>
 
       <div className={styles.tableCard}>
         <div className={styles.tableHeader}>
-          <h2>Solicitudes pendientes</h2>
+          <h2>{tx('Solicitudes pendientes', 'Pending Applications')}</h2>
           <button
             type="button"
             className={styles.btnSecondary}
             onClick={onViewAllBrokers}
           >
-            Ver Todos los Comisionistas →
+            {tx('Ver Todos los Comisionistas', 'View All Brokers')}
+            <Icon name="arrow" size={14} />
           </button>
         </div>
         <div className={styles.tableResponsive}>
           <table className={styles.adminTable}>
             <thead>
               <tr>
-                <th>Candidato a Comisionista</th>
-                <th>Licencia AMV Reportada</th>
-                <th>Especialidad en EE. UU.</th>
-                <th>Estado Actual</th>
-                <th>Acción de Auditoría</th>
+                <th>{tx('Candidato a Comisionista', 'Broker Candidate')}</th>
+                <th>{tx('Licencia AMV Reportada', 'Reported AMV License')}</th>
+                <th>{tx('Especialidad en EE. UU.', 'US Market Specialty')}</th>
+                <th>{tx('Estado Actual', 'Current Status')}</th>
+                <th>{tx('Acción de Auditoría', 'Audit Action')}</th>
               </tr>
             </thead>
             <tbody>
@@ -118,7 +137,7 @@ export function AdminKpiSection({
                   <td>{broker.specialty}</td>
                   <td>
                     <span className={styles.statusPending}>
-                      Pendiente de activación
+                      {tx('Pendiente de activación', 'Pending activation')}
                     </span>
                   </td>
                   <td>
@@ -128,7 +147,8 @@ export function AdminKpiSection({
                       disabled={processingId === broker.userId}
                       onClick={() => onActivateBroker(broker)}
                     >
-                      <Icon name="check" size={14} /> Aprobar y activar
+                      <Icon name="check" size={14} />{' '}
+                      {tx('Aprobar y activar', 'Approve & activate')}
                     </button>
                   </td>
                 </tr>
@@ -136,8 +156,10 @@ export function AdminKpiSection({
               {pendingCount === 0 && (
                 <tr>
                   <td colSpan={5} className={styles.emptyRow}>
-                    No hay solicitudes de comisionistas pendientes de
-                    aprobación. Todos los asesores están al día.
+                    {tx(
+                      'No hay solicitudes de comisionistas pendientes de aprobación. Todos los asesores están al día.',
+                      'No pending broker approval requests. All advisors are up to date.',
+                    )}
                   </td>
                 </tr>
               )}

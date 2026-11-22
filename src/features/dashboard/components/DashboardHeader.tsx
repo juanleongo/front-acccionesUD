@@ -1,9 +1,39 @@
 'use client';
 
-import type { RefObject } from 'react';
+import { useSyncExternalStore, type RefObject } from 'react';
 import { Icon } from '@/components/ui/Icon';
-import { sectionTitles, type DashboardSection } from '../dashboard-constants';
+import { LanguageToggle } from '@/components/ui/LanguageToggle';
+import { useLocale } from '@/lib/i18n';
+import {
+  getDocumentTheme,
+  subscribeThemeStorage,
+  type Theme,
+} from '@/lib/theme';
+import { getSectionTitle, type DashboardSection } from '../dashboard-constants';
 import styles from '../dashboard.module.css';
+
+function subscribeDocumentTheme(onThemeChange: () => void): () => void {
+  const stopStorage = subscribeThemeStorage(() => onThemeChange());
+  if (
+    typeof document === 'undefined' ||
+    typeof MutationObserver === 'undefined'
+  ) {
+    return stopStorage;
+  }
+  const observer = new MutationObserver(onThemeChange);
+  observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['data-theme'],
+  });
+  return () => {
+    observer.disconnect();
+    stopStorage();
+  };
+}
+
+function getServerThemeSnapshot(): Theme {
+  return 'dark';
+}
 
 export interface DashboardHeaderProps {
   menuRef: RefObject<HTMLButtonElement | null>;
@@ -36,58 +66,74 @@ export function DashboardHeader({
   onOpenProfile,
   onToggleTheme,
 }: DashboardHeaderProps) {
+  const { locale, tx } = useLocale();
+  const activeTheme = useSyncExternalStore(
+    subscribeDocumentTheme,
+    getDocumentTheme,
+    getServerThemeSnapshot,
+  );
+
   return (
     <header className={styles.header}>
-      <button
-        ref={menuRef}
-        className={styles.menu}
-        aria-label="Abrir menú de navegación"
-        aria-controls="dashboard-navigation"
-        aria-expanded={mobile ? mobileOpen : !collapsed}
-        onClick={onToggleMobileMenu}
-      >
-        <Icon name="menu" size={20} />
-      </button>
-      <h1>{sectionTitles[activeSection]}</h1>
-      <div className={styles.headerActions}>
-        <div className={styles.account}>
-          <span>
-            {isLoadingAccount
-              ? 'Sincronizando Cuenta'
-              : hasRealWallet
-                ? 'Valor Real Cuenta (USD)'
-                : 'Valor Cuenta Simulación'}
-          </span>
-          <strong>
-            {isLoadingAccount ? 'Cargando…' : `${headerAccountTotal} USD`}
-          </strong>
+      <div className={styles.headerInner}>
+        <button
+          ref={menuRef}
+          type="button"
+          className={styles.menu}
+          aria-label={tx('Abrir menú de navegación', 'Open navigation menu')}
+          aria-controls="dashboard-navigation"
+          aria-expanded={mobile ? mobileOpen : !collapsed}
+          onClick={onToggleMobileMenu}
+        >
+          <Icon name="menu" size={20} />
+        </button>
+        <h1>{getSectionTitle(activeSection, locale)}</h1>
+        <div className={styles.headerActions}>
+          <div className={styles.account}>
+            <span>
+              {isLoadingAccount
+                ? tx('Sincronizando Cuenta', 'Syncing Account')
+                : hasRealWallet
+                  ? tx('Valor Real Cuenta (USD)', 'Real Account Value (USD)')
+                  : tx('Valor Cuenta Simulación', 'Simulation Account Value')}
+            </span>
+            <strong>
+              {isLoadingAccount
+                ? tx('Cargando…', 'Loading…')
+                : `${headerAccountTotal} USD`}
+            </strong>
+          </div>
+
+          <button
+            type="button"
+            className={styles.avatar}
+            title={tx(
+              `Ver perfil de ${displayName}`,
+              `View ${displayName} profile`,
+            )}
+            onClick={onOpenProfile}
+          >
+            {isLoadingAccount ? '••' : userInitials}
+          </button>
+
+          <LanguageToggle className={styles.language} size={17} />
+          <button
+            type="button"
+            onClick={onToggleTheme}
+            className={styles.theme}
+            aria-label={tx('Cambiar tema de color', 'Toggle color theme')}
+          >
+            {activeTheme === 'light' ? (
+              <>
+                <Icon name="moon" size={18} /> {tx('Oscuro', 'Dark')}
+              </>
+            ) : (
+              <>
+                <Icon name="sun" size={18} /> {tx('Claro', 'Light')}
+              </>
+            )}
+          </button>
         </div>
-
-        <button
-          type="button"
-          className={styles.avatar}
-          title={`Ver perfil de ${displayName}`}
-          onClick={onOpenProfile}
-        >
-          {isLoadingAccount ? '••' : userInitials}
-        </button>
-
-        <span className={styles.language}>
-          <Icon name="globe" size={17} /> ES
-        </span>
-        <button
-          type="button"
-          onClick={onToggleTheme}
-          className={styles.theme}
-          aria-label="Cambiar tema de color"
-        >
-          <span className={styles.darkLabel}>
-            <Icon name="sun" size={18} /> Claro
-          </span>
-          <span className={styles.lightLabel}>
-            <Icon name="moon" size={18} /> Oscuro
-          </span>
-        </button>
       </div>
     </header>
   );

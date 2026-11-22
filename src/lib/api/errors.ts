@@ -47,3 +47,15 @@ export function parseRetryAfter(
   const date = Date.parse(value);
   return Number.isNaN(date) ? undefined : Math.max(0, date - now);
 }
+
+export function getApiErrorStatus(error: unknown): number | undefined {
+  return error instanceof ApiError ? error.metadata.status : undefined;
+}
+
+export function isApiHttpStatus(error: unknown, status: number): boolean {
+  return getApiErrorStatus(error) === status;
+}
+
+export function isUnauthorizedApiError(error: unknown): boolean {
+  return isApiHttpStatus(error, 401);
+}

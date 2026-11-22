@@ -1,9 +1,13 @@
 'use client';
 
+import type { FormEvent } from 'react';
+import { DatePicker } from '@/components/ui/DatePicker';
+import { formatMarketDateTime } from '@/lib/formatters';
+import { useLocale } from '@/lib/i18n';
 import {
+  formatOwnerRole,
   formatPortfolioUsd,
-  ownerRoleLabels,
-  reportTypeLabels,
+  formatReportType,
 } from '../portfolio-formatters';
 import type {
   PortfolioExecution,
@@ -20,26 +24,38 @@ export function PortfolioExecutionsTab({
   symbolFilter: string;
   onSymbolFilterChange: (value: string) => void;
 }) {
+  const { locale, tx } = useLocale();
   return (
     <div className={styles.panelCard}>
       <div className={styles.panelHeader}>
         <div>
           <h3 className={styles.panelTitle}>
-            Libro Mayor de Ejecuciones Bursátiles
+            {tx(
+              'Libro Mayor de Ejecuciones Bursátiles',
+              'Equity Trade Execution Ledger',
+            )}
           </h3>
           <p className={styles.panelDesc}>
-            Registro de órdenes liquidadas en Wall Street y desglose de comisión
-            reportada por la API.
+            {tx(
+              'Registro de órdenes liquidadas en Wall Street y comisiones reportadas por la API.',
+              'Settled Wall Street executions with fees reported by the API.',
+            )}
           </p>
         </div>
         <div className={styles.filterRow}>
-          <input
-            type="text"
-            className={styles.filterInput}
-            placeholder="Filtrar por símbolo (ej. NVDA)..."
-            value={symbolFilter}
-            onChange={(e) => onSymbolFilterChange(e.target.value)}
-          />
+          <label className={styles.fieldGroup} htmlFor="portfolio-exec-symbol">
+            <span className={styles.fieldLabel}>
+              {tx('Filtrar por símbolo', 'Filter by symbol')}
+            </span>
+            <input
+              id="portfolio-exec-symbol"
+              type="search"
+              className={styles.filterInput}
+              placeholder={tx('Ej. NVDA, AAPL…', 'E.g. NVDA, AAPL…')}
+              value={symbolFilter}
+              onChange={(e) => onSymbolFilterChange(e.target.value)}
+            />
+          </label>
         </div>
       </div>
 
@@ -47,52 +63,67 @@ export function PortfolioExecutionsTab({
         <table className={styles.table}>
           <thead>
             <tr>
-              <th>Referencia</th>
-              <th>Fecha / Hora</th>
-              <th>Símbolo</th>
-              <th>Operación</th>
-              <th>Cantidad</th>
-              <th>Precio Liquidación</th>
-              <th>Comisión</th>
-              <th>Tipo de Liquidación</th>
+              <th>{tx('Referencia', 'Reference')}</th>
+              <th>{tx('Fecha / Hora', 'Date / Time')}</th>
+              <th>{tx('Símbolo', 'Symbol')}</th>
+              <th>{tx('Operación', 'Side')}</th>
+              <th>{tx('Cantidad', 'Qty')}</th>
+              <th>{tx('Precio Liquidación', 'Execution Price')}</th>
+              <th>{tx('Comisión', 'Commission')}</th>
+              <th>{tx('Tipo de Liquidación', 'Settlement Source')}</th>
             </tr>
           </thead>
           <tbody>
-            {executions.map((ex) => (
-              <tr key={ex.execution_id}>
-                <td className={styles.monoCell}>{ex.execution_id}</td>
-                <td>{new Date(ex.executed_at).toLocaleString('es-CO')}</td>
-                <td>
-                  <span className={styles.symbolTicker}>{ex.symbol}</span>{' '}
-                  <span className={styles.exchangeBadge}>{ex.exchange}</span>
-                </td>
-                <td>
-                  <span
-                    className={
-                      ex.side === 'buy'
-                        ? styles.pnlBadgeGain
-                        : styles.pnlBadgeLoss
-                    }
-                  >
-                    {ex.side === 'buy' ? 'Compra' : 'Venta'}
-                  </span>
-                </td>
-                <td className={styles.monoCell}>{ex.qty}</td>
-                <td className={styles.monoCell}>
-                  {formatPortfolioUsd(ex.price)}
-                </td>
-                <td className={styles.monoCell}>
-                  {formatPortfolioUsd(ex.commission)}
-                </td>
-                <td>
-                  <span className={styles.exchangeBadge}>
-                    {ex.commission_source === 'official'
-                      ? 'Confirmada'
-                      : 'Estimada'}
-                  </span>
+            {executions.length === 0 ? (
+              <tr>
+                <td colSpan={8} className={styles.emptyCell}>
+                  {tx(
+                    'No hay ejecuciones que coincidan con el símbolo buscado.',
+                    'No executions match the entered symbol.',
+                  )}
                 </td>
               </tr>
-            ))}
+            ) : (
+              executions.map((ex) => (
+                <tr key={ex.execution_id}>
+                  <td className={styles.monoCell}>{ex.execution_id}</td>
+                  <td className={styles.tabularNum}>
+                    {formatMarketDateTime(ex.executed_at, locale)}
+                  </td>
+                  <td>
+                    <span className={styles.symbolTicker}>{ex.symbol}</span>{' '}
+                    <span className={styles.exchangeBadge}>{ex.exchange}</span>
+                  </td>
+                  <td>
+                    <span
+                      className={
+                        ex.side === 'buy'
+                          ? styles.pnlBadgeGain
+                          : styles.pnlBadgeLoss
+                      }
+                    >
+                      {ex.side === 'buy'
+                        ? tx('Compra', 'Buy')
+                        : tx('Venta', 'Sell')}
+                    </span>
+                  </td>
+                  <td className={styles.monoCell}>{ex.qty}</td>
+                  <td className={styles.monoCell}>
+                    {formatPortfolioUsd(ex.price)}
+                  </td>
+                  <td className={styles.monoCell}>
+                    {formatPortfolioUsd(ex.commission)}
+                  </td>
+                  <td>
+                    <span className={styles.exchangeBadge}>
+                      {ex.commission_source === 'official'
+                        ? tx('Confirmada', 'Confirmed')
+                        : tx('Estimada (2%)', 'Estimated (2%)')}
+                    </span>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
@@ -105,6 +136,7 @@ export function PortfolioReportsTab({
   selectedReport,
   periodFrom,
   periodTo,
+  reportError,
   onPeriodFromChange,
   onPeriodToChange,
   onGenerateReport,
@@ -114,72 +146,103 @@ export function PortfolioReportsTab({
   selectedReport: PortfolioReportSummary | null;
   periodFrom: string;
   periodTo: string;
+  reportError?: string | null;
   onPeriodFromChange: (val: string) => void;
   onPeriodToChange: (val: string) => void;
   onGenerateReport: () => void;
   onSelectReport: (rep: PortfolioReportSummary) => void;
 }) {
+  const { locale, tx } = useLocale();
+
+  function handleSubmit(event: FormEvent) {
+    event.preventDefault();
+    onGenerateReport();
+  }
+
   return (
     <div className={styles.panelCard}>
       <div className={styles.panelHeader}>
         <div>
           <h3 className={styles.panelTitle}>
-            Extractos y Reportes de Portafolio
+            {tx(
+              'Extractos y Reportes de Portafolio',
+              'Portfolio Statements & Reports',
+            )}
           </h3>
           <p className={styles.panelDesc}>
-            Genera y consulta certificados consolidados de tus posiciones y
-            operaciones por rango de fechas.
+            {tx(
+              'Genera y consulta certificados consolidados de tus posiciones y operaciones por rango de fechas.',
+              'Generate and view consolidated position and trade statements by date range.',
+            )}
           </p>
         </div>
-        <div className={styles.filterRow}>
-          <input
-            type="date"
-            className={styles.filterInput}
-            value={periodFrom}
-            onChange={(e) => onPeriodFromChange(e.target.value)}
-            aria-label="Fecha inicial del reporte"
-          />
-          <input
-            type="date"
-            className={styles.filterInput}
-            value={periodTo}
-            onChange={(e) => onPeriodToChange(e.target.value)}
-            aria-label="Fecha final del reporte"
-          />
-          <button
-            type="button"
-            className={styles.primaryBtn}
-            onClick={onGenerateReport}
-          >
-            + Generar Reporte
+        <form onSubmit={handleSubmit} className={styles.filterRow} noValidate>
+          <label className={styles.fieldGroup} htmlFor="report-period-from">
+            <span className={styles.fieldLabel}>{tx('Desde', 'From')}</span>
+            <DatePicker
+              id="report-period-from"
+              label={tx('Desde', 'From')}
+              value={periodFrom}
+              onChange={onPeriodFromChange}
+            />
+          </label>
+          <label className={styles.fieldGroup} htmlFor="report-period-to">
+            <span className={styles.fieldLabel}>{tx('Hasta', 'To')}</span>
+            <DatePicker
+              id="report-period-to"
+              label={tx('Hasta', 'To')}
+              value={periodTo}
+              onChange={onPeriodToChange}
+            />
+          </label>
+          <button type="submit" className={styles.primaryBtn}>
+            {tx('+ Generar Reporte', '+ Generate Report')}
           </button>
-        </div>
+        </form>
       </div>
+
+      {reportError && (
+        <p role="alert" className={styles.alertError}>
+          {reportError}
+        </p>
+      )}
 
       <div className={styles.twoColGrid}>
         <div className={styles.tableWrapper}>
-          <table className={styles.table}>
+          <table
+            className={`${styles.table} ${styles.reportsTable}`}
+            role="table"
+          >
             <thead>
               <tr>
-                <th>Tipo de Reporte</th>
-                <th>Período</th>
-                <th>Fecha de Emisión</th>
-                <th>Acción</th>
+                <th>{tx('Tipo de Reporte', 'Report Type')}</th>
+                <th>{tx('Período', 'Period')}</th>
+                <th>{tx('Fecha de Emisión', 'Issued Date')}</th>
+                <th>{tx('Acción', 'Action')}</th>
               </tr>
             </thead>
             <tbody>
               {reports.map((rep) => (
                 <tr key={rep.id}>
-                  <td>
+                  <td data-label={tx('Tipo de reporte', 'Report type')}>
                     <span className={styles.exchangeBadge}>
-                      {reportTypeLabels[rep.type] ?? rep.type}
+                      {formatReportType(rep.type, locale)}
                     </span>
                   </td>
-                  <td className={styles.monoCell}>
-                    {rep.period.from} → {rep.period.to}
+                  <td
+                    className={styles.monoCell}
+                    data-label={tx('Período', 'Period')}
+                  >
+                    <time dateTime={rep.period.from}>{rep.period.from}</time> →{' '}
+                    <time dateTime={rep.period.to}>{rep.period.to}</time>
                   </td>
-                  <td>
-                    {new Date(rep.generated_at).toLocaleDateString('es-CO')}
+                  <td
+                    className={styles.tabularNum}
+                    data-label={tx('Fecha de emisión', 'Issued date')}
+                  >
+                    {formatMarketDateTime(rep.generated_at, locale, {
+                      includeTime: false,
+                    })}
                   </td>
                   <td>
                     <button
@@ -187,7 +250,7 @@ export function PortfolioReportsTab({
                       className={styles.secondaryBtn}
                       onClick={() => onSelectReport(rep)}
                     >
-                      Ver resumen
+                      {tx('Ver resumen', 'View summary')}
                     </button>
                   </td>
                 </tr>
@@ -198,22 +261,29 @@ export function PortfolioReportsTab({
 
         {selectedReport && (
           <div className={styles.reportDetailBox}>
-            <div className={styles.panelTitle}>
-              Resumen del Período ({selectedReport.period.from} al{' '}
-              {selectedReport.period.to})
+            <div className={`${styles.panelTitle} ${styles.tabularNum}`}>
+              {tx('Resumen del período', 'Period summary')}
             </div>
+            <p className={styles.reportPeriod}>
+              <time dateTime={selectedReport.period.from}>
+                {selectedReport.period.from}
+              </time>
+              <span aria-hidden="true">→</span>
+              <time dateTime={selectedReport.period.to}>
+                {selectedReport.period.to}
+              </time>
+            </p>
             <div className={styles.kpiHint}>
-              Tipo:{' '}
-              <strong>
-                {reportTypeLabels[selectedReport.type] ?? selectedReport.type}
-              </strong>{' '}
-              · Titular:{' '}
-              {ownerRoleLabels[selectedReport.owner_role] ??
-                selectedReport.owner_role}
+              {tx('Tipo:', 'Type:')}{' '}
+              <strong>{formatReportType(selectedReport.type, locale)}</strong> ·{' '}
+              {tx('Titular:', 'Holder:')}{' '}
+              {formatOwnerRole(selectedReport.owner_role, locale)}
             </div>
             <div className={styles.factorsGrid}>
               <div className={styles.factorCard}>
-                <span className={styles.factorName}>Valor de Mercado</span>
+                <span className={styles.factorName}>
+                  {tx('Valor de Mercado', 'Market Value')}
+                </span>
                 <span className={styles.factorScore}>
                   {formatPortfolioUsd(
                     String(
@@ -223,7 +293,9 @@ export function PortfolioReportsTab({
                 </span>
               </div>
               <div className={styles.factorCard}>
-                <span className={styles.factorName}>Costo Base</span>
+                <span className={styles.factorName}>
+                  {tx('Costo Base', 'Cost Basis')}
+                </span>
                 <span className={styles.factorScore}>
                   {formatPortfolioUsd(
                     String(
@@ -233,7 +305,9 @@ export function PortfolioReportsTab({
                 </span>
               </div>
               <div className={styles.factorCard}>
-                <span className={styles.factorName}>Ganancia / Pérdida</span>
+                <span className={styles.factorName}>
+                  {tx('Ganancia / Pérdida', 'Gain / Loss')}
+                </span>
                 <span className={styles.factorScore}>
                   {formatPortfolioUsd(
                     String(

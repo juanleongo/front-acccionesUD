@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import { useRef, useState } from 'react';
 import { Icon } from '@/components/ui/Icon';
+import { useLocale } from '@/lib/i18n';
 import {
   advisorsData,
   type AdvisorItem,
@@ -17,10 +18,12 @@ export interface DashboardAdvisorsGalleryProps {
 export function DashboardAdvisorsGallery({
   onNavigate,
 }: DashboardAdvisorsGalleryProps) {
+  const { locale, tx } = useLocale();
   const advisorDialog = useRef<HTMLDialogElement>(null);
   const [selectedAdvisor, setSelectedAdvisor] = useState<AdvisorItem | null>(
     null,
   );
+  const [actionFeedback, setActionFeedback] = useState('');
 
   function openAdvisorModal(advisor: AdvisorItem) {
     setSelectedAdvisor(advisor);
@@ -30,12 +33,32 @@ export function DashboardAdvisorsGallery({
   return (
     <>
       <div className={styles.galleryHeader}>
-        <h2>Fichas Técnicas y Galería de Comisionistas Destacados</h2>
+        <h2>
+          {tx(
+            'Fichas Técnicas y Galería de Comisionistas Destacados',
+            'Featured Broker Profiles & Credentials Gallery',
+          )}
+        </h2>
         <p>
-          Profesionales acreditados para estructurar y supervisar tu portafolio
-          en mercados de Estados Unidos (NYSE / NASDAQ).
+          {tx(
+            'Profesionales acreditados para estructurar y supervisar tu portafolio en mercados de Estados Unidos (NYSE / NASDAQ).',
+            'Accredited professionals to structure and oversee your portfolio across U.S. equity markets (NYSE / NASDAQ).',
+          )}
         </p>
       </div>
+
+      {actionFeedback && (
+        <div className={styles.actionFeedback} role="status">
+          <span>{actionFeedback}</span>
+          <button
+            type="button"
+            className={styles.actionFeedbackDismiss}
+            onClick={() => setActionFeedback('')}
+          >
+            {tx('Cerrar', 'Dismiss')}
+          </button>
+        </div>
+      )}
 
       <div className={styles.advisorsGrid}>
         {advisorsData.map((adv) => (
@@ -46,12 +69,18 @@ export function DashboardAdvisorsGallery({
                   type="button"
                   className={styles.advisorPhotoBtn}
                   onClick={() => openAdvisorModal(adv)}
-                  title={`Ampliar foto y ver ficha técnica de ${adv.name}`}
-                  aria-label={`Ver foto y ficha técnica de ${adv.name}`}
+                  title={tx(
+                    `Ampliar foto y ver ficha técnica de ${adv.name}`,
+                    `Enlarge photo and view profile of ${adv.name}`,
+                  )}
+                  aria-label={tx(
+                    `Ver foto y ficha técnica de ${adv.name}`,
+                    `View photo and profile of ${adv.name}`,
+                  )}
                 >
                   <Image
                     src={adv.photo}
-                    alt={`Foto ${adv.name}`}
+                    alt={`${tx('Foto', 'Photo')} ${adv.name}`}
                     width={56}
                     height={56}
                     className={styles.advisorPhotoLarge}
@@ -69,20 +98,25 @@ export function DashboardAdvisorsGallery({
                 <div className={styles.advisorTitleRow}>
                   <h3>{adv.name}</h3>
                   {adv.assigned && (
-                    <span className={styles.assigned}>Asignado</span>
+                    <span className={styles.assigned}>
+                      {tx('Asignado', 'Assigned')}
+                    </span>
                   )}
                 </div>
                 <small className={styles.advisorLicenseText}>
-                  {adv.license}
+                  {locale === 'en' ? adv.licenseEn : adv.license}
                 </small>
                 <div className={styles.advisorRatingRow}>
-                  ★ {adv.rating} · {adv.success} Acierto ({adv.proposals}{' '}
-                  propuestas)
+                  ★ {adv.rating} {tx('de 5.0', 'out of 5.0')} · {adv.success}{' '}
+                  {tx('Acierto', 'Win rate')} ({adv.proposals}{' '}
+                  {tx('propuestas', 'proposals')})
                 </div>
               </div>
             </div>
 
-            <p className={styles.advisorBioText}>{adv.bio}</p>
+            <p className={styles.advisorBioText}>
+              {locale === 'en' ? adv.bioEn : adv.bio}
+            </p>
 
             <div className={styles.advisorActionList}>
               {adv.assigned ? (
@@ -91,19 +125,25 @@ export function DashboardAdvisorsGallery({
                     type="button"
                     className={styles.primary}
                     onClick={() =>
-                      alert(
-                        `Sesión de asesoría agendada con ${adv.name}. Te llegará un correo de confirmación.`,
+                      setActionFeedback(
+                        tx(
+                          `Sesión de asesoría agendada con ${adv.name}. Te llegará un correo de confirmación.`,
+                          `Advisory session scheduled with ${adv.name}. You will receive a confirmation email.`,
+                        ),
                       )
                     }
                   >
-                    Agendar Asesoría
+                    {tx('Agendar Asesoría', 'Schedule Advisory')}
                   </button>
                   <button
                     type="button"
                     className={styles.borderedNavBtn}
                     onClick={() => onNavigate('orders')}
                   >
-                    Operar con su estrategia
+                    {tx(
+                      'Operar con su estrategia',
+                      'Trade with their strategy',
+                    )}
                   </button>
                 </>
               ) : (
@@ -111,12 +151,15 @@ export function DashboardAdvisorsGallery({
                   type="button"
                   className={styles.primary}
                   onClick={() =>
-                    alert(
-                      `Solicitud de asignación enviada para estructurar tu portafolio con ${adv.name}.`,
+                    setActionFeedback(
+                      tx(
+                        `Solicitud de asignación enviada para estructurar tu portafolio con ${adv.name}.`,
+                        `Assignment request sent to structure your portfolio with ${adv.name}.`,
+                      ),
                     )
                   }
                 >
-                  Seleccionar como Asesor
+                  {tx('Seleccionar como Asesor', 'Select as Advisor')}
                 </button>
               )}
               <button
@@ -124,7 +167,10 @@ export function DashboardAdvisorsGallery({
                 className={styles.borderedNavBtn}
                 onClick={() => openAdvisorModal(adv)}
               >
-                🔍 Ver Ficha Técnica y Foto Ampliada
+                {tx(
+                  '🔍 Ver Ficha Técnica y Foto Ampliada',
+                  '🔍 View Profile & Enlarged Photo',
+                )}
               </button>
             </div>
           </div>
@@ -133,7 +179,10 @@ export function DashboardAdvisorsGallery({
 
       <dialog ref={advisorDialog} className={styles.advisorDetailDialog}>
         <form method="dialog">
-          <button className={styles.modalCloseBtn} aria-label="Cerrar ventana">
+          <button
+            className={styles.modalCloseBtn}
+            aria-label={tx('Cerrar ventana', 'Close dialog')}
+          >
             <Icon name="close" size={16} />
           </button>
         </form>
@@ -154,44 +203,65 @@ export function DashboardAdvisorsGallery({
                 <div className={styles.advisorTitleRow}>
                   <h3>{selectedAdvisor.name}</h3>
                   {selectedAdvisor.assigned && (
-                    <span className={styles.assigned}>Asesor Asignado</span>
+                    <span className={styles.assigned}>
+                      {tx('Asesor Asignado', 'Assigned Advisor')}
+                    </span>
                   )}
                 </div>
                 <small className={styles.advisorLicenseText}>
-                  {selectedAdvisor.license}
+                  {locale === 'en'
+                    ? selectedAdvisor.licenseEn
+                    : selectedAdvisor.license}
                 </small>
                 <div className={styles.advisorRatingRow}>
-                  ★ {selectedAdvisor.rating} · Calificación auditada
+                  ★ {selectedAdvisor.rating} {tx('de 5.0', 'out of 5.0')} ·{' '}
+                  {tx('Calificación auditada', 'Audited rating')}
                 </div>
               </div>
             </div>
 
             <div className={styles.advisorStatsGrid}>
               <div className={styles.advisorStatBox}>
-                <small>Efectividad</small>
+                <small>{tx('Efectividad', 'Success Rate')}</small>
                 <strong>{selectedAdvisor.success}</strong>
               </div>
               <div className={styles.advisorStatBox}>
-                <small>Propuestas</small>
+                <small>{tx('Propuestas', 'Proposals')}</small>
                 <strong>{selectedAdvisor.proposals}</strong>
               </div>
               <div className={styles.advisorStatBox}>
-                <small>Mercados</small>
+                <small>{tx('Mercados', 'Markets')}</small>
                 <strong>NYSE / NASDAQ</strong>
               </div>
             </div>
 
             <div className={styles.advisorStrategyBox}>
-              <h4>Especialidad y Perfil Profesional</h4>
-              <p>{selectedAdvisor.bio}</p>
+              <h4>
+                {tx(
+                  'Especialidad y Perfil Profesional',
+                  'Specialty & Professional Profile',
+                )}
+              </h4>
+              <p>
+                {locale === 'en' ? selectedAdvisor.bioEn : selectedAdvisor.bio}
+              </p>
             </div>
 
             <div className={styles.advisorStrategyBox}>
-              <h4>Tesis y Estrategia de Inversión</h4>
-              <p>{selectedAdvisor.strategy}</p>
+              <h4>
+                {tx(
+                  'Tesis y Estrategia de Inversión',
+                  'Investment Thesis & Strategy',
+                )}
+              </h4>
+              <p>
+                {locale === 'en'
+                  ? selectedAdvisor.strategyEn
+                  : selectedAdvisor.strategy}
+              </p>
               <div className={styles.advisorAssetsPills}>
                 <span className={styles.advisorLicenseText}>
-                  Activos recomendados:
+                  {tx('Activos recomendados:', 'Recommended assets:')}
                 </span>
                 {selectedAdvisor.recommendedAssets.map((sym) => (
                   <span key={sym} className={styles.advisorAssetPill}>
@@ -207,7 +277,7 @@ export function DashboardAdvisorsGallery({
                 className={styles.chipBtn}
                 onClick={() => advisorDialog.current?.close()}
               >
-                Cerrar
+                {tx('Cerrar', 'Close')}
               </button>
               <button
                 type="button"
@@ -217,7 +287,10 @@ export function DashboardAdvisorsGallery({
                   onNavigate('orders');
                 }}
               >
-                Operar con su estrategia en Wall Street
+                {tx(
+                  'Operar con su estrategia en Wall Street',
+                  'Trade this strategy on Wall Street',
+                )}
               </button>
             </div>
           </div>

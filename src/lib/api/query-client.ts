@@ -1,6 +1,18 @@
 import { QueryClient } from '@tanstack/react-query';
 import { ApiError } from './errors';
 
+/** Recommended staleTime presets matched to financial data volatility. */
+export const QUERY_STALE_TIMES = {
+  /** Live quotes, order books, active orders, wallet balances (10s). */
+  realtime: 10_000,
+  /** Authenticated user profile, KYC state, portfolio summary (30s). */
+  session: 30_000,
+  /** Exchange directory, schedules, instrument search catalog (5 min). */
+  catalog: 300_000,
+  /** Static geographic or reference catalogs (24h). */
+  static: 86_400_000,
+} as const;
+
 export function retryQuery(failureCount: number, error: Error): boolean {
   if (failureCount >= 2 || !(error instanceof ApiError)) return false;
   if (error.kind === 'transport') return true;
@@ -25,7 +37,8 @@ export function createQueryClient(): QueryClient {
     defaultOptions: {
       queries: {
         gcTime: 120_000,
-        staleTime: 0,
+        staleTime: 15_000,
+        refetchOnWindowFocus: false,
         retry: retryQuery,
         retryDelay: queryRetryDelay,
       },

@@ -3,13 +3,14 @@
 import { useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { LoadingState } from '@/components/ui/LoadingState';
-import { getLocations } from './locations-api';
 import { Icon } from '@/components/ui/Icon';
+import { useLocale } from '@/lib/i18n';
+import { getLocations } from './locations-api';
 import { BirthDatePicker } from './components/BirthDatePicker';
 import { CustomSelect } from './components/CustomSelect';
 import {
-  FUNDING_SOURCES,
-  KYC_AGREEMENTS_CATALOG,
+  getFundingSources,
+  getKycAgreementsCatalog,
   RANGE_OPTIONS,
   type AgreementKey,
 } from './kyc-catalog';
@@ -26,11 +27,6 @@ const rangeSelectOptions = RANGE_OPTIONS.map((opt) => ({
   label: opt.label,
 }));
 
-const yesNoOptions = [
-  { value: 'no', label: 'No' },
-  { value: 'yes', label: 'Sí' },
-] as const;
-
 export function KycFields({
   step,
   country,
@@ -40,6 +36,13 @@ export function KycFields({
   country: string;
   disabled: boolean;
 }) {
+  const { locale, tx } = useLocale();
+  const yesNoOptions = [
+    { value: 'no', label: 'No' },
+    { value: 'yes', label: tx('Sí', 'Yes') },
+  ];
+  const fundingSources = getFundingSources(locale);
+  const agreementsCatalog = getKycAgreementsCatalog(locale);
   const activeCountry = country || 'CO';
   const [taxIdType, setTaxIdType] = useState('COL_NIT');
   const [selectedState, setSelectedState] = useState('');
@@ -80,23 +83,41 @@ export function KycFields({
   const taxIdOptions =
     activeCountry === 'CO'
       ? [
-          { value: 'COL_NIT', label: 'Cédula de ciudadanía / NIT' },
-          { value: 'PASSPORT', label: 'Pasaporte' },
+          {
+            value: 'COL_NIT',
+            label: tx(
+              'Cédula de ciudadanía / NIT',
+              'National ID / Tax ID (CC / NIT)',
+            ),
+          },
+          { value: 'PASSPORT', label: tx('Pasaporte', 'Passport') },
         ]
       : activeCountry === 'US'
         ? [
-            { value: 'USA_SSN', label: 'Número de Seguro Social (SSN)' },
-            { value: 'PASSPORT', label: 'Pasaporte' },
+            {
+              value: 'USA_SSN',
+              label: tx(
+                'Número de Seguro Social (SSN)',
+                'Social Security Number (SSN)',
+              ),
+            },
+            { value: 'PASSPORT', label: tx('Pasaporte', 'Passport') },
           ]
         : [
             {
               value: 'NATIONAL_ID',
-              label: 'Documento Nacional de Identidad',
+              label: tx(
+                'Documento Nacional de Identidad',
+                'National Identity Document',
+              ),
             },
-            { value: 'PASSPORT', label: 'Pasaporte' },
+            { value: 'PASSPORT', label: tx('Pasaporte', 'Passport') },
             {
               value: 'COL_NIT',
-              label: 'Cédula de ciudadanía / NIT (Colombia)',
+              label: tx(
+                'Cédula de ciudadanía / NIT (Colombia)',
+                'Colombian National ID / NIT',
+              ),
             },
           ];
 
@@ -111,7 +132,7 @@ export function KycFields({
     agreementDialogRef.current?.showModal();
   }
 
-  const selectedAgreementDoc = KYC_AGREEMENTS_CATALOG.find(
+  const selectedAgreementDoc = agreementsCatalog.find(
     (item) => item.key === activeAgreementModal,
   );
 
@@ -129,12 +150,13 @@ export function KycFields({
     <div className={styles.kycScope}>
       <fieldset data-kyc-fields hidden={step !== 2} disabled={disabled}>
         <legend>
-          <Icon name="shield" size={18} /> Identidad y domicilio
+          <Icon name="shield" size={18} />{' '}
+          {tx('Identidad y domicilio', 'Identity & address')}
         </legend>
         <div className={styles.grid}>
           <div className={styles.field}>
             <label className={styles.fieldLabel} htmlFor="kyc_tax_id_type">
-              Tipo de identificación fiscal
+              {tx('Tipo de identificación fiscal', 'Tax identification type')}
             </label>
             <div className={styles.fieldControl}>
               <CustomSelect
@@ -151,7 +173,9 @@ export function KycFields({
 
           <div className={styles.field}>
             <label className={styles.fieldLabel} htmlFor="kyc_tax_id">
-              {isPassport ? 'Número de pasaporte' : 'Número de documento'}
+              {isPassport
+                ? tx('Número de pasaporte', 'Passport number')
+                : tx('Número de documento', 'Document number')}
             </label>
             <div className={styles.fieldControl}>
               <input
@@ -159,8 +183,11 @@ export function KycFields({
                 name="tax_id"
                 placeholder={
                   isPassport
-                    ? 'Ej. PA1234567 (letras y números)'
-                    : 'Ej. 1005753821'
+                    ? tx(
+                        'Ej. PA1234567 (letras y números)',
+                        'E.g. PA1234567 (letters & digits)',
+                      )
+                    : tx('Ej. 1005753821', 'E.g. 1005753821')
                 }
                 pattern={isPassport ? '[A-Za-z0-9\\-]{4,25}' : '[0-9\\-]{4,20}'}
                 minLength={4}
@@ -170,8 +197,14 @@ export function KycFields({
             </div>
             <small className={styles.fieldHelp}>
               {isPassport
-                ? 'Pasaporte alfanumérico: incluye las letras iniciales y los números (ej. PA1234567).'
-                : 'Ingresa los dígitos de tu documento sin puntos ni espacios.'}
+                ? tx(
+                    'Pasaporte alfanumérico: incluye las letras iniciales y los números (ej. PA1234567).',
+                    'Alphanumeric passport: include leading letters and digits (e.g. PA1234567).',
+                  )
+                : tx(
+                    'Ingresa los dígitos de tu documento sin puntos ni espacios.',
+                    'Enter document digits without dots or spaces.',
+                  )}
             </small>
           </div>
 
@@ -179,13 +212,13 @@ export function KycFields({
 
           <div className={styles.field}>
             <label className={styles.fieldLabel} htmlFor="kyc_postal_code">
-              Código postal
+              {tx('Código postal', 'Postal code')}
             </label>
             <div className={styles.fieldControl}>
               <input
                 id="kyc_postal_code"
                 name="postal_code"
-                placeholder="Ej. 110111"
+                placeholder={tx('Ej. 110111', 'E.g. 110111')}
                 maxLength={20}
                 required
               />
@@ -194,13 +227,13 @@ export function KycFields({
 
           <div className={`${styles.field} ${styles.fullWidth}`}>
             <label className={styles.fieldLabel} htmlFor="kyc_street_address">
-              Dirección de residencia
+              {tx('Dirección de residencia', 'Street address')}
             </label>
             <div className={styles.fieldControl}>
               <input
                 id="kyc_street_address"
                 name="street_address"
-                placeholder="Ej. Calle 40 # 7-19"
+                placeholder={tx('Ej. Calle 40 # 7-19', 'E.g. 40 Main St #7-19')}
                 maxLength={200}
                 required
               />
@@ -209,7 +242,10 @@ export function KycFields({
 
           <div className={styles.field}>
             <label className={styles.fieldLabel} htmlFor="kyc_state">
-              Departamento, estado o provincia
+              {tx(
+                'Departamento, estado o provincia',
+                'State, province, or region',
+              )}
             </label>
             <div className={styles.fieldControl}>
               <CustomSelect
@@ -221,7 +257,7 @@ export function KycFields({
                   setSelectedState(nextState);
                   setSelectedCity('');
                 }}
-                placeholder="Selecciona una región"
+                placeholder={tx('Selecciona una región', 'Select a region')}
                 required
                 disabled={disabled}
               />
@@ -235,7 +271,7 @@ export function KycFields({
 
           <div className={styles.field}>
             <label className={styles.fieldLabel} htmlFor="kyc_city">
-              Ciudad
+              {tx('Ciudad', 'City')}
             </label>
             <div className={styles.fieldControl}>
               <CustomSelect
@@ -244,7 +280,7 @@ export function KycFields({
                 options={cityOptions}
                 value={cities.includes(selectedCity) ? selectedCity : ''}
                 onChange={setSelectedCity}
-                placeholder="Selecciona una ciudad"
+                placeholder={tx('Selecciona una ciudad', 'Select a city')}
                 required
                 disabled={disabled}
               />
@@ -252,19 +288,31 @@ export function KycFields({
           </div>
         </div>
         {(regionsQuery.isFetching || citiesQuery.isFetching) && (
-          <LoadingState mode="compact" label="Cargando regiones y ciudades…" />
+          <LoadingState
+            mode="compact"
+            label={tx(
+              'Cargando regiones y ciudades…',
+              'Loading states and cities…',
+            )}
+          />
         )}
         {(regionsQuery.error || citiesQuery.error) && (
-          <div role="alert">
-            No se pudo cargar el catálogo de ubicaciones.{' '}
+          <div role="alert" className={styles.inlineErrorBanner}>
+            <span>
+              {tx(
+                'No se pudo cargar el catálogo de ubicaciones.',
+                'Could not load the locations catalog.',
+              )}
+            </span>
             <button
               type="button"
+              className={styles.retryBtn}
               onClick={() => {
                 if (regionsQuery.error) void regionsQuery.refetch();
                 if (citiesQuery.error) void citiesQuery.refetch();
               }}
             >
-              Reintentar
+              {tx('Reintentar', 'Retry')}
             </button>
           </div>
         )}
@@ -272,7 +320,8 @@ export function KycFields({
 
       <fieldset data-kyc-fields hidden={step !== 3} disabled={disabled}>
         <legend>
-          <Icon name="pie" size={18} /> Perfil financiero (USD)
+          <Icon name="pie" size={18} />{' '}
+          {tx('Perfil financiero (USD)', 'Financial profile (USD)')}
         </legend>
         <div className={styles.grid}>
           <div className={styles.field}>
@@ -280,20 +329,29 @@ export function KycFields({
               className={styles.fieldLabel}
               htmlFor="kyc_employment_status"
             >
-              Situación laboral
+              {tx('Situación laboral', 'Employment status')}
             </label>
             <div className={styles.fieldControl}>
               <CustomSelect
                 id="kyc_employment_status"
                 name="employment_status"
                 options={[
-                  { value: 'employed', label: 'Empleado / Asalariado' },
-                  { value: 'student', label: 'Estudiante' },
+                  {
+                    value: 'employed',
+                    label: tx('Empleado / Asalariado', 'Employed / Salaried'),
+                  },
+                  { value: 'student', label: tx('Estudiante', 'Student') },
                   {
                     value: 'unemployed',
-                    label: 'Independiente / Sin empleo',
+                    label: tx(
+                      'Independiente / Sin empleo',
+                      'Self-employed / Unemployed',
+                    ),
                   },
-                  { value: 'retired', label: 'Pensionado / Retirado' },
+                  {
+                    value: 'retired',
+                    label: tx('Pensionado / Retirado', 'Retired'),
+                  },
                 ]}
                 value={employmentStatus}
                 onChange={setEmploymentStatus}
@@ -305,7 +363,10 @@ export function KycFields({
 
           <div className={styles.field}>
             <label className={styles.fieldLabel} htmlFor="kyc_annual_income">
-              Ingreso anual estimado (USD)
+              {tx(
+                'Ingreso anual estimado (USD)',
+                'Estimated annual income (USD)',
+              )}
             </label>
             <div className={styles.fieldControl}>
               <CustomSelect
@@ -322,7 +383,7 @@ export function KycFields({
 
           <div className={styles.field}>
             <label className={styles.fieldLabel} htmlFor="kyc_total_net_worth">
-              Patrimonio neto total (USD)
+              {tx('Patrimonio neto total (USD)', 'Total net worth (USD)')}
             </label>
             <div className={styles.fieldControl}>
               <CustomSelect
@@ -339,7 +400,7 @@ export function KycFields({
 
           <div className={styles.field}>
             <label className={styles.fieldLabel} htmlFor="kyc_liquid_net_worth">
-              Patrimonio neto líquido (USD)
+              {tx('Patrimonio neto líquido (USD)', 'Liquid net worth (USD)')}
             </label>
             <div className={styles.fieldControl}>
               <CustomSelect
@@ -356,9 +417,12 @@ export function KycFields({
 
           <div className={styles.fundingSources}>
             <span className={`${styles.fieldLabel} ${styles.fullWidth}`}>
-              Fuentes de fondos (selecciona al menos una)
+              {tx(
+                'Fuentes de fondos (selecciona al menos una)',
+                'Funding sources (select at least one)',
+              )}
             </span>
-            {FUNDING_SOURCES.map((source) => (
+            {fundingSources.map((source) => (
               <label key={source.value} className={styles.check}>
                 <input
                   type="checkbox"
@@ -374,13 +438,19 @@ export function KycFields({
 
       <fieldset data-kyc-fields hidden={step !== 4} disabled={disabled}>
         <legend>
-          <Icon name="check" size={18} /> Declaraciones regulatorias y acuerdos
+          <Icon name="check" size={18} />{' '}
+          {tx(
+            'Declaraciones regulatorias y acuerdos',
+            'Regulatory disclosures & agreements',
+          )}
         </legend>
         <div className={styles.grid}>
           <div className={styles.field}>
             <label className={styles.fieldLabel} htmlFor="kyc_control_person">
-              ¿Eres directivo o accionista mayoritario (+10%) de una empresa en
-              bolsa?
+              {tx(
+                '¿Eres directivo o accionista mayoritario (+10%) de una empresa en bolsa?',
+                'Are you an officer or +10% shareholder of a publicly traded company?',
+              )}
             </label>
             <div className={styles.fieldControl}>
               <CustomSelect
@@ -396,7 +466,10 @@ export function KycFields({
 
           <div className={styles.field}>
             <label className={styles.fieldLabel} htmlFor="kyc_finra">
-              ¿Trabajas en una bolsa de valores o entidad afiliada a FINRA?
+              {tx(
+                '¿Trabajas en una bolsa de valores o entidad afiliada a FINRA?',
+                'Are you affiliated with a stock exchange or FINRA member firm?',
+              )}
             </label>
             <div className={styles.fieldControl}>
               <CustomSelect
@@ -412,7 +485,10 @@ export function KycFields({
 
           <div className={styles.field}>
             <label className={styles.fieldLabel} htmlFor="kyc_pep">
-              ¿Eres una Persona Expuesta Políticamente (PEP)?
+              {tx(
+                '¿Eres una Persona Expuesta Políticamente (PEP)?',
+                'Are you a Politically Exposed Person (PEP)?',
+              )}
             </label>
             <div className={styles.fieldControl}>
               <CustomSelect
@@ -428,7 +504,10 @@ export function KycFields({
 
           <div className={styles.field}>
             <label className={styles.fieldLabel} htmlFor="kyc_family_pep">
-              ¿Tienes algún familiar directo expuesto políticamente?
+              {tx(
+                '¿Tienes algún familiar directo expuesto políticamente?',
+                'Do you have an immediate family member who is politically exposed?',
+              )}
             </label>
             <div className={styles.fieldControl}>
               <CustomSelect
@@ -446,18 +525,23 @@ export function KycFields({
         <div className={styles.kycAgreementsSection}>
           <div className={styles.kycAgreementsHeader}>
             <span className={styles.stepSectionHeading}>
-              Contratos de Custodia Bursátil (Alpaca Securities LLC &amp;
-              Acciones UD)
+              {tx(
+                'Contratos de Custodia Bursátil (Alpaca Securities LLC & Acciones UD)',
+                'Brokerage Custody Agreements (Alpaca Securities LLC & Acciones UD)',
+              )}
             </span>
             <p className={styles.kycAgreementsIntro}>
-              Para habilitar tu cuenta de corretaje en EE. UU., revisa cada
-              acuerdo haciendo clic en <strong>Leer documento</strong> y marca
-              tu aceptación:
+              {tx(
+                'Para habilitar tu cuenta de corretaje en EE. UU., revisa cada acuerdo haciendo clic en',
+                'To enable your US brokerage account, review each agreement by clicking',
+              )}{' '}
+              <strong>{tx('Leer documento', 'Read document')}</strong>{' '}
+              {tx('y marca tu aceptación:', 'and check your acceptance:')}
             </p>
           </div>
 
           <div className={styles.kycAgreements}>
-            {KYC_AGREEMENTS_CATALOG.map((item) => (
+            {agreementsCatalog.map((item) => (
               <div key={item.key} className={styles.kycAgreementCard}>
                 <div className={styles.kycAgreementMain}>
                   <label className={styles.kycAgreementCheckLabel}>
@@ -485,7 +569,7 @@ export function KycFields({
                   className={styles.kycReadBtn}
                   onClick={() => openAgreementModal(item.key)}
                 >
-                  Leer documento
+                  {tx('Leer documento', 'Read document')}
                 </button>
               </div>
             ))}
@@ -521,17 +605,19 @@ export function KycFields({
                 type="button"
                 className={styles.termsCloseBtn}
                 onClick={() => agreementDialogRef.current?.close()}
-                aria-label="Cerrar documento"
+                aria-label={tx('Cerrar documento', 'Close document')}
               >
                 ✕
               </button>
             </header>
             <div className={styles.termsBody}>
-              <p>{selectedAgreementDoc.summary}</p>
+              <p className={styles.termsBodyParagraph}>
+                {selectedAgreementDoc.summary}
+              </p>
               {selectedAgreementDoc.clauses.map((clause) => (
-                <div key={clause.heading}>
-                  <h3>{clause.heading}</h3>
-                  <p>{clause.body}</p>
+                <div key={clause.heading} className={styles.termsClauseBlock}>
+                  <h3 className={styles.termsBodyHeading}>{clause.heading}</h3>
+                  <p className={styles.termsBodyParagraph}>{clause.body}</p>
                 </div>
               ))}
             </div>
@@ -541,7 +627,7 @@ export function KycFields({
                 className={styles.primary}
                 onClick={() => agreementDialogRef.current?.close()}
               >
-                Entendido y cerrar
+                {tx('Entendido y cerrar', 'Got it, close')}
               </button>
             </footer>
           </div>

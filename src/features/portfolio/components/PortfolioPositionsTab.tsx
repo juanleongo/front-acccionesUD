@@ -1,7 +1,10 @@
 'use client';
 
-import { formatPortfolioUsd } from '../portfolio-formatters';
+import { formatPercent } from '@/lib/formatters';
+import { useLocale } from '@/lib/i18n';
+import { formatPortfolioUsd, formatSectorLabel } from '../portfolio-formatters';
 import type { PortfolioPositionsData } from '../portfolio-mock';
+import { AllocationBars } from './AllocationBars';
 import styles from '../portfolio.module.css';
 
 export function PortfolioPositionsTab({
@@ -15,16 +18,22 @@ export function PortfolioPositionsTab({
   totalMarketVal: number;
   onNavigateToOrder?: (symbol: string) => void;
 }) {
+  const { locale, tx } = useLocale();
   return (
     <div className={styles.panelCard}>
       <div className={styles.panelHeader}>
         <div>
           <h3 className={styles.panelTitle}>
-            Tenencias y Valoración por Instrumento
+            {tx(
+              'Tenencias y Valoración por Instrumento',
+              'Holdings & Asset Valuation',
+            )}
           </h3>
           <p className={styles.panelDesc}>
-            Detalle de títulos disponibles, acciones reservadas en órdenes
-            abiertas y rendimiento acumulado.
+            {tx(
+              'Detalle de títulos disponibles, acciones reservadas en órdenes abiertas y rendimiento acumulado.',
+              'Available shares, shares held in open orders, and cumulative return.',
+            )}
           </p>
         </div>
       </div>
@@ -34,21 +43,21 @@ export function PortfolioPositionsTab({
           <table className={styles.table}>
             <thead>
               <tr>
-                <th>Instrumento</th>
-                <th>Bolsa</th>
-                <th>Cant. Total (Reservada)</th>
-                <th>Costo Promedio</th>
-                <th>Precio Actual</th>
-                <th>Valor Mercado</th>
-                <th>Ganancia / Pérdida</th>
-                <th>Acción</th>
+                <th>{tx('Instrumento', 'Instrument')}</th>
+                <th>{tx('Bolsa', 'Exchange')}</th>
+                <th>{tx('Cant. Total (Reservada)', 'Total Qty (Reserved)')}</th>
+                <th>{tx('Costo Promedio', 'Avg. Cost')}</th>
+                <th>{tx('Precio Actual', 'Current Price')}</th>
+                <th>{tx('Valor Mercado', 'Market Value')}</th>
+                <th>{tx('Ganancia / Pérdida', 'Gain / Loss')}</th>
+                <th>{tx('Acción', 'Action')}</th>
               </tr>
             </thead>
             <tbody>
               {positionsData.positions.map((pos) => {
                 const pnl = Number(pos.unrealized_pnl) || 0;
                 const cost = Number(pos.cost_basis) || 1;
-                const pct = ((pnl / cost) * 100).toFixed(2);
+                const ratio = pnl / cost;
                 return (
                   <tr key={pos.symbol}>
                     <td>
@@ -57,7 +66,7 @@ export function PortfolioPositionsTab({
                           {pos.symbol}
                         </span>
                         <span className={styles.symbolSector}>
-                          {pos.sector ?? 'Renta Variable EE. UU.'}
+                          {formatSectorLabel(pos.sector, locale)}
                         </span>
                       </div>
                     </td>
@@ -69,7 +78,7 @@ export function PortfolioPositionsTab({
                     <td className={styles.monoCell}>
                       {pos.qty}{' '}
                       {Number(pos.reserved_qty) > 0
-                        ? `(Reservadas: ${pos.reserved_qty})`
+                        ? `(${tx('Reservadas', 'Reserved')}: ${pos.reserved_qty})`
                         : ''}
                     </td>
                     <td className={styles.monoCell}>
@@ -88,7 +97,8 @@ export function PortfolioPositionsTab({
                         }
                       >
                         {pnl >= 0 ? '+' : ''}
-                        {formatPortfolioUsd(pnl)} ({pct}%)
+                        {formatPortfolioUsd(pnl)} (
+                        {formatPercent(ratio, locale)})
                       </span>
                     </td>
                     <td>
@@ -98,7 +108,7 @@ export function PortfolioPositionsTab({
                           className={styles.secondaryBtn}
                           onClick={() => onNavigateToOrder(pos.symbol)}
                         >
-                          Operar {pos.symbol}
+                          {tx('Operar', 'Trade')} {pos.symbol}
                         </button>
                       )}
                     </td>
@@ -120,32 +130,42 @@ export function PortfolioPositionsTab({
                   <div>
                     <div className={styles.symbolTicker}>{pos.symbol}</div>
                     <div className={styles.symbolSector}>
-                      {pos.sector ?? pos.exchange}
+                      {pos.sector
+                        ? formatSectorLabel(pos.sector, locale)
+                        : pos.exchange}
                     </div>
                   </div>
                   <span className={styles.exchangeBadge}>{pos.exchange}</span>
                 </div>
                 <div className={styles.positionCardMetrics}>
                   <div className={styles.metricBox}>
-                    <span className={styles.metricBoxLabel}>Cantidad</span>
+                    <span className={styles.metricBoxLabel}>
+                      {tx('Cantidad', 'Quantity')}
+                    </span>
                     <span className={styles.metricBoxVal}>
-                      {pos.qty} títulos
+                      {pos.qty} {tx('títulos', 'shares')}
                     </span>
                   </div>
                   <div className={styles.metricBox}>
-                    <span className={styles.metricBoxLabel}>Precio Actual</span>
+                    <span className={styles.metricBoxLabel}>
+                      {tx('Precio Actual', 'Current Price')}
+                    </span>
                     <span className={styles.metricBoxVal}>
                       {formatPortfolioUsd(pos.price)}
                     </span>
                   </div>
                   <div className={styles.metricBox}>
-                    <span className={styles.metricBoxLabel}>Valor Mercado</span>
+                    <span className={styles.metricBoxLabel}>
+                      {tx('Valor Mercado', 'Market Value')}
+                    </span>
                     <span className={styles.metricBoxVal}>
                       {formatPortfolioUsd(pos.market_value)}
                     </span>
                   </div>
                   <div className={styles.metricBox}>
-                    <span className={styles.metricBoxLabel}>Rendimiento</span>
+                    <span className={styles.metricBoxLabel}>
+                      {tx('Rendimiento', 'Return')}
+                    </span>
                     <span
                       className={
                         pnl >= 0 ? styles.pnlBadgeGain : styles.pnlBadgeLoss
@@ -156,6 +176,15 @@ export function PortfolioPositionsTab({
                     </span>
                   </div>
                 </div>
+                {onNavigateToOrder && (
+                  <button
+                    type="button"
+                    className={styles.secondaryBtn}
+                    onClick={() => onNavigateToOrder(pos.symbol)}
+                  >
+                    {tx('Operar', 'Trade')} {pos.symbol}
+                  </button>
+                )}
               </div>
             );
           })}
@@ -163,30 +192,25 @@ export function PortfolioPositionsTab({
       )}
 
       {viewMode === 'chart' && (
-        <div className={styles.barsList}>
-          {positionsData.positions.map((pos) => {
+        <AllocationBars
+          items={positionsData.positions.map((pos) => {
             const mv = Number(pos.market_value) || 0;
             const weight = totalMarketVal > 0 ? (mv / totalMarketVal) * 100 : 0;
-            return (
-              <div key={pos.symbol} className={styles.barRow}>
-                <div className={styles.barRowHeader}>
-                  <span>
-                    <strong>{pos.symbol}</strong> · {pos.sector ?? pos.exchange}
-                  </span>
-                  <span>
-                    {formatPortfolioUsd(mv)} ({weight.toFixed(1)}%)
-                  </span>
-                </div>
-                <div className={styles.barTrack}>
-                  <div
-                    className={styles.barFill}
-                    style={{ width: `${Math.min(100, weight)}%` }}
-                  />
-                </div>
-              </div>
-            );
+            return {
+              key: pos.symbol,
+              label: (
+                <>
+                  <strong>{pos.symbol}</strong> ·{' '}
+                  {pos.sector
+                    ? formatSectorLabel(pos.sector, locale)
+                    : pos.exchange}
+                </>
+              ),
+              valueText: `${formatPortfolioUsd(mv)} (${weight.toFixed(1)}%)`,
+              percentage: weight,
+            };
           })}
-        </div>
+        />
       )}
     </div>
   );
