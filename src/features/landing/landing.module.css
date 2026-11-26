@@ -83,6 +83,7 @@
 
 .brand {
   display: inline-flex;
+  flex-shrink: 0;
   align-items: center;
   gap: 0.65rem;
   min-width: 0;
@@ -94,7 +95,10 @@
 }
 
 .brandName {
-  overflow-wrap: anywhere;
+  white-space: nowrap;
+}
+.themeLabel {
+  display: inline;
 }
 
 .brandLogo {
@@ -297,96 +301,6 @@
 }
 
 /* Hero */
-.hero {
-  text-align: center;
-  padding: clamp(2.25rem, 5vw, 3.75rem) 0 clamp(2rem, 4vw, 2.75rem);
-  background: var(--hero-gradient);
-  border-bottom: 0;
-}
-
-.heroBadge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  max-width: 100%;
-  margin: 0 0 1.15rem;
-  padding: 0.35rem 1.25rem;
-  border: 1px solid var(--color-accent-border);
-  border-radius: var(--radius-pill);
-  color: var(--color-accent-text);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-sm);
-  font-size: var(--font-size-xs);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-.heroTitle {
-  max-width: 56rem;
-  margin: 0 auto 1.1rem;
-  font-size: clamp(2rem, 5vw, 3.45rem);
-  font-weight: 800;
-  line-height: 1.06;
-  letter-spacing: -0.04em;
-  color: var(--color-text);
-}
-
-.heroTitle span {
-  background: linear-gradient(
-    100deg,
-    var(--color-primary),
-    var(--color-gradient-mid),
-    var(--color-accent)
-  );
-  background-clip: text;
-  color: transparent;
-}
-
-.heroDescription {
-  max-width: 43rem;
-  margin: 1rem auto 1.75rem;
-  color: var(--color-text-muted);
-  font-size: clamp(1rem, 1.8vw, 1.15rem);
-  line-height: var(--line-height-body);
-}
-
-.heroActions {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 0.9rem;
-  margin-bottom: 2.25rem;
-}
-
-.trustList {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.85rem 2.25rem;
-  padding: 0.85rem 1.25rem;
-  margin: 0 auto;
-  list-style: none;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-xl);
-  background: var(--color-card-gradient);
-  box-shadow: var(--shadow-sm);
-  width: fit-content;
-  max-width: 100%;
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-xs);
-  font-weight: 600;
-}
-
-.trustList li {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-}
-
-.trustList svg {
-  color: var(--color-accent-text);
-}
 
 /* Explorador de mercados */
 .marketSection {
@@ -486,10 +400,6 @@
 }
 
 /* Beneficios */
-.benefits {
-  padding-block: clamp(2.25rem, 4vw, 3.25rem);
-  border-block: 0;
-}
 
 .eyebrow {
   margin: 0 0 0.5rem;
@@ -518,7 +428,6 @@
   list-style: none;
 }
 
-.benefitCard,
 .stepCard {
   display: flex;
   flex-direction: column;
@@ -533,32 +442,10 @@
     box-shadow var(--transition-fast);
 }
 
-.benefitCard:hover,
 .stepCard:hover {
   border-color: var(--color-border-strong);
   box-shadow: var(--shadow-card-elevated);
   transform: translateY(-2px);
-}
-
-.benefitsGrid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.benefitCard {
-  min-width: 0;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 0 1.25rem;
-  padding: clamp(1.25rem, 2.5vw, 2rem);
-}
-.benefitCard .cardIcon {
-  grid-row: 1 / 3;
-}
-.benefitCard .cardDescription {
-  grid-column: 2;
-}
-.benefitCard .cardMeta {
-  grid-column: 1 / -1;
 }
 
 .cardIcon {
@@ -716,112 +603,6 @@
   color: var(--color-primary);
   opacity: 0.08;
   pointer-events: none;
-}
-
-/* Seguridad */
-.securitySection {
-  padding-block: clamp(2.25rem, 4vw, 3.25rem) clamp(3.5rem, 7vw, 6rem);
-}
-
-.securityPanel {
-  display: flex;
-  align-items: center;
-  gap: 2rem;
-  padding: clamp(1.35rem, 3vw, 2.25rem);
-  border: 1px solid var(--color-primary-border);
-  border-radius: var(--radius-2xl);
-  background: var(--color-card-accent-gradient);
-  box-shadow: var(--shadow-card-elevated);
-}
-
-.securityIntro {
-  display: flex;
-  align-items: flex-start;
-  gap: 1.25rem;
-  flex: 1;
-  min-width: 0;
-}
-
-.shieldIcon {
-  display: grid;
-  place-items: center;
-  width: 3.5rem;
-  height: 3.5rem;
-  flex-shrink: 0;
-  border-radius: var(--radius-xl);
-  background: var(--color-shield-bg);
-  border: 1px solid var(--color-shield-border);
-  color: var(--color-primary);
-  box-shadow: var(--shadow-sm);
-}
-
-.securityBadge {
-  display: inline-block;
-  padding: 0.2rem 0.7rem;
-  margin: 0 0 0.5rem;
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--color-accent-border);
-  color: var(--color-accent-text);
-  background: var(--color-surface);
-  font-size: var(--font-size-xs);
-  font-weight: 700;
-  text-transform: uppercase;
-}
-
-.securityTitle {
-  font-size: clamp(1.25rem, 2.5vw, 1.55rem);
-  font-weight: 800;
-  line-height: var(--line-height-snug);
-  letter-spacing: -0.025em;
-  margin: 0 0 0.55rem;
-  max-width: 28rem;
-  color: var(--color-text);
-}
-
-.securityDescription {
-  font-size: var(--font-size-sm);
-  line-height: var(--line-height-body);
-  color: var(--color-text-muted);
-  max-width: 32rem;
-  margin: 0;
-}
-
-.securityBadges {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 0.65rem;
-  padding: 0;
-  margin: 0;
-  list-style: none;
-  flex: 1;
-}
-
-.securityBadges li {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: var(--color-surface-elevated);
-  padding: 0.6rem 0.85rem;
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sm);
-  font-size: var(--font-size-xs);
-  font-weight: 700;
-  color: var(--color-text);
-}
-
-.securityBadges .dot {
-  width: 0.45rem;
-  height: 0.45rem;
-}
-
-.securityBadges svg {
-  color: var(--color-primary);
-}
-
-.securityBadges li:last-child svg {
-  color: var(--color-warning);
 }
 
 /* Comisionistas */
@@ -1374,17 +1155,7 @@
   .brand {
     font-size: 1.05rem;
   }
-  .securityPanel {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .securityTitle,
-  .securityDescription {
-    max-width: none;
-  }
-  .securityBadges {
-    justify-content: flex-start;
-  }
+
   .footerGrid {
     gap: 1.5rem;
   }
@@ -1422,21 +1193,10 @@
   .footerGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .trustList {
-    gap: 0.75rem 1.25rem;
-  }
 }
 
 /* --breakpoint-md */
 @media (max-width: 48rem) {
-  .heroBadge {
-    padding: 0.35rem 0.85rem;
-  }
-  .trustList {
-    flex-direction: column;
-    align-items: flex-start;
-    width: 100%;
-  }
   .headerCta,
   .loginButton {
     display: none;
@@ -1454,13 +1214,10 @@
     padding: 0.75rem 1rem;
     font-size: var(--font-size-sm);
   }
-  .benefitCard,
   .stepCard {
     padding: 1.25rem;
   }
-  .securityPanel {
-    padding: 1.35rem;
-  }
+
   .footerBottom {
     align-items: flex-start;
     flex-direction: column;
@@ -1495,26 +1252,14 @@
     width: 2.15rem;
     height: 2.15rem;
   }
-  .heroActions {
-    flex-direction: column;
-  }
-  .heroActions > * {
-    width: 100%;
-  }
   .cardGrid,
   .footerGrid {
     grid-template-columns: minmax(0, 1fr);
   }
-  .benefitCard,
   .stepCard {
     min-height: auto;
   }
-  .securityIntro {
-    flex-direction: column;
-  }
-  .securityBadges li {
-    width: 100%;
-  }
+
   .advisorCard {
     flex-basis: calc(100% - 1rem);
     padding: 1.15rem;
@@ -1535,19 +1280,21 @@
   }
 }
 
-@media (max-width: 40rem) {
-  .benefitsGrid {
-    grid-template-columns: minmax(0, 1fr);
+@media (max-width: 23rem) {
+  .themeLabel {
+    display: none;
   }
-  .benefitCard {
-    column-gap: 0.85rem;
+  .headerActions {
+    gap: 0.2rem;
   }
-  .benefitCard .cardIcon {
-    width: 2.5rem;
-    height: 2.5rem;
+  .themeButton,
+  .language,
+  .menuButton {
+    min-width: 2.75rem;
+    min-height: 2.75rem;
   }
-  .benefitCard .cardMeta {
-    margin-top: 0.25rem;
+  .language {
+    padding-inline: 0.35rem;
   }
 }
 .marketTitle > svg {

@@ -13,8 +13,8 @@ const modules = [
     en: 'Account overview and balances',
   },
   {
-    es: 'Explorador de Acciones & ETFs de EE. UU.',
-    en: 'U.S. Stocks & ETFs Explorer',
+    es: 'Explorador de acciones de EE. UU.',
+    en: 'U.S. Stock Explorer',
   },
   {
     es: 'Terminal de Órdenes & Trading',
@@ -163,12 +163,6 @@ export function Footer() {
             <Link href="/login">{tx('Iniciar sesión', 'Sign in')}</Link>
           </nav>
         </div>
-        <p className={styles.previewDisclaimer}>
-          {tx(
-            'Plataforma educativa y de simulación bursátil enfocada en los mercados financieros de Estados Unidos (USD).',
-            'Educational and stock market simulation platform focused on United States financial markets (USD).',
-          )}
-        </p>
       </div>
     </footer>
   );

@@ -12,30 +12,11 @@ import { formatPersonName } from '@/lib/format-person-name';
 import { useLocale } from '@/lib/i18n';
 import {
   getDocumentTheme,
-  subscribeThemeStorage,
+  subscribeDocumentTheme,
   toggleDocumentTheme,
   type Theme,
 } from '@/lib/theme';
 import styles from '../landing.module.css';
-
-function subscribeDocumentTheme(onThemeChange: () => void): () => void {
-  const stopStorage = subscribeThemeStorage(() => onThemeChange());
-  if (
-    typeof document === 'undefined' ||
-    typeof MutationObserver === 'undefined'
-  ) {
-    return stopStorage;
-  }
-  const observer = new MutationObserver(onThemeChange);
-  observer.observe(document.documentElement, {
-    attributes: true,
-    attributeFilter: ['data-theme'],
-  });
-  return () => {
-    observer.disconnect();
-    stopStorage();
-  };
-}
 
 function getServerThemeSnapshot(): Theme {
   return 'dark';
@@ -146,11 +127,17 @@ export function Header() {
             >
               {activeTheme === 'light' ? (
                 <>
-                  <Icon name="moon" size={16} /> {tx('Oscuro', 'Dark')}
+                  <Icon name="moon" size={16} />{' '}
+                  <span className={styles.themeLabel}>
+                    {tx('Oscuro', 'Dark')}
+                  </span>
                 </>
               ) : (
                 <>
-                  <Icon name="sun" size={16} /> {tx('Claro', 'Light')}
+                  <Icon name="sun" size={16} />{' '}
+                  <span className={styles.themeLabel}>
+                    {tx('Claro', 'Light')}
+                  </span>
                 </>
               )}
             </button>

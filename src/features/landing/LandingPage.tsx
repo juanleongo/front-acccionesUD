@@ -9,6 +9,8 @@ import {
   Security,
 } from './components/OverviewSections';
 import { Footer } from './components/Footer';
+import { StockExperience } from './components/StockExperience';
+import { DeviceShowcase } from './components/DeviceShowcase';
 import styles from './landing.module.css';
 
 export function LandingPage() {
@@ -18,8 +20,10 @@ export function LandingPage() {
         <Header />
         <main id="contenido">
           <Hero />
+          <StockExperience />
           <AdvisorsCarousel />
           <MarketExplorer />
+          <DeviceShowcase />
           <Benefits />
           <GettingStarted />
           <Security />

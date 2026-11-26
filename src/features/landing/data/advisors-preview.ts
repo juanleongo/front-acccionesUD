@@ -77,8 +77,8 @@ export const advisorsPreview = [
     photo: '/advisors/advisor-4.jpg',
   },
   {
-    badge: '★ NYSE ARCA · ETFs & ÍNDICES USA',
-    badgeEn: '★ NYSE ARCA · U.S. ETFs & INDICES',
+    badge: '★ NYSE · CONSUMO & INDUSTRIA',
+    badgeEn: '★ NYSE · CONSUMER & INDUSTRIAL STOCKS',
     name: 'Mateo Benavides, MBA',
     license: 'Licencia AMV #UD-ADV-071',
     licenseEn: 'AMV License #UD-ADV-071',
@@ -86,13 +86,13 @@ export const advisorsPreview = [
     proposals: '(79 propuestas)',
     proposalsEn: '(79 proposals)',
     description:
-      'Estrategias diversificadas mediante fondos cotizados (ETFs) en NYSE Arca (SPY, QQQ, DIA, GLD) y cobertura sectorial del mercado estadounidense.',
+      'Análisis de acciones de empresas de consumo e industria en Estados Unidos, con atención a sus fundamentos y distribución por sectores.',
     descriptionEn:
-      'Diversified ETF strategies on NYSE Arca (SPY, QQQ, DIA, GLD) and U.S. sector allocation.',
+      'Analysis of U.S. consumer and industrial company stocks, with a focus on fundamentals and sector allocation.',
     portfolio: '$920K USD',
     success: '90.4%',
-    specialty: 'NYSE Arca · ETFs & Índices USA',
-    specialtyEn: 'NYSE Arca · U.S. ETFs & Indices',
+    specialty: 'NYSE · Acciones de consumo e industria',
+    specialtyEn: 'NYSE · Consumer & industrial stocks',
     photo: '/advisors/advisor-5.jpg',
   },
 ] as const;

@@ -1,103 +1,120 @@
 // @vitest-environment jsdom
 import {
-  act,
   fireEvent,
   render,
   screen,
   waitFor,
+  act,
 } from '@testing-library/react';
-import { afterEach, expect, it, vi } from 'vitest';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { beforeEach, afterEach, expect, it, vi } from 'vitest';
 import { setAppLocale } from '@/lib/i18n';
-import { applyTheme } from '@/lib/theme';
+import { getPublicMarketPage } from '@/lib/market-explorer';
 import { MarketExplorer } from './MarketExplorer';
-
+vi.mock('@/lib/market-explorer', () => ({ getPublicMarketPage: vi.fn() }));
+const page = {
+  results: [
+    {
+      symbol: 'AAPL',
+      name: 'Apple Inc.',
+      exchange: 'NASDAQ',
+      tradable: true,
+      price: 150,
+      change_ratio: 0.02,
+      as_of: '2026-11-25T15:00:00Z',
+      feed: 'iex',
+      is_delayed: false,
+      is_stale: false,
+    },
+  ],
+  markets: [{ code: 'NASDAQ', name: 'NASDAQ' }],
+  total: 12,
+  page: 1,
+  page_size: 6,
+  retrieved_at: '2026-11-25T15:00:00Z',
+  market_open: true,
+  quotes_unavailable: false,
+  source: 'alpaca' as const,
+  currency: 'USD',
+};
+beforeEach(() => {
+  vi.mocked(getPublicMarketPage).mockReset().mockResolvedValue(page);
+});
 afterEach(() => {
-  vi.useRealTimers();
   setAppLocale('es');
   localStorage.clear();
-  delete document.documentElement.dataset.theme;
 });
-
-it('embeds the official U.S. screener with search tools and sends stock links through sign in', async () => {
-  render(<MarketExplorer />);
-  const frame = await screen.findByTitle(
-    'Explorador de acciones de TradingView',
+function setup() {
+  render(
+    <QueryClientProvider
+      client={
+        new QueryClient({
+          defaultOptions: { queries: { retry: false, gcTime: 0 } },
+        })
+      }
+    >
+      <MarketExplorer />
+    </QueryClientProvider>,
   );
-  const url = new URL(frame.getAttribute('src')!);
-  expect(url.origin).toBe('https://www.tradingview-widget.com');
-  expect(url.searchParams.get('locale')).toBe('es');
-  expect(JSON.parse(decodeURIComponent(url.hash.slice(1)))).toMatchObject({
-    market: 'america',
-    showToolbar: true,
-    largeChartUrl: `${window.location.origin}/login`,
+}
+it('shows the Alpaca catalog, freshness and sign-in links without an embedded provider', async () => {
+  setup();
+  await screen.findByRole('table');
+  expect(screen.getByRole('link', { name: 'AAPL' })).toHaveAttribute(
+    'href',
+    '/login',
+  );
+  expect(screen.getByText('Apple Inc.')).toBeVisible();
+  expect(document.querySelector('iframe')).toBeNull();
+  expect(screen.getByText(/iex/)).toBeVisible();
+});
+it('sends search, exchange and pagination filters to the API and hides previous rows during a request', async () => {
+  setup();
+  await screen.findByRole('table');
+  fireEvent.change(screen.getByLabelText('Empresa o símbolo'), {
+    target: { value: 'Apple' },
   });
-  expect(
-    screen.getByRole('link', { name: 'Operar en Acciones UD →' }),
-  ).toHaveAttribute('href', '/login');
-  expect(
-    screen.getByRole('link', {
-      name: /Analizador de acciones por TradingView/,
-    }),
-  ).toHaveAttribute('href', 'https://www.tradingview.com/screener/');
-  fireEvent.load(frame);
-  expect(screen.queryByText('Cargando mercados…')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Buscar' }));
+  await waitFor(() =>
+    expect(getPublicMarketPage).toHaveBeenLastCalledWith(
+      'Apple',
+      '',
+      1,
+      expect.any(AbortSignal),
+    ),
+  );
+  await screen.findByRole('table');
+  fireEvent.change(screen.getByLabelText('Bolsa'), {
+    target: { value: 'NASDAQ' },
+  });
+  await waitFor(() =>
+    expect(getPublicMarketPage).toHaveBeenLastCalledWith(
+      'Apple',
+      'NASDAQ',
+      1,
+      expect.any(AbortSignal),
+    ),
+  );
+  await screen.findByRole('table');
+  fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }));
+  await waitFor(() =>
+    expect(getPublicMarketPage).toHaveBeenLastCalledWith(
+      'Apple',
+      'NASDAQ',
+      2,
+      expect.any(AbortSignal),
+    ),
+  );
+});
+it('shows API failures without invented quotes and supports English', async () => {
+  vi.mocked(getPublicMarketPage).mockRejectedValue(new Error('offline'));
+  setup();
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'No pudimos actualizar el mercado.',
+  );
   expect(screen.queryByRole('table')).not.toBeInTheDocument();
-});
-
-it('updates the external document when language or the current-tab theme changes', async () => {
-  render(<MarketExplorer />);
-  await screen.findByTitle('Explorador de acciones de TradingView');
-  act(() => {
-    setAppLocale('en');
-    applyTheme('light');
-  });
-  await waitFor(() => {
-    const frame = screen.getByTitle('TradingView stock screener');
-    const url = new URL(frame.getAttribute('src')!);
-    expect(url.searchParams.get('locale')).toBe('en');
-    expect(JSON.parse(decodeURIComponent(url.hash.slice(1))).colorTheme).toBe(
-      'light',
-    );
-  });
-});
-
-it('provides the official company search through the chart and keeps only one active widget', async () => {
-  render(<MarketExplorer />);
-  await screen.findByTitle('Explorador de acciones de TradingView');
-  fireEvent.click(screen.getByRole('button', { name: 'Buscar y analizar' }));
-  const frame = screen.getByTitle(
-    'Gráfico y búsqueda de acciones de TradingView',
-  );
-  const url = new URL(frame.getAttribute('src')!);
-  expect(url.pathname).toBe('/embed-widget/advanced-chart/');
-  expect(JSON.parse(decodeURIComponent(url.hash.slice(1)))).toMatchObject({
-    allow_symbol_change: true,
-    timezone: 'America/New_York',
-  });
-  expect(
-    screen.queryByTitle('Explorador de acciones de TradingView'),
-  ).not.toBeInTheDocument();
-  expect(
-    screen.getByRole('button', { name: 'Buscar y analizar' }),
-  ).toHaveAttribute('aria-pressed', 'true');
-});
-
-it('bounds the loading state, retries with a new document and never substitutes sample prices', async () => {
-  vi.useFakeTimers();
-  render(<MarketExplorer />);
-  await act(() => vi.advanceTimersByTimeAsync(1));
-  const previous = screen.getByTitle('Explorador de acciones de TradingView');
-  await act(() => vi.advanceTimersByTimeAsync(25000));
+  act(() => setAppLocale('en'));
   expect(screen.getByRole('alert')).toHaveTextContent(
-    'No pudimos abrir TradingView',
+    'Could not refresh market data.',
   );
-  expect(
-    screen.queryByTitle('Explorador de acciones de TradingView'),
-  ).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: 'Recargar vista' }));
-  const next = screen.getByTitle('Explorador de acciones de TradingView');
-  expect(next).not.toBe(previous);
-  fireEvent.load(next);
-  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-  expect(screen.queryByText(/\$172\.50|\$198\.20/)).not.toBeInTheDocument();
 });

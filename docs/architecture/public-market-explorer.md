@@ -1,50 +1,27 @@
 # Explorador público de mercados
 
-La portada utiliza dos vistas oficiales alojadas por TradingView. El navegador carga
-`https://www.tradingview-widget.com/embed-widget/screener/` con el mercado
-`america`, la barra de filtros y la vista de empresas de mayor capitalización.
-La vista «Buscar y analizar» carga `/embed-widget/advanced-chart/` y habilita
-`allow_symbol_change` para consultar empresas y símbolos mediante el buscador
-del gráfico. El Screener filtra por bolsa, sector, tipo de instrumento y otras
-características; su filtro Ticker no es un buscador de empresas. Sólo se monta
-una vista a la vez.
+La portada utiliza `PublicMarketTable`, compartida con Mercados. Consume `GET /api/v1/public/market-explorer` a través del transporte central y valida con Zod. Next reenvía explícitamente esta ruta pública al origen configurado en `next.config.ts`. El cliente permite 15 segundos, por encima del límite de 12 segundos del servicio. El backend conserva la integración Alpaca existente; esta migración no cambia sus contratos.
 
-No necesita endpoints públicos añadidos a FastAPI, credenciales de Alpaca ni una
-clave de API en el navegador. El backend no se modifica para esta integración.
+## Tabla y filtros
 
-## Integración y límites
+Símbolo, empresa, bolsa, último precio USD, variación respecto al cierre anterior, instante de cotización, feed, demora, antigüedad y clasificación negociable/solo consulta. Búsqueda por nombre o símbolo, filtro por bolsa y paginación del servidor (seis instrumentos por página). La consulta cambia con cada filtro aplicado y no muestra filas del filtro anterior mientras carga. Refresco cada 30 segundos en pestaña activa, con caché compartida por consulta.
 
-El adaptador `tradingview.ts` genera exclusivamente una URL del proveedor con las
-opciones del widget oficial. El documento externo queda aislado en un iframe con
-título accesible; conserva sus propios filtros, logos, controles y marca. Las
-acciones y tablas internas del proveedor no se copian ni se consultan mediante
-una API no documentada. Las cotizaciones estadounidenses pueden tener demora.
+En portada los símbolos llevan al login. En Mercados seleccionan el instrumento del gráfico. La selección de bolsa conserva su etiqueta durante carga/error. Un error de refresco mantiene los últimos datos recibidos con un aviso; los errores iniciales tienen reintento; precios ausentes se muestran como no disponibles. Los avatares usan iniciales, sin descargar marcas de terceros.
 
-Se aplica el tema claro/oscuro y el idioma ES/EN al documento del proveedor.
-La cabecera, el marco y las acciones externas utilizan los tokens de Acciones UD;
-el contenido del iframe conserva los estilos y las opciones de TradingView.
-Los enlaces de símbolos se configuran para abrir `/login` de Acciones UD; la
-atribución externa continúa apuntando a TradingView.
+No hay widgets, URLs de gráficos ni dependencias de TradingView. Los gráficos y herramientas están en Mercados. El precio puede tener demora y depende del feed autorizado de Alpaca; el refresco de la página no elimina esa demora.
 
-La carga comienza al acercarse la sección al área visible, reservando su altura
-para evitar saltos. La tabla conserva un ancho legible y desplazamiento horizontal
-en su contenedor, también accesible por teclado; el gráfico usa el ancho del móvil.
-El indicador circular termina cuando carga el documento
-externo; TradingView gestiona posteriormente la carga de sus datos. Un fallo de
-carga o una espera de 25 segundos muestra un mensaje con recarga y acceso directo
-al proveedor. No se sustituyen errores por precios de ejemplo.
+## Alcance de información
+
+La API pública actual no entrega volumen, capitalización, P/B, BPA, empleados ni ratings técnicos. La tabla no crea columnas vacías para esos campos. Volumen existe en otros contratos de cotización e histórico, pero exponerlo en esta tabla exigiría ampliar el contrato público. Los fundamentales requieren una fuente adicional; un rating técnico propio requeriría fórmula y cobertura definidas.
 
 ## Verificación
 
-Las pruebas unitarias comprueban configuración, acceso mediante login, cambio de
-idioma/tema, timeout y recarga. La comprobación visual con Chrome debe cargar el
-widget real, buscar una acción mediante el buscador del gráfico y verificar logos,
-filtros y ausencia de desbordamiento en móvil y escritorio. Bloquear las rutas
-`/api/v1/public/*` durante esta comprobación confirma la independencia del backend.
+Pruebas de búsqueda, filtro, paginación, fuente, estado de error y ES/EN; verificación visual de tabla con scroll interno a 320, 390, 1440 y 2560 px. Los precios de prueba pertenecen exclusivamente a fixtures.
 
-Referencias oficiales:
+Prueba de integración real (requiere backend configurado): `RUN_LIVE_MARKETS=1` y Playwright `tests/e2e/public-market-live.spec.ts`. Las peticiones de ambas tablas pasan por Next sin interceptar la ruta pública; las vistas protegidas se aíslan sin crear sesiones de usuario. `tests/market-rewrites.test.ts` protege la configuración de reenvío.
 
-- https://www.tradingview.com/widget-docs/widgets/screeners/screener/
-- https://www.tradingview.com/widget-docs/faq/general/
-- https://www.tradingview.com/widget-docs/faq/data/
-- https://www.tradingview.com/widget-docs/markets/north-america/
+## Logos y alcance de búsqueda
+
+El componente compartido `AssetLogo` utiliza los archivos locales ya atribuidos en `brand-assets.md` para AAPL, NVDA, TSLA, SPY, JPM y XOM. Los demás símbolos solicitan una imagen por ticker a LogoAPI.sh, sin clave. Si falla, solicitan la imagen pública por símbolo a Financial Modeling Prep y, como siguiente respaldo, consultan el endpoint público del backend, que protege las credenciales de Alpaca, valida el formato y aplica caché. Una imagen no disponible muestra las iniciales; nunca se asigna el logo de una empresa a un ETF derivado solo por parecerse su símbolo. Los logos de Alpaca dependen de cobertura y habilitación del servicio, por lo que no se garantiza el catálogo completo. Los intentos son finitos y las iniciales siguen visibles mientras carga la imagen. La secuencia se reinicia al cambiar de símbolo o bolsa. El servicio externo tiene cobertura parcial; no se garantiza que todos los instrumentos tengan un logo.
+
+La tabla de Mercados inicia con todas las bolsas, independientemente de la bolsa elegida para el gráfico. Conserva sus propios filtros al cambiar de instrumento. Si una búsqueda con bolsa específica no encuentra resultados, identifica el alcance y permite buscar en todas las bolsas. La búsqueda por NVIDIA devuelve NVDA en NASDAQ; AMEX lo excluye correctamente.
