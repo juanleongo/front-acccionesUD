@@ -91,7 +91,7 @@ export function MarketSchedule({ code }: { code: string }) {
           <h3>{tx(`Calendario de ${code}`, `${code} Trading Calendar`)}</h3>
         </div>
 
-        <div className={styles.filters}>
+        <div className={styles.calendarDateRange}>
           <label className={styles.dateFilterLabel}>
             <span>{tx('Desde', 'From')}</span>
             <DatePicker

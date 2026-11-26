@@ -8,6 +8,10 @@ import { useLocale } from '@/lib/i18n';
 import { InstrumentSelector } from './components/InstrumentSelector';
 import { OrderParametersFields } from './components/OrderParametersFields';
 import { OrderPreviewCard } from './components/OrderPreviewCard';
+import { InstrumentQuoteCard } from './components/InstrumentQuoteCard';
+import { OrderEstimateCard } from './components/OrderEstimateCard';
+import { getOrderTypeHelp } from './order-type-help';
+import guidance from './order-guidance.module.css';
 import {
   previewOrder,
   submitOrder,
@@ -110,13 +114,17 @@ export function OrderForm({
   const flight = useRef(false);
   const attempt = useRef<{ fingerprint: string; key: string } | null>(null);
 
-  function update(changes: Partial<OrderInput>) {
-    setDraft((previous) => ({ ...previous, ...changes }));
+  function resetReview() {
     setPreview(null);
     setAck(false);
     setTotp('');
     setError('');
     setNotice('');
+  }
+
+  function update(changes: Partial<OrderInput>) {
+    setDraft((previous) => ({ ...previous, ...changes }));
+    resetReview();
   }
 
   function changeType(type: OrderInput['type']) {
@@ -136,9 +144,7 @@ export function OrderForm({
     void _tp;
     void _sl;
     setDraft({ ...base, type, order_class: 'simple', time_in_force: 'day' });
-    setPreview(null);
-    setAck(false);
-    setTotp('');
+    resetReview();
   }
 
   function switchTrailMode(mode: 'price' | 'percent') {
@@ -149,7 +155,7 @@ export function OrderForm({
       ...rest,
       ...(mode === 'price' ? { trail_price: '' } : { trail_percent: '' }),
     });
-    setPreview(null);
+    resetReview();
   }
 
   function validateOrderDraft(): string | null {
@@ -398,6 +404,10 @@ export function OrderForm({
             </div>
           )}
 
+          {draft.symbol && (
+            <InstrumentQuoteCard key={draft.symbol} symbol={draft.symbol} />
+          )}
+
           <div className={styles.fieldGrid}>
             <div className={styles.fieldGroup}>
               <label htmlFor="order-side" className={styles.fieldLabel}>
@@ -428,11 +438,12 @@ export function OrderForm({
                   value,
                   label,
                 }))}
+                describedBy="order-type-help"
               />
             </div>
 
             <label className={styles.fieldGroup}>
-              <span className={styles.fieldLabel}>
+              <span id="order-quantity-label" className={styles.fieldLabel}>
                 {tx('Cantidad de acciones', 'Share quantity')}
               </span>
               <input
@@ -453,7 +464,15 @@ export function OrderForm({
                 }
                 value={draft.qty}
                 onChange={(e) => update({ qty: e.target.value })}
+                aria-describedby="order-quantity-help"
+                aria-labelledby="order-quantity-label"
               />
+              <span id="order-quantity-help" className={styles.fieldHint}>
+                {tx(
+                  'Es el número de acciones, no el importe en dólares. 1 significa una acción.',
+                  'This is the number of shares, not a dollar amount. 1 means one share.',
+                )}
+              </span>
             </label>
 
             <div className={styles.fieldGroup}>
@@ -513,11 +532,20 @@ export function OrderForm({
             />
           </div>
 
+          <p id="order-type-help" className={guidance.help}>
+            {getOrderTypeHelp(draft.type, draft.side, locale)}
+          </p>
+
           {!editing && (draft.type === 'market' || draft.type === 'limit') && (
             <label className={styles.checkRow}>
               <input
                 type="checkbox"
                 checked={draft.order_class === 'bracket'}
+                aria-label={tx(
+                  'Compra bracket: take profit y stop loss',
+                  'Bracket buy: take profit & stop loss',
+                )}
+                aria-describedby="order-bracket-help"
                 onChange={(e) => {
                   const { take_profit: _tp, stop_loss: _sl, ...base } = draft;
                   void _tp;
@@ -534,15 +562,23 @@ export function OrderForm({
                         }
                       : {}),
                   });
-                  setPreview(null);
-                  setAck(false);
-                  setTotp('');
+                  resetReview();
                 }}
               />
-              {tx(
-                'Compra bracket: take profit y stop loss',
-                'Bracket buy: take profit & stop loss',
-              )}
+              <span className={guidance.checkText}>
+                <span>
+                  {tx(
+                    'Compra bracket: take profit y stop loss',
+                    'Bracket buy: take profit & stop loss',
+                  )}
+                </span>
+                <span id="order-bracket-help" className={guidance.checkHint}>
+                  {tx(
+                    'Añade una salida con objetivo de beneficio y otra que se activa para limitar pérdidas. El stop no garantiza el precio de venta.',
+                    'Adds a profit-target exit and a stop-triggered exit to limit losses. A stop does not guarantee the sale price.',
+                  )}
+                </span>
+              </span>
             </label>
           )}
 
@@ -551,17 +587,40 @@ export function OrderForm({
               type="checkbox"
               disabled={Boolean(editing)}
               checked={draft.schedule_if_closed}
+              aria-label={tx(
+                'Programar para la próxima apertura si el mercado está cerrado',
+                'Schedule for next market open if market is closed',
+              )}
+              aria-describedby="order-schedule-help"
               onChange={(e) => update({ schedule_if_closed: e.target.checked })}
             />
-            {tx(
-              'Programar para la próxima apertura si el mercado está cerrado',
-              'Schedule for next market open if market is closed',
-            )}
+            <span className={guidance.checkText}>
+              <span>
+                {tx(
+                  'Programar para la próxima apertura si el mercado está cerrado',
+                  'Schedule for next market open if market is closed',
+                )}
+              </span>
+              <span id="order-schedule-help" className={guidance.checkHint}>
+                {tx(
+                  'Si no hay sesión disponible, solicita la siguiente apertura. No reserva la cotización ni fija el precio.',
+                  'When the market is closed, request the next open. This does not lock in the quote or execution price.',
+                )}
+              </span>
+            </span>
           </label>
+
+          {!preview && !busy && !notice && (
+            <OrderEstimateCard
+              draft={draft}
+              valid={validateOrderDraft() === null}
+            />
+          )}
 
           {preview && (
             <OrderPreviewCard
               preview={preview}
+              draft={draft}
               ack={ack}
               totp={totp}
               onAckChange={setAck}
@@ -586,11 +645,7 @@ export function OrderForm({
               <button
                 type="button"
                 className={styles.btnSecondary}
-                onClick={() => {
-                  setPreview(null);
-                  setAck(false);
-                  setTotp('');
-                }}
+                onClick={resetReview}
               >
                 {tx('Volver a revisar', 'Edit order')}
               </button>

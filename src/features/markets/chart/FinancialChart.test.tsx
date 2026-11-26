@@ -1,54 +1,43 @@
 // @vitest-environment jsdom
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { it, expect, vi } from 'vitest';
-import type * as LightweightCharts from 'lightweight-charts';
 const engine = vi.hoisted(() => {
-  const data = vi.fn();
-  const api = { applyOptions: vi.fn(), setData: data };
-  const scale = {
-    getVisibleLogicalRange: vi.fn(() => ({ from: -0.5, to: 1.5 })),
-    setVisibleLogicalRange: vi.fn(),
-    subscribeVisibleLogicalRangeChange: vi.fn(),
-    unsubscribeVisibleLogicalRangeChange: vi.fn(),
-    fitContent: vi.fn(),
-  };
+  const zr = { on: vi.fn(), off: vi.fn() };
   const chart = {
-    addSeries: vi.fn(() => api),
-    removeSeries: vi.fn(),
-    remove: vi.fn(),
-    applyOptions: vi.fn(),
-    timeScale: () => scale,
-    priceScale: () => ({ applyOptions: vi.fn() }),
-    subscribeCrosshairMove: vi.fn(),
-    unsubscribeCrosshairMove: vi.fn(),
-    setCrosshairPosition: vi.fn(),
+    isDisposed: () => false,
+    getWidth: () => 1000,
+    getHeight: () => 600,
+    convertToPixel: (_: unknown, point: number[]) => point,
+    setOption: vi.fn(),
+    dispose: vi.fn(),
+    resize: vi.fn(),
+    dispatchAction: vi.fn(),
+    on: vi.fn(),
+    off: vi.fn(),
+    getZr: () => zr,
+    getOption: () => ({ dataZoom: [{ start: 0, end: 100 }] }),
   };
-  return { chart, api, scale, create: vi.fn(() => chart) };
+  return { chart, init: vi.fn(() => chart) };
 });
-vi.mock('lightweight-charts', async (original) => ({
-  ...(await original<typeof LightweightCharts>()),
-  createChart: engine.create,
-}));
+vi.mock('./echarts-engine', () => ({ init: engine.init }));
+vi.stubGlobal(
+  'ResizeObserver',
+  class {
+    observe() {}
+    disconnect() {}
+  },
+);
 import { FinancialChart } from './FinancialChart';
-const points = [
-  {
-    time: Date.parse('2026-11-19T14:30:00Z'),
-    price: 100,
-    open: 99,
-    high: 101,
-    low: 98,
-    close: 100,
-  },
-  {
-    time: Date.parse('2026-11-19T14:31:00Z'),
-    price: 101,
-    open: 100,
-    high: 102,
-    low: 99,
-    close: 101,
-  },
-];
-it('keeps one chart and one active series across mode changes and cleans listeners on unmount', () => {
+const points = Array.from({ length: 40 }, (_, i) => ({
+  time: Date.UTC(2026, 10, 19, 14, 30 + i),
+  price: 100 + i,
+  open: 99 + i,
+  high: 101 + i,
+  low: 98 + i,
+  close: 100 + i,
+  volume: 1000 + i,
+}));
+it('keeps one ECharts canvas across modes and adds indicators without another historical request', async () => {
   const props = {
     points,
     timeframe: '1Min' as const,
@@ -59,26 +48,37 @@ it('keeps one chart and one active series across mode changes and cleans listene
   const { rerender, unmount } = render(
     <FinancialChart {...props} mode="candles" />,
   );
-  expect(engine.create).toHaveBeenCalledTimes(1);
-  expect(engine.api.setData.mock.calls[0]![0][0]).toMatchObject({
-    open: 99,
-    high: 101,
-    low: 98,
-    close: 100,
-  });
-  rerender(<FinancialChart {...props} mode="line" />);
-  expect(engine.api.setData).toHaveBeenLastCalledWith(
-    points.map((p) => ({ time: p.time / 1000, value: p.close })),
-  );
-  rerender(<FinancialChart {...props} mode="area" />);
-  expect(engine.create).toHaveBeenCalledTimes(1);
-  expect(engine.chart.removeSeries).toHaveBeenCalledTimes(2);
-  fireEvent.keyDown(screen.getByRole('img'), { key: 'ArrowLeft' });
-  expect(engine.chart.setCrosshairPosition).toHaveBeenCalled();
-  unmount();
-  expect(engine.chart.remove).toHaveBeenCalledOnce();
-  expect(engine.chart.unsubscribeCrosshairMove).toHaveBeenCalledTimes(3);
+  await waitFor(() => expect(engine.init).toHaveBeenCalledOnce());
   expect(
-    engine.scale.unsubscribeVisibleLogicalRangeChange,
-  ).toHaveBeenCalledTimes(3);
+    engine.chart.setOption.mock.calls.at(-1)![0].series[0].data[0],
+  ).toEqual([99, 100, 98, 101]);
+  const tooltip = engine.chart.setOption.mock.calls
+    .at(-1)![0]
+    .tooltip.formatter([{ dataIndex: 0, seriesId: 'price' }]);
+  expect(tooltip).toContain('Apertura');
+  expect(tooltip).toContain('Volumen');
+  expect(tooltip).not.toMatch(/1795|lowest|highest|open/);
+  rerender(<FinancialChart {...props} mode="area" />);
+  await waitFor(() =>
+    expect(
+      engine.chart.setOption.mock.calls.at(-1)![0].series[0],
+    ).toMatchObject({ type: 'line', areaStyle: expect.any(Object) }),
+  );
+  fireEvent.change(screen.getByLabelText('Indicadores'), {
+    target: { value: 'rsi' },
+  });
+  await waitFor(() =>
+    expect(
+      engine.chart.setOption.mock.calls
+        .at(-1)![0]
+        .series.some((s: { id: string }) => s.id === 'rsi'),
+    ).toBe(true),
+  );
+  expect(engine.init).toHaveBeenCalledOnce();
+  fireEvent.keyDown(screen.getByRole('img'), { key: 'ArrowLeft' });
+  expect(engine.chart.dispatchAction).toHaveBeenCalledWith(
+    expect.objectContaining({ type: 'showTip' }),
+  );
+  unmount();
+  expect(engine.chart.dispose).toHaveBeenCalledOnce();
 });

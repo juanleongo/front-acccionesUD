@@ -17,7 +17,33 @@ async function fixture(page: Page) {
   await page.route('**/api/**', async (route) => {
     const url = new URL(route.request().url());
     let json: unknown = {};
-    if (url.pathname === '/api/v1/markets')
+    if (url.pathname === '/api/v1/public/market-explorer')
+      json = {
+        results: [
+          {
+            symbol: 'UP',
+            name: 'Fixture UP',
+            exchange: 'NASDAQ',
+            tradable: true,
+            price: '121.98',
+            change_ratio: '0.02',
+            as_of: '2026-11-19T15:00:00Z',
+            feed: 'iex',
+            is_delayed: false,
+            is_stale: false,
+          },
+        ],
+        markets: [{ code: 'NASDAQ', name: 'NASDAQ' }],
+        total: 1,
+        page: 1,
+        page_size: 6,
+        retrieved_at: '2026-11-19T15:00:00Z',
+        market_open: true,
+        quotes_unavailable: false,
+        source: 'alpaca',
+        currency: 'USD',
+      };
+    else if (url.pathname === '/api/v1/markets')
       json = [{ code: 'NASDAQ', name: 'NASDAQ' }];
     else if (url.pathname.includes('instruments/search'))
       json = {
@@ -247,4 +273,356 @@ test('keeps the English controls and mobile chart accessible', async ({
     )
     .toBe(true);
   expect(errors).toEqual([]);
+});
+
+test('analysis indicators, drawings and Alpaca tables work without external chart requests', async ({
+  page,
+}) => {
+  const { errors } = await fixture(page);
+  const external: string[] = [];
+  page.on('request', (request) => {
+    if (/tradingview/i.test(request.url())) external.push(request.url());
+  });
+  await page.goto('/');
+  await expect(page.locator('#mercados table')).toBeVisible();
+  await expect(page.locator('#mercados')).toContainText('Fixture UP');
+  expect(await page.locator('iframe').count()).toBe(0);
+  for (const theme of ['light', 'dark']) {
+    await page.evaluate((value) => {
+      document.documentElement.dataset.theme = value;
+    }, theme);
+    for (const width of [320, 390, 1440, 2560]) {
+      await page.setViewportSize({ width, height: 1000 });
+      await expect
+        .poll(() =>
+          page.evaluate(
+            () => document.documentElement.scrollWidth <= innerWidth,
+          ),
+        )
+        .toBe(true);
+      await expect(page.locator('#mercados table')).toBeVisible();
+      if (width === 1440)
+        await page
+          .locator('#mercados')
+          .screenshot({ path: `test-results/market-table-${theme}.png` });
+    }
+  }
+  await page.setViewportSize({ width: 1440, height: 1100 });
+  await page.goto('/markets');
+  const root = page.locator('[data-chart-mode]');
+  await expect(root.locator('canvas').first()).toBeVisible();
+  await page.locator('#chart-indicator').selectOption('rsi');
+  await expect(root).toContainText(
+    'Los indicadores necesitan suficiente histórico previo.',
+  );
+  await page
+    .getByRole('button', { name: 'Nivel horizontal', exact: true })
+    .click();
+  const graph = page.getByRole('img', { name: 'Histórico de UP' });
+  await graph.scrollIntoViewIfNeeded();
+  const box = (await graph.boundingBox())!;
+  await page.mouse.click(box.x + box.width * 0.45, box.y + box.height * 0.25);
+  await expect(
+    page.getByRole('button', { name: 'Deshacer dibujo' }),
+  ).toBeEnabled();
+  await page.getByRole('button', { name: 'Deshacer dibujo' }).click();
+  await expect(
+    page.getByRole('button', { name: 'Deshacer dibujo' }),
+  ).toBeDisabled();
+  await page.locator('#chart-indicator').selectOption('macd');
+  await expect(root.locator('canvas').first()).toBeVisible();
+  await expect(page.getByRole('table')).toBeVisible();
+  await root.screenshot({ path: 'test-results/analysis-macd-dark.png' });
+  expect(external).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
+test('drawing tools support two clicks, drag, cancellation, undo, download and fullscreen', async ({
+  page,
+}) => {
+  const { errors } = await fixture(page);
+  await page.setViewportSize({ width: 1440, height: 1100 });
+  await page.goto('/markets');
+  const root = page.locator('[data-chart-mode]');
+  const graph = page.getByRole('img', { name: 'Histórico de UP' });
+  await expect(root.locator('canvas').first()).toBeVisible();
+  await graph.scrollIntoViewIfNeeded();
+  const bounds = (await graph.boundingBox())!;
+  const a = {
+    x: bounds.x + bounds.width * 0.35,
+    y: bounds.y + bounds.height * 0.23,
+  };
+  const b = {
+    x: bounds.x + bounds.width * 0.65,
+    y: bounds.y + bounds.height * 0.33,
+  };
+  await page
+    .getByRole('button', { name: 'Línea de tendencia', exact: true })
+    .click();
+  await graph.scrollIntoViewIfNeeded();
+  await page.mouse.click(a.x, a.y);
+  await expect(root).toContainText('Primer punto marcado.');
+  await page.mouse.move(b.x, b.y);
+  await page.mouse.click(b.x, b.y);
+  await expect(root).toHaveAttribute('data-drawing-count', '1');
+  await page
+    .getByRole('button', { name: 'Medir variación', exact: true })
+    .click();
+  await page.mouse.move(a.x, a.y);
+  await page.mouse.down();
+  await page.mouse.move(b.x, b.y, { steps: 8 });
+  await page.mouse.up();
+  await expect(root).toHaveAttribute('data-drawing-count', '2');
+  await expect(root).toContainText('1041–1100 de 1100');
+  await root.screenshot({ path: 'test-results/drawing-tools-corrected.png' });
+  await page
+    .getByRole('button', { name: 'Deshacer dibujo', exact: true })
+    .click();
+  await expect(root).toHaveAttribute('data-drawing-count', '1');
+  await page
+    .getByRole('button', { name: 'Medir variación', exact: true })
+    .click();
+  await page.mouse.click(a.x, a.y);
+  await expect(root).toContainText('Primer punto marcado.');
+  await page.keyboard.press('Escape');
+  await expect(root).not.toContainText('Primer punto marcado.');
+  await page
+    .getByRole('button', { name: 'Nivel horizontal', exact: true })
+    .click();
+  await page.mouse.click(b.x, b.y);
+  await expect(root).toHaveAttribute('data-drawing-count', '2');
+  await page
+    .getByRole('button', { name: 'Borrar dibujos', exact: true })
+    .click();
+  await expect(root).toHaveAttribute('data-drawing-count', '0');
+  for (const indicator of ['sma', 'ema', 'bollinger', 'rsi', 'macd', 'none']) {
+    await page.locator('#chart-indicator').selectOption(indicator);
+    await expect(root.locator('canvas').first()).toBeVisible();
+    await expect(root).not.toContainText(
+      /No se pudo cargar el motor|NaN|Infinity/,
+    );
+  }
+  await page.getByRole('button', { name: 'Volumen', exact: true }).click();
+  await expect(
+    page.getByRole('button', { name: 'Volumen', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'false');
+  await page.getByRole('button', { name: 'Volumen', exact: true }).click();
+  const downloaded = page.waitForEvent('download');
+  await page
+    .getByRole('button', { name: 'Descargar gráfico', exact: true })
+    .click();
+  expect((await downloaded).suggestedFilename()).toBe('acciones-ud.png');
+  await page
+    .getByRole('button', { name: 'Pantalla completa', exact: true })
+    .click();
+  await expect(
+    page.getByRole('button', {
+      name: 'Salir de pantalla completa',
+      exact: true,
+    }),
+  ).toBeVisible();
+  await page
+    .getByRole('button', { name: 'Salir de pantalla completa', exact: true })
+    .click();
+  await expect(
+    page.getByRole('button', { name: 'Pantalla completa', exact: true }),
+  ).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test('edits selected drawings, moves handles and shapes, creates shaded areas and restores deleted objects', async ({
+  page,
+}) => {
+  const { errors } = await fixture(page);
+  await page.setViewportSize({ width: 1440, height: 1100 });
+  await page.goto('/markets');
+  const root = page.locator('[data-chart-mode]');
+  const graph = page.getByRole('img', { name: 'Histórico de UP' });
+  await expect(root.locator('canvas').first()).toBeVisible();
+  await graph.scrollIntoViewIfNeeded();
+  const box = (await graph.boundingBox())!;
+  const a = { x: box.x + box.width * 0.25, y: box.y + box.height * 0.28 };
+  const b = { x: box.x + box.width * 0.7, y: box.y + box.height * 0.48 };
+  await page
+    .getByRole('button', { name: 'Línea de tendencia', exact: true })
+    .click();
+  await page.mouse.click(a.x, a.y);
+  await page.mouse.click(b.x, b.y);
+  const editor = page.getByRole('group', {
+    name: 'Editar dibujo seleccionado',
+  });
+  await expect(editor).toBeVisible();
+  const line = root.locator('[data-kind="trend"]');
+  await expect(line.locator('[data-handle]')).toHaveCount(2);
+  await expect(root.locator('[data-anchor-date]')).toHaveCount(2);
+  await editor.getByRole('button', { name: 'Verde', exact: true }).click();
+  await editor.getByLabel('Grosor', { exact: true }).selectOption('4');
+  await editor.getByLabel('Trazo', { exact: true }).selectOption('dashed');
+  await editor.getByLabel('Texto del dibujo').fill('Soporte');
+  await expect(line.locator('polyline')).toHaveAttribute('stroke-width', '4');
+  await expect(line.locator('polyline')).toHaveAttribute(
+    'stroke-dasharray',
+    '8 5',
+  );
+  await expect(line).toContainText('Soporte');
+  const oldPoints = await line.locator('polyline').getAttribute('points');
+  const handle = await line.locator('[data-handle="0"]').evaluate((el) => ({
+    x: Number(el.getAttribute('cx')),
+    y: Number(el.getAttribute('cy')),
+  }));
+  await page.mouse.move(box.x + handle.x, box.y + handle.y);
+  await page.mouse.down();
+  await page.mouse.move(box.x + handle.x + 45, box.y + handle.y - 25, {
+    steps: 6,
+  });
+  await page.mouse.up();
+  await expect(line.locator('polyline')).not.toHaveAttribute(
+    'points',
+    oldPoints!,
+  );
+  const changedPoints = await line.locator('polyline').getAttribute('points');
+  const coordinates = changedPoints!
+    .split(' ')
+    .map((v) => v.split(',').map(Number));
+  const midpoint = {
+    x: box.x + (coordinates[0]![0]! + coordinates[1]![0]!) / 2,
+    y: box.y + (coordinates[0]![1]! + coordinates[1]![1]!) / 2,
+  };
+  await editor.getByRole('button', { name: 'Deseleccionar dibujo' }).click();
+  await expect(editor).not.toBeVisible();
+  await page.mouse.move(midpoint.x, midpoint.y);
+  await page.mouse.down();
+  await page.mouse.move(midpoint.x + 30, midpoint.y + 20, { steps: 6 });
+  await page.mouse.up();
+  await expect(editor).toBeVisible();
+  await expect(line.locator('polyline')).not.toHaveAttribute(
+    'points',
+    changedPoints!,
+  );
+  await page
+    .getByRole('button', { name: 'Área rectangular', exact: true })
+    .click();
+  await page.mouse.move(a.x, a.y);
+  await page.mouse.down();
+  await page.mouse.move(b.x, b.y, { steps: 6 });
+  await page.mouse.up();
+  await expect(root.locator('[data-kind="rectangle"] polygon')).toBeVisible();
+  await editor.getByLabel('Relleno', { exact: true }).selectOption('0.25');
+  await expect(root.locator('[data-kind="rectangle"] polygon')).toHaveAttribute(
+    'fill-opacity',
+    '0.25',
+  );
+  await page
+    .getByRole('button', { name: 'Área poligonal', exact: true })
+    .click();
+  await page.mouse.click(a.x, a.y);
+  await page.mouse.click(b.x, b.y);
+  await page.mouse.click(a.x, b.y + 30);
+  await page.keyboard.press('Enter');
+  await expect(root).toHaveAttribute('data-drawing-count', '3');
+  await expect(root.locator('[data-kind="polygon"] [data-handle]')).toHaveCount(
+    3,
+  );
+  await editor
+    .getByRole('button', { name: 'Eliminar dibujo seleccionado' })
+    .click();
+  await expect(root).toHaveAttribute('data-drawing-count', '2');
+  await page
+    .getByRole('button', { name: 'Deshacer dibujo', exact: true })
+    .click();
+  await expect(root).toHaveAttribute('data-drawing-count', '3');
+  await page
+    .getByRole('button', { name: 'Rehacer dibujo', exact: true })
+    .click();
+  await expect(root).toHaveAttribute('data-drawing-count', '2');
+  // Re-select an existing shape by clicking its actual line after a mode change.
+  await page.locator('#price-chart-type').selectOption('area');
+  await page.locator('#price-chart-type').selectOption('candles');
+  const rectangle = root.locator('[data-kind="rectangle"] polygon');
+  await expect(rectangle).toBeVisible();
+  const rectPoint = await rectangle.evaluate((el) =>
+    el.getAttribute('points')!.split(' ')[0]!.split(',').map(Number),
+  );
+  await page.mouse.click(box.x + rectPoint[0]!, box.y + rectPoint[1]!);
+  await expect(editor).toBeVisible();
+  for (const theme of ['light', 'dark']) {
+    await page.evaluate((value) => {
+      document.documentElement.dataset.theme = value;
+    }, theme);
+    for (const width of [320, 390, 1440, 2560]) {
+      await page.setViewportSize({ width, height: 1100 });
+      await expect
+        .poll(() =>
+          page.evaluate(
+            () => document.documentElement.scrollWidth <= innerWidth,
+          ),
+        )
+        .toBe(true);
+      await expect(editor).toBeVisible();
+      if (width === 1440 || width === 320)
+        await root.screenshot({
+          path: `test-results/editable-drawings-${theme}-${width}.png`,
+        });
+    }
+  }
+  expect(errors).toEqual([]);
+});
+
+test('calendar dates share one row and the chart exchange does not restrict stock search', async ({
+  page,
+}) => {
+  await fixture(page);
+  await page.goto('/markets');
+  await expect(page.getByLabel('Bolsa', { exact: true })).toHaveValue('');
+  await expect(page.locator('[data-chart-mode] canvas').first()).toBeVisible();
+  for (const width of [320, 1440]) {
+    await page.setViewportSize({ width, height: 1000 });
+    const from = page.getByRole('button', {
+      name: 'Elegir fecha: Desde',
+      exact: true,
+    });
+    const to = page.getByRole('button', {
+      name: 'Elegir fecha: Hasta',
+      exact: true,
+    });
+    const a = await from.boundingBox(),
+      b = await to.boundingBox();
+    expect(a).not.toBeNull();
+    expect(b).not.toBeNull();
+    await expect
+      .poll(async () =>
+        page
+          .locator(
+            'button[aria-label="Elegir fecha: Desde"], button[aria-label="Elegir fecha: Hasta"]',
+          )
+          .evaluateAll((elements) => {
+            const boxes = elements.map((el) => el.getBoundingClientRect());
+            return boxes.length === 2
+              ? Math.abs(boxes[0]!.y - boxes[1]!.y)
+              : 999;
+          }),
+      )
+      .toBeLessThan(3);
+    expect(b!.x).toBeGreaterThan(a!.x);
+    for (const control of [from, to]) {
+      await control.click();
+      const dialog = page.getByRole('dialog');
+      await expect(dialog).toBeVisible();
+      const popup = (await dialog.boundingBox())!;
+      expect(popup.x).toBeGreaterThanOrEqual(0);
+      expect(popup.x + popup.width).toBeLessThanOrEqual(width);
+      await page.keyboard.press('Escape');
+    }
+    if (width === 1440)
+      await page
+        .locator('section')
+        .filter({
+          has: page.getByRole('heading', {
+            name: 'Calendario de NASDAQ',
+            exact: true,
+          }),
+        })
+        .last()
+        .screenshot({ path: 'test-results/calendar-dates-aligned.png' });
+  }
 });

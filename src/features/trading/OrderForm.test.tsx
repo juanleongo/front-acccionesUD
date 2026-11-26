@@ -14,6 +14,8 @@ import {
   submitOrder,
   searchAssets,
   listTradingMarkets,
+  estimateOrder,
+  getInstrumentQuote,
   type OrderDetail,
 } from './trading-api';
 vi.mock('./trading-api', () => ({
@@ -21,6 +23,8 @@ vi.mock('./trading-api', () => ({
   submitOrder: vi.fn(),
   searchAssets: vi.fn(),
   listTradingMarkets: vi.fn(),
+  estimateOrder: vi.fn(),
+  getInstrumentQuote: vi.fn(),
   orderAction: vi.fn(),
   resubmitBody: vi.fn(),
 }));
@@ -35,6 +39,19 @@ const preview = {
   scheduled_for: null,
 };
 beforeEach(() => {
+  vi.mocked(estimateOrder).mockResolvedValue(preview);
+  vi.mocked(getInstrumentQuote).mockResolvedValue({
+    symbol: 'AAPL',
+    last_trade_price: '100',
+    bid_price: '99.98',
+    ask_price: '100.02',
+    updated_at: '2026-11-26T15:30:00Z',
+    as_of: '2026-11-26T15:30:00Z',
+    currency: 'USD',
+    source: 'Alpaca',
+    is_delayed: false,
+    is_stale: false,
+  });
   vi.mocked(listTradingMarkets).mockResolvedValue([
     { code: 'NASDAQ', name: 'Nasdaq' },
     { code: 'NYSE', name: 'New York Stock Exchange' },

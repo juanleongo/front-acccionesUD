@@ -2,7 +2,10 @@
 import { z } from 'zod';
 import { browserHttp } from '@/lib/api/client';
 
-const decimal = z.string().regex(/^-?\d+(?:\.\d+)?$/);
+const decimal = z
+  .string()
+  .regex(/^-?\d+(?:\.\d+)?$/)
+  .refine((value) => Number.isFinite(Number(value)));
 export const orderSchema = z.object({
   id: z.string(),
   status: z.string(),
@@ -79,6 +82,29 @@ export const previewSchema = z.object({
 export type ApiOrder = z.infer<typeof orderSchema>;
 export type OrderDetail = z.infer<typeof detailSchema>;
 export type Preview = z.infer<typeof previewSchema>;
+const quoteSchema = z.object({
+  symbol: z.string(),
+  last_trade_price: decimal.nullable(),
+  bid_price: decimal.nullable(),
+  ask_price: decimal.nullable(),
+  updated_at: z.iso.datetime({ offset: true }).nullable(),
+  as_of: z.iso.datetime({ offset: true }).nullable(),
+  currency: z.string().nullable(),
+  source: z.string(),
+  is_delayed: z.boolean(),
+  is_stale: z.boolean(),
+});
+export type InstrumentQuote = z.infer<typeof quoteSchema>;
+export function getInstrumentQuote(symbol: string, signal: AbortSignal) {
+  return browserHttp.request({
+    path: `/api/v1/instruments/${encodeURIComponent(symbol)}/quote`,
+    signal,
+    timeoutMs: 15_000,
+    response: 'json',
+    parse: (value) =>
+      quoteSchema.refine((quote) => quote.symbol === symbol).parse(value),
+  });
+}
 export type OrderInput = {
   symbol: string;
   side: 'buy' | 'sell';
@@ -97,15 +123,38 @@ export type OrderInput = {
   high_amount_acknowledged?: boolean;
   totp_code?: string;
 };
-export async function previewOrder(body: OrderInput) {
+export async function previewOrder(
+  body: OrderInput,
+  signal?: AbortSignal,
+  timeoutMs = 60_000,
+) {
   return browserHttp.request({
     path: '/api/v1/orders/preview',
     method: 'POST',
-    timeoutMs: 60_000,
+    timeoutMs,
     body,
     response: 'json',
     parse: previewSchema.parse,
+    ...(signal ? { signal } : {}),
   });
+}
+/** Read-only calculation; never confirms or submits an order. */
+export async function estimateOrder(body: OrderInput, signal: AbortSignal) {
+  // Query cancellation also cancels this debounce when the draft changes.
+  await new Promise<void>((resolve, reject) => {
+    const abort = () => {
+      clearTimeout(timer);
+      reject(new DOMException('Aborted', 'AbortError'));
+    };
+    const timer = setTimeout(() => {
+      signal.removeEventListener('abort', abort);
+      resolve();
+    }, 450);
+    if (signal.aborted) abort();
+    else signal.addEventListener('abort', abort, { once: true });
+  });
+  signal.throwIfAborted();
+  return previewOrder(body, signal, 15_000);
 }
 export async function submitOrder(body: OrderInput, key: string) {
   return browserHttp.request({

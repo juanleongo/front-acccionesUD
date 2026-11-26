@@ -4,6 +4,8 @@ import { useQuery } from '@tanstack/react-query';
 import { Icon } from '@/components/ui/Icon';
 import { CustomSelect } from '@/components/ui/CustomSelect';
 import { LoadingState } from '@/components/ui/LoadingState';
+import { PublicMarketTable } from '@/components/market/PublicMarketTable';
+import type { PublicMarketAsset } from '@/lib/market-explorer';
 import { QUERY_STALE_TIMES, queryKeys } from '@/lib/api';
 import { useLocale } from '@/lib/i18n';
 import { getMarkets } from './api';
@@ -23,6 +25,7 @@ export function Markets() {
     networkMode: 'always',
   });
   const [selected, setSelected] = useState('');
+  const [asset, setAsset] = useState<PublicMarketAsset | null>(null);
   const current = list.data?.find((m) => m.code === selected) ?? list.data?.[0];
   return (
     <section
@@ -53,7 +56,7 @@ export function Markets() {
         {list.data && current && (
           <div className={styles.marketPickerLabel}>
             <label htmlFor="markets-exchange-select">
-              {tx('Mercado', 'Market')}
+              {tx('Mercado del gráfico', 'Chart exchange')}
             </label>
             <CustomSelect
               id="markets-exchange-select"
@@ -86,7 +89,20 @@ export function Markets() {
         <>
           {current ? (
             <>
-              <PriceChart key={current.code} exchange={current.code} />
+              <PriceChart
+                key={`${current.code}:${asset?.exchange === current.code ? asset.symbol : ''}`}
+                exchange={current.code}
+                initialSymbol={
+                  asset?.exchange === current.code ? asset.symbol : ''
+                }
+                initialName={asset?.exchange === current.code ? asset.name : ''}
+              />
+              <PublicMarketTable
+                onSelect={(item) => {
+                  setAsset(item);
+                  setSelected(item.exchange);
+                }}
+              />
               <MarketClock />
               <MarketSchedule code={current.code} />
             </>

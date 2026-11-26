@@ -324,15 +324,15 @@
   font-weight: 600;
 }
 
-.panel tbody tr[data-kind='trading_day'] .kindCell {
+.panel .calendarTable tbody tr[data-kind='trading_day'] .kindCell {
   color: var(--color-accent-text);
 }
 
-.panel tbody tr[data-kind='holiday'] .kindCell {
+.panel .calendarTable tbody tr[data-kind='holiday'] .kindCell {
   color: var(--color-warning);
 }
 
-.panel tbody tr[data-kind='weekend'] .kindCell {
+.panel .calendarTable tbody tr[data-kind='weekend'] .kindCell {
   color: var(--color-text-muted);
 }
 
@@ -432,7 +432,7 @@
   color: var(--color-text-muted);
 }
 
-.panel table {
+.panel .calendarTable {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
@@ -440,7 +440,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-.panel caption {
+.panel .calendarTable caption {
   text-align: left;
   font-size: 0.82rem;
   font-weight: 700;
@@ -451,7 +451,7 @@
   letter-spacing: 0.02em;
 }
 
-.panel thead th {
+.panel .calendarTable thead th {
   padding: 0.82rem 1rem;
   background: var(--color-surface-raised);
   color: var(--color-text-subtle);
@@ -463,7 +463,7 @@
   text-align: left;
 }
 
-.panel thead th.thSchedule {
+.panel .calendarTable thead th.thSchedule {
   text-align: center;
 }
 
@@ -472,7 +472,7 @@
   text-align: center;
 }
 
-.panel tbody th[scope='row'] {
+.panel .calendarTable tbody th[scope='row'] {
   font-family: monospace;
   font-size: 0.84rem;
   font-weight: 700;
@@ -484,20 +484,20 @@
   white-space: nowrap;
 }
 
-.panel td {
+.panel .calendarTable td {
   padding: 0.75rem 1rem;
   text-align: left;
   border-bottom: 1px solid var(--color-border-subtle);
   color: var(--color-text);
 }
 
-.panel tbody tr:last-child th,
-.panel tbody tr:last-child td {
+.panel .calendarTable tbody tr:last-child th,
+.panel .calendarTable tbody tr:last-child td {
   border-bottom: none;
 }
 
-.panel tbody tr:hover td,
-.panel tbody tr:hover th {
+.panel .calendarTable tbody tr:hover td,
+.panel .calendarTable tbody tr:hover th {
   background: var(--color-surface-hover);
 }
 
@@ -540,12 +540,12 @@
   border-radius: 50%;
   background: currentColor;
 }
-.panel tbody tr[data-kind='trading_day'] .sessionBadge {
+.panel .calendarTable tbody tr[data-kind='trading_day'] .sessionBadge {
   color: var(--color-success);
   border-color: var(--color-success-border);
   background: var(--color-success-bg);
 }
-.panel tbody tr[data-kind='holiday'] .sessionBadge {
+.panel .calendarTable tbody tr[data-kind='holiday'] .sessionBadge {
   color: var(--color-warning);
   border-color: var(--color-warning-border);
   background: var(--color-warning-bg);
@@ -599,5 +599,29 @@
   .marketPickerLabel {
     flex: 1 1 100%;
     width: 100%;
+  }
+}
+
+.calendarDateRange {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: end;
+  gap: 0.85rem;
+  flex: 0 1 31rem;
+  width: min(100%, 31rem);
+  min-width: 0;
+}
+.calendarDateRange .dateFilterLabel {
+  min-width: 0;
+  margin: 0;
+}
+
+.calendarDateRange .dateFilterLabel:first-child [role='dialog'] {
+  left: 0;
+  right: auto;
+}
+@media (max-width: 40rem) {
+  .calendarDateRange [role='dialog'] {
+    width: min(20rem, calc(100vw - 6rem));
   }
 }
