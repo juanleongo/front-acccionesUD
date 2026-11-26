@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
+import type { BrokerDirectoryItem } from '../brokers-types';
+import type { ProfileInput } from '../brokers-schemas';
 import { Icon } from '@/components/ui/Icon';
 import { formatUsd } from '@/lib/formatters';
 import { useLocale } from '@/lib/i18n';
@@ -22,12 +24,10 @@ export function BrokerPortalReviewsTab({
   pendingOrderReviews,
   onApproveOrder,
   onRejectOrder,
-  onGenerateCertificate,
 }: {
   pendingOrderReviews: PendingOrderReviewItem[];
   onApproveOrder: (order: PendingOrderReviewItem) => void;
   onRejectOrder: (order: PendingOrderReviewItem) => void;
-  onGenerateCertificate: () => void;
 }) {
   const { tx } = useLocale();
   return (
@@ -35,15 +35,12 @@ export function BrokerPortalReviewsTab({
       <div className={styles.cardHeader}>
         <div className={styles.cardHeaderInfo}>
           <h3 className={styles.cardTitle}>
-            {tx(
-              'Bandeja de Órdenes en Revisión y Comisiones del Asesor',
-              'Order Review Inbox & Advisor Commissions',
-            )}
+            {tx('Bandeja de órdenes en revisión', 'Order Review Inbox')}
           </h3>
           <p className={styles.cardDesc}>
             {tx(
-              'Supervisa las órdenes enviadas por tus clientes y consulta el consolidado de tus comisiones devengadas.',
-              'Review orders submitted by your clients and inspect your accrued commissions summary.',
+              'Supervisa las órdenes enviadas por tus clientes.',
+              'Review orders submitted by your clients.',
             )}
           </p>
         </div>
@@ -108,51 +105,12 @@ export function BrokerPortalReviewsTab({
                   className={styles.dangerBtn}
                   onClick={() => onRejectOrder(ord)}
                 >
-                  {tx('✕ Rechazar', '✕ Reject')}
+                  {tx('Devolver para corrección', 'Return for changes')}
                 </button>
               </div>
             </div>
           ))
         )}
-
-        <div className={styles.commissionBox}>
-          <div className={styles.controlHeadingGroup}>
-            <span className={styles.controlIconBadge} aria-hidden="true">
-              <Icon name="coin" size={16} />
-            </span>
-            <div className={styles.controlTitle}>
-              {tx(
-                'Liquidación de Comisiones del Asesor (40% del 2% Total)',
-                'Advisor Commission Settlement (40% of 2% Fee)',
-              )}
-            </div>
-          </div>
-
-          <div className={styles.proposalMetaGrid}>
-            <div className={styles.statTile}>
-              <span>{tx('Volumen del mes', 'Monthly volume')}</span>
-              <strong>{formatUsd(64572, { withCode: true })}</strong>
-            </div>
-            <div className={styles.statTile}>
-              <span>{tx('Comisión neta (0.8%)', 'Net fee (0.8%)')}</span>
-              <strong>{formatUsd(516.58, { withCode: true })}</strong>
-            </div>
-          </div>
-
-          <div className={styles.btnRow}>
-            <button
-              type="button"
-              className={styles.secondaryBtn}
-              onClick={onGenerateCertificate}
-            >
-              <Icon name="file" size={15} />
-              {tx(
-                'Generar Certificado de Comisiones',
-                'Generate Commission Statement',
-              )}
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   );
@@ -160,20 +118,16 @@ export function BrokerPortalReviewsTab({
 
 export function BrokerPortalProfileTab({
   onSaveProfile,
+  profile,
 }: {
-  onSaveProfile: () => void;
+  profile: BrokerDirectoryItem;
+  onSaveProfile: (body: ProfileInput) => void;
 }) {
   const { tx } = useLocale();
-  const [specialty, setSpecialty] = useState(
-    'Tecnología, Semiconductores & S&P 500 (NASDAQ / NYSE)',
-  );
-  const [years, setYears] = useState('11');
-  const [certs, setCerts] = useState(
-    'FINRA Series 7, CFA Level III, AMV Renta Variable',
-  );
-  const [desc, setDesc] = useState(
-    'Estratega senior en acciones de gran capitalización en EE. UU., cobertura cambiaria USD y carteras de crecimiento tecnológico.',
-  );
+  const [specialty, setSpecialty] = useState(profile.specialty);
+  const [years, setYears] = useState(String(profile.years_experience));
+  const [certs, setCerts] = useState(profile.certifications.join(', '));
+  const [desc, setDesc] = useState(profile.description ?? '');
   const [error, setError] = useState('');
 
   function handleSubmit(event: FormEvent) {
@@ -201,17 +155,16 @@ export function BrokerPortalProfileTab({
       );
       return;
     }
-    if (!certs.trim()) {
-      setError(
-        tx(
-          'Registra al menos una certificación profesional.',
-          'Enter at least one professional certification.',
-        ),
-      );
-      return;
-    }
     setError('');
-    onSaveProfile();
+    onSaveProfile({
+      specialty: specialty.trim(),
+      years_experience: numericYears,
+      certifications: certs
+        .split(',')
+        .map((c) => c.trim())
+        .filter(Boolean),
+      description: desc,
+    });
   }
 
   return (

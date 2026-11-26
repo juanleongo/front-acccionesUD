@@ -3,7 +3,7 @@
 import { Icon } from '@/components/ui/Icon';
 import { formatMarketDateTime } from '@/lib/formatters';
 import { useLocale } from '@/lib/i18n';
-import type { BrokerClientItem, BrokerPendingRequest } from '../brokers-mock';
+import type { BrokerClientItem, BrokerPendingRequest } from '../brokers-types';
 import { BrokerAvatar } from './BrokerAvatar';
 import styles from '../brokers.module.css';
 

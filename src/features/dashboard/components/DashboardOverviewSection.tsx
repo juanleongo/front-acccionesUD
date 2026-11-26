@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { fetchPortfolioPositions } from '@/features/portfolio';
-import Image from 'next/image';
+import { AdvisorSummaryCard } from '@/features/brokers';
 import { formatPersonName } from '@/lib/format-person-name';
 import { formatUsd } from '@/lib/formatters';
 import { useLocale } from '@/lib/i18n';
@@ -12,7 +12,6 @@ import { LoadingState } from '@/components/ui/LoadingState';
 import { MarketSessionSummary } from '@/features/markets/client';
 import type { WalletBalance } from '@/features/wallet';
 import {
-  advisorsData,
   setGuideDismissedPreference,
   type DashboardSection,
 } from '../dashboard-constants';
@@ -90,6 +89,7 @@ export interface DashboardOverviewSectionProps {
   onNavigate: (section: DashboardSection) => void;
   onStartOrderForSymbol: (symbol: string) => void;
   onOpenKycModal: () => void;
+  onExploreAdvisors?: () => void;
 }
 
 export function DashboardOverviewSection({
@@ -101,6 +101,7 @@ export function DashboardOverviewSection({
   onNavigate,
   onStartOrderForSymbol,
   onOpenKycModal,
+  onExploreAdvisors,
 }: DashboardOverviewSectionProps) {
   const { locale, tx } = useLocale();
   const positions = useQuery({
@@ -526,51 +527,11 @@ export function DashboardOverviewSection({
             </p>
           </section>
 
-          <section className={styles.panel}>
-            <div className={styles.panelHeading}>
-              <h2>{tx('Tu Asesor Bursátil', 'Your Stock Broker')}</h2>
-              <span className={styles.assigned}>
-                {tx('Asignado', 'Assigned')}
-              </span>
-            </div>
-            <div className={styles.advisor}>
-              <Image
-                src={advisorsData[0]?.photo ?? '/advisors/advisor-1.jpg'}
-                alt={`Foto ${advisorsData[0]?.name ?? 'Carlos Rodríguez, CFA'}`}
-                width={48}
-                height={48}
-                className={styles.advisorAvatar}
-              />
-              <div>
-                <strong>
-                  {advisorsData[0]?.name ?? 'Carlos Rodríguez, CFA'}
-                </strong>
-                <small>
-                  {locale === 'en'
-                    ? (advisorsData[0]?.licenseEn ??
-                      'Official Registry #UD-ADV-042')
-                    : (advisorsData[0]?.license ??
-                      'Registro Oficial #UD-ADV-042')}
-                </small>
-                <b>
-                  ★ {advisorsData[0]?.rating ?? '4.9'}{' '}
-                  {tx('de 5.0', 'out of 5.0')} (
-                  {advisorsData[0]?.proposals ?? 184}{' '}
-                  {tx('propuestas exitosas', 'successful proposals')})
-                </b>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => onNavigate('advisors')}
-              className={styles.advisorButton}
-            >
-              {tx(
-                'Consultar Asesores & Estrategias',
-                'Explore Advisors & Strategies',
-              )}
-            </button>
-          </section>
+          <AdvisorSummaryCard
+            userId={user?.user_id}
+            onExplore={onExploreAdvisors ?? (() => onNavigate('advisors'))}
+            onOpenAdvisor={() => onNavigate('advisors')}
+          />
         </div>
       </div>
     </>

@@ -4,7 +4,7 @@ import { useState, type FormEvent } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { formatMarketDateTime, formatUsd } from '@/lib/formatters';
 import { useLocale } from '@/lib/i18n';
-import type { ProposalChatMessage, ProposalItem } from '../brokers-mock';
+import type { ProposalChatMessage, ProposalItem } from '../brokers-types';
 import { formatProposalStatus, getProposalStatusTone } from '../broker-labels';
 import { BrokerAvatar } from './BrokerAvatar';
 import styles from '../brokers.module.css';
@@ -24,13 +24,19 @@ export function InvestorProposalsTab({
   onDecision,
   onSendMessage,
   onNavigateToOrder,
+  brokerMode = false,
 }: {
   proposals: ProposalItem[];
   selectedProposal: ProposalItem | null;
   messages: ProposalChatMessage[];
   onSelectProposal: (proposalId: string) => void;
-  onDecision: (decision: 'accept' | 'reject', comment: string) => void;
-  onSendMessage: (body: string) => void;
+  brokerMode?: boolean;
+  onDecision: (
+    decision: 'accept' | 'reject',
+    comment: string,
+    totp: string,
+  ) => Promise<boolean>;
+  onSendMessage: (body: string) => Promise<boolean>;
   onNavigateToOrder?: ((symbol: string) => void) | undefined;
 }) {
   const { locale, tx } = useLocale();
@@ -40,7 +46,7 @@ export function InvestorProposalsTab({
   const [chatInput, setChatInput] = useState('');
   const [chatError, setChatError] = useState('');
 
-  function handleDecisionClick(decision: 'accept' | 'reject') {
+  async function handleDecisionClick(decision: 'accept' | 'reject') {
     if (decision === 'accept') {
       const cleaned = totpInput.trim();
       if (!/^\d{6}$/.test(cleaned)) {
@@ -54,12 +60,13 @@ export function InvestorProposalsTab({
       }
     }
     setDecisionError('');
-    onDecision(decision, decisionComment.trim());
+    if (!(await onDecision(decision, decisionComment.trim(), totpInput.trim())))
+      return;
     setTotpInput('');
     setDecisionComment('');
   }
 
-  function handleChatSubmit(event: FormEvent) {
+  async function handleChatSubmit(event: FormEvent) {
     event.preventDefault();
     const cleaned = chatInput.trim();
     if (!cleaned) {
@@ -72,7 +79,7 @@ export function InvestorProposalsTab({
       return;
     }
     setChatError('');
-    onSendMessage(cleaned);
+    if (!(await onSendMessage(cleaned))) return;
     setChatInput('');
   }
 
@@ -126,6 +133,9 @@ export function InvestorProposalsTab({
                   aria-pressed={isSelected}
                   onClick={() => {
                     onSelectProposal(prop.id);
+                    setTotpInput('');
+                    setDecisionComment('');
+                    setChatInput('');
                     setDecisionError('');
                     setChatError('');
                   }}
@@ -265,7 +275,7 @@ export function InvestorProposalsTab({
                 </div>
               </div>
 
-              {selectedProposal.status === 'sent' && (
+              {!brokerMode && selectedProposal.status === 'sent' && (
                 <div className={styles.decisionPanel}>
                   <div className={styles.decisionHeader}>
                     <span
@@ -312,6 +322,7 @@ export function InvestorProposalsTab({
                         {tx('Comentario para el asesor', 'Comment for advisor')}
                       </label>
                       <input
+                        maxLength={500}
                         id="proposal-decision-comment"
                         type="text"
                         className={styles.inputField}
@@ -388,7 +399,9 @@ export function InvestorProposalsTab({
                             <span>
                               {isBroker
                                 ? `${tx('Asesor', 'Advisor')} · ${selectedProposal.broker.name}`
-                                : tx('Tú (Inversionista)', 'You (Investor)')}
+                                : brokerMode
+                                  ? selectedProposal.investor.name
+                                  : tx('Tú (Inversionista)', 'You (Investor)')}
                             </span>
                             <span>
                               {formatMarketDateTime(m.created_at, locale)}
@@ -413,6 +426,7 @@ export function InvestorProposalsTab({
                       'Write a message to your broker',
                     )}
                     aria-invalid={Boolean(chatError)}
+                    maxLength={1000}
                     className={styles.chatInput}
                     placeholder={tx(
                       'Escribe un mensaje a tu comisionista sobre esta operación…',

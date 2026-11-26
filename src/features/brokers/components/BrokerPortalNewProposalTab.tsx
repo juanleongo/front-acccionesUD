@@ -5,7 +5,7 @@ import { CustomSelect } from '@/components/ui/CustomSelect';
 import { Icon } from '@/components/ui/Icon';
 import { formatUsd } from '@/lib/formatters';
 import { useLocale } from '@/lib/i18n';
-import type { BrokerClientItem } from '../brokers-mock';
+import type { BrokerClientItem } from '../brokers-types';
 import styles from '../brokers.module.css';
 
 export interface BrokerProposalDraft {
@@ -20,23 +20,29 @@ export interface BrokerProposalDraft {
 export function BrokerPortalNewProposalTab({
   brokerClients,
   onCreateProposal,
+  initialDraft,
 }: {
   brokerClients: BrokerClientItem[];
+  initialDraft?: BrokerProposalDraft;
   onCreateProposal: (draft: BrokerProposalDraft) => void;
 }) {
   const { tx } = useLocale();
-  const [clientId, setClientId] = useState(brokerClients[0]?.investor_id ?? '');
-  const [symbol, setSymbol] = useState('NVDA');
-  const [side, setSide] = useState<'buy' | 'sell'>('buy');
-  const [qty, setQty] = useState('10');
-  const [type, setType] = useState<'market' | 'limit'>('limit');
-  const [limitPrice, setLimitPrice] = useState('885.00');
+  const [clientId, setClientId] = useState(
+    initialDraft?.clientId ?? brokerClients[0]?.investor_id ?? '',
+  );
+  const [symbol, setSymbol] = useState(initialDraft?.symbol ?? '');
+  const [side, setSide] = useState<'buy' | 'sell'>(initialDraft?.side ?? 'buy');
+  const [qty, setQty] = useState(initialDraft?.qty ?? '1');
+  const [type, setType] = useState<'market' | 'limit'>(
+    initialDraft?.type ?? 'limit',
+  );
+  const [limitPrice, setLimitPrice] = useState(initialDraft?.limitPrice ?? '');
   const [error, setError] = useState('');
 
   const effectiveClientId = clientId || brokerClients[0]?.investor_id || '';
   const estimatedNotional = (() => {
     const nQty = Number(qty);
-    const nPrice = type === 'limit' ? Number(limitPrice) : 175;
+    const nPrice = type === 'limit' ? Number(limitPrice) : NaN;
     if (
       !Number.isFinite(nQty) ||
       nQty <= 0 ||
@@ -45,7 +51,7 @@ export function BrokerPortalNewProposalTab({
     ) {
       return null;
     }
-    return nQty * nPrice * 1.02;
+    return nQty * nPrice;
   })();
 
   function handleSubmit(event: FormEvent) {
@@ -248,10 +254,7 @@ export function BrokerPortalNewProposalTab({
       {estimatedNotional !== null && (
         <div className={styles.previewStrip}>
           <span>
-            {tx(
-              'Monto estimado con comisión (2%):',
-              'Estimated total incl. 2% fee:',
-            )}
+            {tx('Valor límite sin comisiones:', 'Limit value excluding fees:')}
           </span>
           <strong>{formatUsd(estimatedNotional, { withCode: true })}</strong>
         </div>
@@ -266,7 +269,9 @@ export function BrokerPortalNewProposalTab({
       <div className={styles.btnRow}>
         <button type="submit" className={styles.primaryBtn}>
           <Icon name="trend" size={15} />
-          {tx('Enviar Propuesta al Cliente', 'Send Proposal to Client')}
+          {initialDraft
+            ? tx('Guardar nueva versión', 'Save new version')
+            : tx('Enviar Propuesta al Cliente', 'Send Proposal to Client')}
         </button>
       </div>
     </form>

@@ -5,7 +5,7 @@ import { CustomSelect } from '@/components/ui/CustomSelect';
 import { Icon } from '@/components/ui/Icon';
 import { formatMarketDateTime } from '@/lib/formatters';
 import { useLocale } from '@/lib/i18n';
-import type { BrokerLinkRecord } from '../brokers-mock';
+import type { BrokerLinkRecord } from '../brokers-types';
 import { formatLinkStatus } from '../broker-labels';
 import { BrokerAvatar } from './BrokerAvatar';
 import styles from '../brokers.module.css';
@@ -115,14 +115,16 @@ export function InvestorCurrentLinkTab({
                   className={styles.dangerBtn}
                   onClick={onEndLink}
                 >
-                  {tx('Finalizar Vínculo', 'End Link')}
+                  {activeLink.status === 'requested'
+                    ? tx('Cancelar solicitud', 'Cancel request')
+                    : tx('Finalizar Vínculo', 'End Link')}
                 </button>
               </div>
             </div>
 
             <div className={styles.advisorHeroMetaStrip}>
               <div className={styles.advisorMetaChip}>
-                <span>{tx('Vínculo activo desde', 'Linked since')}</span>
+                <span>{tx('Fecha del vínculo', 'Link date')}</span>
                 <strong>
                   {formatMarketDateTime(
                     activeLink.started_at ?? activeLink.requested_at,
@@ -184,6 +186,7 @@ export function InvestorCurrentLinkTab({
                   className={
                     tradingAuthorized ? styles.secondaryBtn : styles.primaryBtn
                   }
+                  disabled={activeLink.status !== 'active'}
                   onClick={onToggleTradingAuth}
                 >
                   {tradingAuthorized
@@ -228,6 +231,7 @@ export function InvestorCurrentLinkTab({
                 <button
                   type="button"
                   className={styles.secondaryBtn}
+                  disabled={activeLink.status !== 'active'}
                   onClick={onToggleOrderReview}
                 >
                   {activeLink.order_review_enabled

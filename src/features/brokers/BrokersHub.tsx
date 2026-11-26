@@ -1,392 +1,193 @@
 'use client';
-
-import { useMemo, useState } from 'react';
-import { Icon } from '@/components/ui/Icon';
+import { useState } from 'react';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import { z } from 'zod';
 import { useLocale } from '@/lib/i18n';
+import { formatMarketDateTime } from '@/lib/formatters';
+import * as api from './brokers-api';
+import * as schemas from './brokers-schemas';
+import { useBrokerAction } from './use-broker-action';
+import { formatLinkStatus, linkStatusLabels } from './broker-labels';
 import {
-  INITIAL_BROKER_CLIENTS,
-  INITIAL_BROKER_REQUESTS,
-  INITIAL_BROKER_REVIEWS,
-  INITIAL_BROKERS_DIRECTORY,
-  INITIAL_CURRENT_LINK,
-  INITIAL_PROPOSAL_MESSAGES,
-  INITIAL_PROPOSALS,
-  type BrokerClientItem,
-  type BrokerDirectoryItem,
-  type BrokerPendingRequest,
-  type BrokerReviewItem,
-  type CurrentBrokerLinkData,
-  type ProposalChatMessage,
-  type ProposalItem,
-} from './brokers-mock';
-import { BrokerWorkspaceOverview } from './components/BrokerWorkspaceOverview';
+  BrokerConfirmDialog,
+  type Confirmation,
+} from './components/BrokerConfirmDialog';
+import { InvestorCurrentLinkTab } from './components/InvestorCurrentLinkTab';
+import { InvestorDirectoryTab } from './components/InvestorDirectoryTab';
 import { BrokerPortalClientsTab } from './components/BrokerPortalClientsTab';
-import {
-  BrokerPortalNewProposalTab,
-  type BrokerProposalDraft,
-} from './components/BrokerPortalNewProposalTab';
+import { BrokerPortalNewProposalTab } from './components/BrokerPortalNewProposalTab';
 import {
   BrokerPortalProfileTab,
   BrokerPortalReviewsTab,
-  type PendingOrderReviewItem,
 } from './components/BrokerPortalReportsTab';
-import { InvestorCurrentLinkTab } from './components/InvestorCurrentLinkTab';
-import { InvestorDirectoryTab } from './components/InvestorDirectoryTab';
-import { InvestorProposalsTab } from './components/InvestorProposalsTab';
+import { ProposalsWorkspace } from './components/ProposalsWorkspace';
+import { BrokerProfileDialog } from './components/BrokerProfileDialog';
+import { ClientInvestments } from './components/ClientInvestments';
+import { HistoryFilters, Pager } from './components/HistoryFilters';
 import styles from './brokers.module.css';
-
 export interface BrokersHubProps {
+  initialTab?: 'current' | 'directory';
   userRoles?: string[];
-  onNavigateToOrder?: (symbol: string) => void;
+  userId?: string;
+  onNavigateToOrder?: ((symbol: string) => void) | undefined;
 }
-
-type InvestorSubTab = 'current-link' | 'directory' | 'proposals';
-type BrokerSubTab =
-  'clients' | 'new-proposal' | 'reviews-reports' | 'my-profile';
-
-const INITIAL_PENDING_ORDER_REVIEWS: PendingOrderReviewItem[] = [
-  {
-    id: 'ord-rev-101',
-    investor_name: 'Juan José León Gómez',
-    symbol: 'TSLA',
-    side: 'buy',
-    qty: '25',
-    type: 'limit',
-    limit_price: '242.50',
-    notional_usd: '6062.50',
-    status: 'pending_broker_review',
-  },
-];
-
 export function BrokersHub({
+  initialTab,
   userRoles = [],
+  userId = '',
   onNavigateToOrder,
 }: BrokersHubProps) {
-  const { tx } = useLocale();
-  const canAccessBrokerPortal = userRoles.includes('broker');
-  const defaultRoleMode = canAccessBrokerPortal ? 'broker' : 'investor';
-  const [preferredRoleMode, setRoleMode] = useState<'investor' | 'broker'>(
-    defaultRoleMode,
+  const { tx, locale } = useLocale();
+  const canBroker = userRoles.includes('broker');
+  const canInvestor = userRoles.includes('investor') || !canBroker;
+  const [mode, setMode] = useState<api.BrokerRole>(
+    canBroker && !(initialTab && canInvestor) ? 'broker' : 'investor',
   );
-  const roleMode = canAccessBrokerPortal ? preferredRoleMode : 'investor';
-  const [investorTab, setInvestorTab] =
-    useState<InvestorSubTab>('current-link');
-  const [brokerTab, setBrokerTab] = useState<BrokerSubTab>('clients');
-
-  const [directory] = useState<BrokerDirectoryItem[]>(
-    INITIAL_BROKERS_DIRECTORY,
-  );
-  const [searchQuery, setSearchQuery] = useState('');
-  const [currentLinkData, setCurrentLinkData] =
-    useState<CurrentBrokerLinkData>(INITIAL_CURRENT_LINK);
-  const [proposals, setProposals] = useState<ProposalItem[]>(INITIAL_PROPOSALS);
-  const [selectedProposalId, setSelectedProposalId] = useState<string>(
-    INITIAL_PROPOSALS[0]?.id ?? '',
-  );
-  const [messagesByProposal, setMessagesByProposal] = useState<
-    Record<string, ProposalChatMessage[]>
-  >(INITIAL_PROPOSAL_MESSAGES);
-  const [reviewsByBroker, setReviewsByBroker] = useState<
-    Record<string, BrokerReviewItem[]>
-  >(INITIAL_BROKER_REVIEWS);
-
-  const [pendingRequests, setPendingRequests] = useState<
-    BrokerPendingRequest[]
-  >(INITIAL_BROKER_REQUESTS);
-  const [brokerClients, setBrokerClients] = useState<BrokerClientItem[]>(
-    INITIAL_BROKER_CLIENTS,
-  );
-  const [pendingOrderReviews, setPendingOrderReviews] = useState<
-    PendingOrderReviewItem[]
-  >(INITIAL_PENDING_ORDER_REVIEWS);
-  const [statusToast, setStatusToast] = useState<string | null>(null);
-
-  const activeLink = currentLinkData.link;
-  const tradingAuthorized =
-    Boolean(currentLinkData.trading_authorization) &&
-    !currentLinkData.trading_authorization?.revoked_at;
-
-  const selectedProposal = useMemo(
-    () =>
-      proposals.find((p) => p.id === selectedProposalId) ??
-      proposals[0] ??
-      null,
-    [proposals, selectedProposalId],
-  );
-
-  const currentMessages = useMemo(
-    () =>
-      selectedProposal ? (messagesByProposal[selectedProposal.id] ?? []) : [],
-    [messagesByProposal, selectedProposal],
-  );
-
-  const filteredDirectory = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    if (!q) return directory;
-    return directory.filter(
-      (b) =>
-        b.name.toLowerCase().includes(q) ||
-        b.firm_name.toLowerCase().includes(q) ||
-        b.specialty.toLowerCase().includes(q),
-    );
-  }, [directory, searchQuery]);
-
-  function handleToggleTradingAuth() {
-    if (!activeLink) return;
-    setCurrentLinkData((prev) => ({
-      ...prev,
-      trading_authorization: tradingAuthorized
-        ? null
-        : {
-            id: `ta-${Date.now()}`,
-            link_id: activeLink.id,
-            consent_version: 'v1',
-            granted_at: new Date().toISOString(),
-            revoked_at: null,
-            revoke_reason: null,
-          },
-    }));
-    setStatusToast(
-      tradingAuthorized
-        ? tx(
-            'Autorización de operación delegada revocada correctamente.',
-            'Delegated trading authorization revoked.',
-          )
-        : tx(
-            'Autorización de operación delegada activada para tu comisionista.',
-            'Delegated trading authorization enabled for your broker.',
-          ),
-    );
-  }
-
-  function handleToggleOrderReview() {
-    if (!activeLink) return;
-    const nextEnabled = !activeLink.order_review_enabled;
-    setCurrentLinkData((prev) =>
-      prev.link
-        ? {
-            ...prev,
-            link: { ...prev.link, order_review_enabled: nextEnabled },
-          }
-        : prev,
-    );
-    setStatusToast(
-      nextEnabled
-        ? tx(
-            'Revisión previa de órdenes por el comisionista activada.',
-            'Broker pre-trade order review enabled.',
-          )
-        : tx(
-            'Revisión previa de órdenes desactivada.',
-            'Broker pre-trade order review disabled.',
-          ),
-    );
-  }
-
-  function handleRequestLink(broker: BrokerDirectoryItem) {
-    setCurrentLinkData((prev) => ({
-      ...prev,
-      link: {
-        id: `lnk-${Date.now()}`,
-        investor_id: 'inv-local',
-        broker_id: broker.id,
-        broker: {
-          id: broker.id,
-          name: broker.name,
-          firm_name: broker.firm_name,
+  const role = canBroker ? mode : 'investor';
+  const [tab, setTab] = useState(initialTab && canInvestor ? initialTab : '');
+  const activeTab = tab || (role === 'broker' ? 'clients' : 'current');
+  const [profileId, setProfileId] = useState('');
+  const [search, setSearch] = useState('');
+  const [filters, setFilters] = useState<api.Filters>({});
+  const [cursors, setCursors] = useState<string[]>(['']);
+  const cursor = cursors.at(-1) || '';
+  const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
+  const action = useBrokerAction();
+  const key = ['brokers', userId, role];
+  const current = useQuery({
+    queryKey: [...key, 'current'],
+    queryFn: ({ signal }) => api.fetchCurrentBrokerLink(signal),
+    enabled: role === 'investor',
+    retry: false,
+  });
+  const directory = useQuery({
+    placeholderData: keepPreviousData,
+    queryKey: [...key, 'directory', search, cursor],
+    queryFn: ({ signal }) =>
+      api.fetchBrokersDirectory(
+        {
+          ...(cursor ? { cursor } : {}),
+          ...(search.trim().length >= 2 ? { q: search.trim() } : {}),
         },
-        status: 'active',
-        requested_at: new Date().toISOString(),
-        expires_at: new Date(Date.now() + 7 * 86400000).toISOString(),
-        responded_at: new Date().toISOString(),
-        started_at: new Date().toISOString(),
-        ended_at: null,
-        decline_reason: null,
-        end_reason: null,
-        consent_version: 'v1',
-        consent_accepted_at: new Date().toISOString(),
-        order_review_enabled: true,
-      },
-    }));
-    setInvestorTab('current-link');
-    setStatusToast(
-      tx(
-        `Solicitud de vinculación confirmada con ${broker.name} (${broker.firm_name}).`,
-        `Advisory link confirmed with ${broker.name} (${broker.firm_name}).`,
+        signal,
       ),
-    );
-  }
-
-  function handleEndLink() {
-    if (!activeLink) return;
-    setCurrentLinkData((prev) => ({
-      ...prev,
-      link: null,
-      trading_authorization: null,
-      pending_broker_selection: true,
-    }));
-    setStatusToast(
-      tx(
-        'Vínculo con el comisionista finalizado. Puedes elegir un nuevo asesor en el directorio.',
-        'Broker relationship ended. You may choose a new advisor in the directory.',
+    enabled: role === 'investor' && activeTab === 'directory',
+    retry: false,
+  });
+  const suggestions = useQuery({
+    queryKey: [...key, 'suggestions'],
+    queryFn: ({ signal }) =>
+      api.brokerRequest(
+        'brokers/suggestions',
+        z.array(schemas.brokerSchema),
+        'GET',
+        undefined,
+        undefined,
+        signal,
       ),
-    );
-  }
-
-  function handleRateBroker(stars: number, comment: string) {
-    if (!activeLink) return;
-    const brokerId = activeLink.broker_id;
-    const newReview: BrokerReviewItem = {
-      stars,
-      comment:
-        comment.trim() ||
-        tx(
-          'Excelente asesoría financiera en mercados de EE. UU.',
-          'Excellent financial advisory in US markets.',
-        ),
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-    setReviewsByBroker((prev) => ({
-      ...prev,
-      [brokerId]: [newReview, ...(prev[brokerId] ?? [])],
-    }));
-    setStatusToast(
-      tx(
-        `Calificación de ${stars} estrellas registrada para ${activeLink.broker.name}.`,
-        `${stars}-star rating saved for ${activeLink.broker.name}.`,
+    enabled: role === 'investor' && activeTab === 'directory',
+    retry: false,
+  });
+  const history = useQuery({
+    queryKey: [...key, 'links', filters, cursor],
+    queryFn: ({ signal }) =>
+      api.brokerRequest(
+        'broker-links',
+        schemas.pageSchema(schemas.linkSchema),
+        'GET',
+        undefined,
+        { page_size: '10', ...filters, ...(cursor ? { cursor } : {}) },
+        signal,
       ),
-    );
-  }
-
-  function handleProposalDecision(
-    decision: 'accept' | 'reject',
-    comment: string,
-  ) {
-    if (!selectedProposal) return;
-    setProposals((prev) =>
-      prev.map((p) =>
-        p.id === selectedProposal.id
-          ? {
-              ...p,
-              status: decision === 'accept' ? 'accepted' : 'rejected',
-              accepted_version:
-                decision === 'accept' ? p.current_version : null,
-            }
-          : p,
+    enabled: role === 'investor' && activeTab === 'history',
+    retry: false,
+  });
+  const requests = useQuery({
+    queryKey: [...key, 'requests'],
+    queryFn: ({ signal }) => api.fetchBrokerLinkRequests(signal),
+    enabled: role === 'broker' && activeTab === 'clients',
+    retry: false,
+  });
+  const clients = useQuery({
+    queryKey: [...key, 'clients'],
+    queryFn: ({ signal }) => api.fetchBrokerClients(signal),
+    enabled: role === 'broker',
+    retry: false,
+  });
+  const profile = useQuery({
+    queryKey: [...key, 'profile'],
+    queryFn: ({ signal }) =>
+      api.brokerRequest(
+        `brokers/${userId}`,
+        schemas.brokerSchema,
+        'GET',
+        undefined,
+        undefined,
+        signal,
       ),
-    );
-    if (comment) {
-      handleSendMessage(comment);
-    }
-    setStatusToast(
-      decision === 'accept'
-        ? tx(
-            `Propuesta de ${selectedProposal.symbol} aceptada y firmada con tu código 2FA.`,
-            `${selectedProposal.symbol} proposal accepted and signed with 2FA.`,
-          )
-        : tx(
-            `Propuesta de ${selectedProposal.symbol} rechazada.`,
-            `${selectedProposal.symbol} proposal rejected.`,
-          ),
-    );
-  }
-
-  function handleSendMessage(body: string) {
-    if (!selectedProposal) return;
-    const localMsg: ProposalChatMessage = {
-      id: `msg-${Date.now()}`,
-      proposal_id: selectedProposal.id,
-      author_id:
-        roleMode === 'broker'
-          ? selectedProposal.broker.id
-          : selectedProposal.investor.id,
-      body,
-      created_at: new Date().toISOString(),
-    };
-    setMessagesByProposal((prev) => ({
-      ...prev,
-      [selectedProposal.id]: [...(prev[selectedProposal.id] ?? []), localMsg],
-    }));
-  }
-
-  function handleBrokerAcceptRequest(req: BrokerPendingRequest) {
-    setPendingRequests((prev) => prev.filter((r) => r.id !== req.id));
-    setBrokerClients((prev) => [
-      {
-        investor_id: req.investor_id,
-        name: req.investor_name,
-        link_id: req.id,
-        since: new Date().toISOString(),
-        trading_authorized: true,
-        order_review_enabled: true,
-      },
-      ...prev,
-    ]);
-    setStatusToast(
-      tx(
-        `Solicitud de vinculación de ${req.investor_name} aceptada.`,
-        `Link request from ${req.investor_name} accepted.`,
+    enabled: role === 'broker' && activeTab === 'profile' && Boolean(userId),
+    retry: false,
+  });
+  const orders = useQuery({
+    queryKey: [...key, 'reviews'],
+    queryFn: ({ signal }) =>
+      api.brokerRequest(
+        'broker/order-reviews',
+        z.array(schemas.orderSchema),
+        'GET',
+        undefined,
+        undefined,
+        signal,
       ),
-    );
+    enabled: role === 'broker' && activeTab === 'reviews',
+    retry: false,
+  });
+  const selectedQuery =
+    role === 'investor'
+      ? activeTab === 'directory'
+        ? directory
+        : activeTab === 'history'
+          ? history
+          : activeTab === 'current'
+            ? current
+            : null
+      : activeTab === 'clients'
+        ? requests
+        : activeTab === 'profile'
+          ? profile
+          : activeTab === 'reviews'
+            ? orders
+            : activeTab === 'create'
+              ? clients
+              : null;
+  const link = current.data?.link ?? null;
+  const authorized = Boolean(
+    current.data?.trading_authorization &&
+    !current.data.trading_authorization.revoked_at,
+  );
+  function selectTab(next: string) {
+    setTab(next);
+    setCursors(['']);
+    setFilters({});
   }
-
-  function handleBrokerDeclineRequest(req: BrokerPendingRequest) {
-    setPendingRequests((prev) => prev.filter((r) => r.id !== req.id));
-    setStatusToast(
-      tx(
-        `Solicitud de ${req.investor_name} declinada.`,
-        `Request from ${req.investor_name} declined.`,
-      ),
-    );
-  }
-
-  function handleCreateBrokerProposal(draft: BrokerProposalDraft) {
-    const clientObj = brokerClients.find(
-      (c) => c.investor_id === draft.clientId,
-    );
-    const estCost = (
-      (Number(draft.qty) || 1) *
-      (draft.type === 'limit' ? Number(draft.limitPrice) || 150 : 175) *
-      1.02
-    ).toFixed(2);
-    const newProp: ProposalItem = {
-      id: `prop-${Date.now()}`,
-      link_id: clientObj?.link_id ?? 'lnk-default',
-      status: 'sent',
-      status_reason: null,
-      current_version: 1,
-      accepted_version: null,
-      order_id: null,
-      failure_code: null,
-      broker: {
-        id: 'a0112233-4455-6677-8899-aabbccddeeff',
-        name: 'Carlos Andrés Rodríguez MSc.',
-      },
-      investor: {
-        id: draft.clientId,
-        name: clientObj?.name ?? tx('Inversionista', 'Investor'),
-      },
-      symbol: draft.symbol,
-      side: draft.side,
-      qty: draft.qty,
-      type: draft.type,
-      limit_price: draft.type === 'limit' ? draft.limitPrice : null,
-      estimated_cost: estCost,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      expires_at: new Date(Date.now() + 72 * 3600000).toISOString(),
-    };
-    setProposals((prev) => [newProp, ...prev]);
-    setSelectedProposalId(newProp.id);
-    setStatusToast(
-      tx(
-        `Propuesta de ${draft.side === 'buy' ? 'compra' : 'venta'} de ${draft.qty} ${draft.symbol} enviada a ${clientObj?.name ?? 'el cliente'}.`,
-        `${draft.side === 'buy' ? 'Buy' : 'Sell'} proposal for ${draft.qty} ${draft.symbol} sent to ${clientObj?.name ?? 'the client'}.`,
-      ),
-    );
-  }
-
+  const tabs =
+    role === 'investor'
+      ? [
+          [
+            'current',
+            tx('Mi Comisionista y Permisos', 'My Broker & Permissions'),
+          ],
+          ['directory', tx('Directorio de Comisionistas', 'Broker Directory')],
+          ['proposals', tx('Propuestas Recibidas y Chat', 'Proposals & Chat')],
+          ['history', tx('Historial de vínculos', 'Link history')],
+        ]
+      : [
+          ['clients', tx('Solicitudes y Cartera', 'Requests & Clients')],
+          ['create', tx('Emitir propuesta', 'Create proposal')],
+          ['proposals', tx('Propuestas y chat', 'Proposals & chat')],
+          ['reviews', tx('Revisión de órdenes', 'Order reviews')],
+          ['profile', tx('Mi perfil profesional', 'My professional profile')],
+        ];
   return (
     <section
       className={styles.container}
@@ -397,332 +198,413 @@ export function BrokersHub({
     >
       <div className={styles.topBar}>
         <div className={styles.topTitleGroup}>
-          <span className={styles.topEyebrow}>
-            <Icon name="shield" size={13} />
-            {tx(
-              'Asesoría Bursátil & Custodia 2FA',
-              'Brokerage Advisory & 2FA Custody',
-            )}
-          </span>
           <h2 className={styles.topTitle}>
-            {tx(
-              roleMode === 'broker'
-                ? 'Portal del comisionista'
-                : 'Comisionistas y propuestas de inversión',
-              roleMode === 'broker'
-                ? 'Broker workspace'
-                : 'Brokers & investment proposals',
-            )}
+            {role === 'broker'
+              ? tx('Portal del comisionista', 'Broker workspace')
+              : tx(
+                  'Comisionistas y propuestas de inversión',
+                  'Brokers & investment proposals',
+                )}
           </h2>
           <p className={styles.topSubtitle}>
             {tx(
-              roleMode === 'broker'
-                ? 'Gestiona tus vínculos de asesoría, propuestas y revisiones desde un solo lugar.'
-                : 'Gestiona tu asesor asignado, explora el directorio y consulta tus propuestas de inversión.',
-              roleMode === 'broker'
-                ? 'Manage advisory links, proposals, and reviews in one place.'
-                : 'Manage your assigned advisor, explore the directory, and review investment proposals.',
+              'Vínculos, autorizaciones y propuestas de tu cuenta.',
+              'Your account links, authorizations and proposals.',
             )}
           </p>
         </div>
-
-        {canAccessBrokerPortal && (
-          <div
-            className={styles.roleSwitcher}
-            role="group"
-            aria-label={tx('Selector de perfil', 'View mode switcher')}
-          >
-            <button
-              type="button"
-              aria-pressed={roleMode === 'investor'}
-              className={`${styles.roleSwitchBtn} ${
-                roleMode === 'investor' ? styles.roleSwitchBtnActive : ''
-              }`}
-              onClick={() => setRoleMode('investor')}
-            >
-              <Icon name="user" size={15} />
-              {tx('Vista Inversionista', 'Investor View')}
-            </button>
-            <button
-              type="button"
-              aria-pressed={roleMode === 'broker'}
-              className={`${styles.roleSwitchBtn} ${
-                roleMode === 'broker' ? styles.roleSwitchBtnActive : ''
-              }`}
-              onClick={() => setRoleMode('broker')}
-            >
-              <Icon name="users" size={15} />
-              {tx('Portal Comisionista', 'Broker Portal')}
-            </button>
+        {canBroker && canInvestor && (
+          <div className={styles.roleSwitcher}>
+            {(['investor', 'broker'] as const).map((value) => (
+              <button
+                key={value}
+                type="button"
+                className={styles.roleSwitchBtn}
+                aria-pressed={role === value}
+                onClick={() => {
+                  setMode(value);
+                  setTab('');
+                  setCursors(['']);
+                  setConfirmation(null);
+                }}
+              >
+                {value === 'broker'
+                  ? tx('Portal Comisionista', 'Broker Portal')
+                  : tx('Vista Inversionista', 'Investor View')}
+              </button>
+            ))}
           </div>
         )}
       </div>
-
-      {statusToast && (
-        <div className={styles.statusToast} role="status">
-          <div className={styles.statusToastBody}>
-            <Icon name="check" size={18} />
-            <span className={styles.statusToastText}>{statusToast}</span>
-          </div>
+      {action.error && !confirmation && (
+        <p role="alert" className={styles.formError}>
+          {action.error}
+        </p>
+      )}
+      {action.notice && (
+        <p role="status" className={styles.statusToast}>
+          {action.notice}
+        </p>
+      )}
+      <div
+        className={styles.subTabs}
+        role="tablist"
+        aria-label={tx('Secciones del módulo', 'Module sections')}
+      >
+        {tabs.map(([value, label]) => (
           <button
+            key={value}
             type="button"
-            className={styles.toastDismissBtn}
-            onClick={() => setStatusToast(null)}
-            aria-label={tx('Cerrar notificación', 'Dismiss notification')}
+            role="tab"
+            aria-selected={activeTab === value}
+            className={`${styles.subTabBtn} ${activeTab === value ? styles.subTabBtnActive : ''}`}
+            onClick={() => selectTab(value!)}
           >
-            <Icon name="close" size={14} />
+            {label}
+          </button>
+        ))}
+      </div>
+      {selectedQuery?.isPending && selectedQuery.fetchStatus !== 'idle' && (
+        <p className={styles.emptyNotice}>
+          {tx('Cargando información…', 'Loading…')}
+        </p>
+      )}
+      {selectedQuery?.isError && (
+        <div role="alert" className={styles.formError}>
+          <p>
+            {tx(
+              'No se pudo consultar esta sección.',
+              'Could not load this section.',
+            )}{' '}
+            {selectedQuery.error.message}
+          </p>
+          <button
+            className={styles.secondaryBtn}
+            onClick={() => void selectedQuery.refetch()}
+          >
+            {tx('Reintentar', 'Retry')}
           </button>
         </div>
       )}
-
-      {roleMode === 'investor' && (
-        <>
-          <div
-            className={styles.subTabs}
-            role="tablist"
-            aria-label={tx('Vistas de inversionista', 'Investor sections')}
+      {role === 'broker' && activeTab === 'clients' && clients.isError && (
+        <p role="alert" className={styles.formError}>
+          {clients.error.message}
+          <button
+            className={styles.secondaryBtn}
+            onClick={() => void clients.refetch()}
           >
-            <button
-              type="button"
-              role="tab"
-              aria-selected={investorTab === 'current-link'}
-              className={`${styles.subTabBtn} ${
-                investorTab === 'current-link' ? styles.subTabBtnActive : ''
-              }`}
-              onClick={() => setInvestorTab('current-link')}
-            >
-              <Icon name="shield" size={15} />
-              <span>
-                {tx(
-                  '1. Mi Comisionista y Permisos',
-                  '1. My Broker & Permissions',
-                )}
-              </span>
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={investorTab === 'directory'}
-              className={`${styles.subTabBtn} ${
-                investorTab === 'directory' ? styles.subTabBtnActive : ''
-              }`}
-              onClick={() => setInvestorTab('directory')}
-            >
-              <Icon name="users" size={15} />
-              <span>
-                {tx('2. Directorio de Comisionistas', '2. Broker Directory')}
-              </span>
-              <span className={styles.tabCount}>{directory.length}</span>
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={investorTab === 'proposals'}
-              className={`${styles.subTabBtn} ${
-                investorTab === 'proposals' ? styles.subTabBtnActive : ''
-              }`}
-              onClick={() => setInvestorTab('proposals')}
-            >
-              <Icon name="file" size={15} />
-              <span>
-                {tx('3. Propuestas Recibidas y Chat', '3. Proposals & Chat')}
-              </span>
-              <span className={styles.tabCount}>{proposals.length}</span>
-            </button>
-          </div>
-
-          {investorTab === 'current-link' && (
-            <InvestorCurrentLinkTab
-              activeLink={activeLink}
-              tradingAuthorized={tradingAuthorized}
-              onOpenDirectory={() => setInvestorTab('directory')}
-              onOpenProposals={() => setInvestorTab('proposals')}
-              onToggleTradingAuth={handleToggleTradingAuth}
-              onToggleOrderReview={handleToggleOrderReview}
-              onEndLink={handleEndLink}
-              onRateBroker={handleRateBroker}
-            />
-          )}
-
-          {investorTab === 'directory' && (
-            <InvestorDirectoryTab
-              directory={filteredDirectory}
-              totalCount={directory.length}
-              activeBrokerId={activeLink?.broker_id ?? null}
-              reviewsByBroker={reviewsByBroker}
-              searchQuery={searchQuery}
-              onSearchChange={setSearchQuery}
-              onRequestLink={handleRequestLink}
-            />
-          )}
-
-          {investorTab === 'proposals' && (
-            <InvestorProposalsTab
-              proposals={proposals}
-              selectedProposal={selectedProposal}
-              messages={currentMessages}
-              onSelectProposal={setSelectedProposalId}
-              onDecision={handleProposalDecision}
-              onSendMessage={handleSendMessage}
-              onNavigateToOrder={onNavigateToOrder}
-            />
-          )}
-        </>
+            {tx('Reintentar', 'Retry')}
+          </button>
+        </p>
       )}
-
-      {roleMode === 'broker' && (
-        <>
-          <BrokerWorkspaceOverview
-            requests={pendingRequests.length}
-            clients={brokerClients.length}
-            reviews={pendingOrderReviews.length}
-            onOpen={setBrokerTab}
-          />
-          <div
-            className={styles.subTabs}
-            role="tablist"
-            aria-label={tx(
-              'Vistas de portal comisionista',
-              'Broker portal sections',
+      <fieldset className={styles.liveFields} disabled={action.busy}>
+        {role === 'investor' &&
+          activeTab === 'current' &&
+          current.isSuccess && (
+            <InvestorCurrentLinkTab
+              activeLink={link}
+              tradingAuthorized={authorized}
+              onOpenDirectory={() => selectTab('directory')}
+              onOpenProposals={() => selectTab('proposals')}
+              onToggleTradingAuth={() => {
+                if (!link) return;
+                setConfirmation({
+                  title: authorized
+                    ? tx('Revocar autorización', 'Revoke authorization')
+                    : tx(
+                        'Autorizar operación delegada',
+                        'Authorize delegated trading',
+                      ),
+                  description: tx(
+                    'Este permiso permite convertir en órdenes las propuestas que aceptes con MFA. Puedes revocarlo en cualquier momento.',
+                    'This permission allows proposals you accept with MFA to become orders. You can revoke it at any time.',
+                  ),
+                  consent: !authorized,
+                  action: () =>
+                    api.brokerRequest(
+                      `broker-links/${link.id}/trading-authorization${authorized ? '/revoke' : ''}`,
+                      schemas.authorizationSchema,
+                      'POST',
+                      authorized ? undefined : { consent_accepted: true },
+                    ),
+                });
+              }}
+              onToggleOrderReview={() => {
+                if (link)
+                  void action.run(() =>
+                    api.brokerRequest(
+                      `broker-links/${link.id}/order-review`,
+                      schemas.linkSchema,
+                      'PUT',
+                      { enabled: !link.order_review_enabled },
+                    ),
+                  );
+              }}
+              onEndLink={() => {
+                if (!link) return;
+                setConfirmation({
+                  title:
+                    link.status === 'requested'
+                      ? tx('Cancelar solicitud', 'Cancel request')
+                      : tx('Finalizar vínculo', 'End link'),
+                  description: tx(
+                    'Al finalizar el vínculo se revoca el acceso del asesor y se retiran las propuestas pendientes.',
+                    'Ending the link revokes advisor access and withdraws pending proposals.',
+                  ),
+                  reason: link.status === 'active',
+                  action: (reason) =>
+                    api.brokerRequest(
+                      `broker-links/${link.id}/${link.status === 'requested' ? 'cancel' : 'end'}`,
+                      schemas.linkSchema,
+                      'POST',
+                      link.status === 'requested'
+                        ? undefined
+                        : { reason, confirmed: true },
+                    ),
+                });
+              }}
+              onRateBroker={(stars, comment) => {
+                if (link)
+                  void action.run(() =>
+                    api.brokerRequest(
+                      `brokers/${link.broker_id}/rating`,
+                      schemas.reviewSchema,
+                      'PUT',
+                      { stars, comment },
+                    ),
+                  );
+              }}
+            />
+          )}
+        {role === 'investor' && activeTab === 'directory' && (
+          <>
+            {suggestions.data && suggestions.data.length > 0 && (
+              <p className={styles.fieldHint}>
+                {tx('Sugeridos para ti:', 'Suggested for you:')}{' '}
+                {suggestions.data.map((b) => b.name).join(' · ')}
+              </p>
             )}
-          >
-            <button
-              type="button"
-              role="tab"
-              aria-selected={brokerTab === 'clients'}
-              className={`${styles.subTabBtn} ${
-                brokerTab === 'clients' ? styles.subTabBtnActive : ''
-              }`}
-              onClick={() => setBrokerTab('clients')}
-            >
-              <Icon name="users" size={15} />
-              <span>
-                {tx('1. Solicitudes y Cartera', '1. Requests & Clients')}
-              </span>
-              <span className={styles.tabCount}>
-                {pendingRequests.length}/{brokerClients.length}
-              </span>
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={brokerTab === 'new-proposal'}
-              className={`${styles.subTabBtn} ${
-                brokerTab === 'new-proposal' ? styles.subTabBtnActive : ''
-              }`}
-              onClick={() => setBrokerTab('new-proposal')}
-            >
-              <Icon name="trend" size={15} />
-              <span>
-                {tx(
-                  '2. Emitir Propuesta de Inversión',
-                  '2. Issue Investment Proposal',
-                )}
-              </span>
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={brokerTab === 'reviews-reports'}
-              className={`${styles.subTabBtn} ${
-                brokerTab === 'reviews-reports' ? styles.subTabBtnActive : ''
-              }`}
-              onClick={() => setBrokerTab('reviews-reports')}
-            >
-              <Icon name="check" size={15} />
-              <span>
-                {tx(
-                  '3. Revisión de Órdenes y Comisiones',
-                  '3. Order Review & Commissions',
-                )}
-              </span>
-              {pendingOrderReviews.length > 0 && (
-                <span className={styles.tabCount}>
-                  {pendingOrderReviews.length}
-                </span>
+            {directory.isSuccess && (
+              <>
+                <InvestorDirectoryTab
+                  onOpenProfile={setProfileId}
+                  directory={directory.data.items}
+                  totalCount={directory.data.items.length}
+                  activeBrokerId={link?.broker_id ?? null}
+                  reviewsByBroker={{}}
+                  searchQuery={search}
+                  onSearchChange={(value) => {
+                    setSearch(value);
+                    setCursors(['']);
+                  }}
+                  onRequestLink={(broker) =>
+                    setConfirmation({
+                      title: tx(
+                        `Vincularme con ${broker.name}`,
+                        `Link with ${broker.name}`,
+                      ),
+                      description: tx(
+                        'Solicito asesoría y autorizo al comisionista, una vez acepte, a consultar mis inversiones y órdenes. Esto no concede autorización de trading.',
+                        'I request advisory services and allow the broker, after accepting, to view my investments and orders. This does not grant trading authorization.',
+                      ),
+                      consent: true,
+                      action: () =>
+                        api.brokerRequest(
+                          'broker-links',
+                          schemas.linkSchema,
+                          'POST',
+                          { broker_id: broker.id, consent_accepted: true },
+                        ),
+                    })
+                  }
+                />
+                <Pager
+                  index={cursors.length - 1}
+                  hasNext={Boolean(directory.data.next_cursor)}
+                  onPrevious={() => setCursors((c) => c.slice(0, -1))}
+                  onNext={() =>
+                    setCursors((c) => [...c, directory.data.next_cursor!])
+                  }
+                />
+              </>
+            )}
+          </>
+        )}
+        {activeTab === 'proposals' && (
+          <ProposalsWorkspace
+            key={role}
+            role={role}
+            userId={userId}
+            onNavigateToOrder={onNavigateToOrder}
+          />
+        )}
+        {role === 'investor' && activeTab === 'history' && (
+          <div className={styles.card}>
+            <HistoryFilters
+              states={Object.fromEntries(
+                Object.keys(linkStatusLabels).map((status) => [
+                  status,
+                  formatLinkStatus(status, locale),
+                ]),
               )}
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={brokerTab === 'my-profile'}
-              className={`${styles.subTabBtn} ${
-                brokerTab === 'my-profile' ? styles.subTabBtnActive : ''
-              }`}
-              onClick={() => setBrokerTab('my-profile')}
-            >
-              <Icon name="user" size={15} />
-              <span>
-                {tx('4. Mi Perfil Profesional', '4. My Professional Profile')}
-              </span>
-            </button>
+              onApply={(value) => {
+                setFilters(value);
+                setCursors(['']);
+              }}
+            />
+            {history.data?.items.map((item) => (
+              <div key={item.id} className={styles.controlBox}>
+                <strong className={styles.controlTitle}>
+                  {item.broker.name}
+                </strong>
+                <p className={styles.controlHint}>
+                  {formatLinkStatus(item.status, locale)} ·{' '}
+                  {formatMarketDateTime(item.requested_at, locale)}
+                </p>
+                <p className={styles.controlHint}>
+                  {item.end_reason || item.decline_reason}
+                </p>
+              </div>
+            ))}
+            {history.isSuccess && history.data.items.length === 0 && (
+              <p className={styles.emptyNotice}>
+                {tx(
+                  'Sin vínculos en este período.',
+                  'No links in this period.',
+                )}
+              </p>
+            )}
+            <Pager
+              index={cursors.length - 1}
+              hasNext={Boolean(history.data?.next_cursor)}
+              onPrevious={() => setCursors((c) => c.slice(0, -1))}
+              onNext={() =>
+                setCursors((c) => [...c, history.data!.next_cursor!])
+              }
+            />
           </div>
-
-          {brokerTab === 'clients' && (
-            <BrokerPortalClientsTab
-              pendingRequests={pendingRequests}
-              brokerClients={brokerClients}
-              onAcceptRequest={handleBrokerAcceptRequest}
-              onDeclineRequest={handleBrokerDeclineRequest}
-            />
+        )}
+        {role === 'broker' &&
+          activeTab === 'clients' &&
+          requests.isSuccess &&
+          clients.isSuccess && (
+            <>
+              <BrokerPortalClientsTab
+                pendingRequests={requests.data}
+                brokerClients={clients.data}
+                onAcceptRequest={(req) => {
+                  void action.run(() =>
+                    api.brokerRequest(
+                      `broker/link-requests/${req.id}/accept`,
+                      schemas.linkSchema,
+                      'POST',
+                    ),
+                  );
+                }}
+                onDeclineRequest={(req) =>
+                  setConfirmation({
+                    title: tx('Declinar solicitud', 'Decline request'),
+                    description: req.investor_name,
+                    reason: true,
+                    action: (reason) =>
+                      api.brokerRequest(
+                        `broker/link-requests/${req.id}/decline`,
+                        schemas.linkSchema,
+                        'POST',
+                        { reason },
+                      ),
+                  })
+                }
+              />
+              <ClientInvestments clients={clients.data} userId={userId} />
+            </>
           )}
-
-          {brokerTab === 'new-proposal' && (
-            <BrokerPortalNewProposalTab
-              brokerClients={brokerClients}
-              onCreateProposal={handleCreateBrokerProposal}
-            />
-          )}
-
-          {brokerTab === 'reviews-reports' && (
-            <BrokerPortalReviewsTab
-              pendingOrderReviews={pendingOrderReviews}
-              onApproveOrder={(ord) => {
-                setPendingOrderReviews((prev) =>
-                  prev.filter((o) => o.id !== ord.id),
-                );
-                setStatusToast(
-                  tx(
-                    `Orden de ${ord.symbol} para ${ord.investor_name} aprobada.`,
-                    `${ord.symbol} order for ${ord.investor_name} approved.`,
+        {role === 'broker' && activeTab === 'create' && clients.isSuccess && (
+          <BrokerPortalNewProposalTab
+            brokerClients={clients.data}
+            onCreateProposal={(draft) => {
+              void action.run(() =>
+                api.brokerRequest(
+                  'broker/proposals',
+                  schemas.proposalDetailSchema,
+                  'POST',
+                  {
+                    investor_id: draft.clientId,
+                    symbol: draft.symbol,
+                    side: draft.side,
+                    qty: draft.qty,
+                    type: draft.type,
+                    ...(draft.type === 'limit'
+                      ? { limit_price: draft.limitPrice }
+                      : {}),
+                  },
+                ),
+              );
+            }}
+          />
+        )}
+        {role === 'broker' && activeTab === 'reviews' && orders.isSuccess && (
+          <BrokerPortalReviewsTab
+            pendingOrderReviews={orders.data.map((order) => ({
+              ...order,
+              investor_name: '',
+              limit_price: order.limit_price ?? '',
+              notional_usd: order.estimated_amount,
+            }))}
+            onApproveOrder={(order) =>
+              setConfirmation({
+                title: tx('Aprobar y enviar orden', 'Approve and submit order'),
+                description: `${order.side} · ${order.qty} ${order.symbol}`,
+                action: () =>
+                  api.brokerRequest(
+                    `broker/order-reviews/${order.id}/approve`,
+                    schemas.orderSchema,
+                    'POST',
                   ),
-                );
-              }}
-              onRejectOrder={(ord) => {
-                setPendingOrderReviews((prev) =>
-                  prev.filter((o) => o.id !== ord.id),
-                );
-                setStatusToast(
-                  tx(
-                    `Orden de ${ord.symbol} rechazada con observaciones.`,
-                    `${ord.symbol} order rejected with feedback.`,
+              })
+            }
+            onRejectOrder={(order) =>
+              setConfirmation({
+                title: tx('Devolver para corrección', 'Return for changes'),
+                description: order.symbol,
+                reason: true,
+                action: (comment) =>
+                  api.brokerRequest(
+                    `broker/order-reviews/${order.id}/return`,
+                    schemas.orderSchema,
+                    'POST',
+                    { comment },
                   ),
-                );
-              }}
-              onGenerateCertificate={() =>
-                setStatusToast(
-                  tx(
-                    'Certificado consolidado de comisiones generado correctamente.',
-                    'Consolidated commission statement generated.',
-                  ),
-                )
-              }
-            />
-          )}
-
-          {brokerTab === 'my-profile' && (
-            <BrokerPortalProfileTab
-              onSaveProfile={() =>
-                setStatusToast(
-                  tx(
-                    'Perfil profesional de comisionista actualizado correctamente.',
-                    'Broker professional profile updated.',
-                  ),
-                )
-              }
-            />
-          )}
-        </>
+              })
+            }
+          />
+        )}
+        {role === 'broker' && activeTab === 'profile' && profile.isSuccess && (
+          <BrokerPortalProfileTab
+            key={profile.data.id}
+            profile={profile.data}
+            onSaveProfile={(body) => {
+              void action.run(() => api.saveBrokerProfile(body));
+            }}
+          />
+        )}
+      </fieldset>
+      {profileId && (
+        <BrokerProfileDialog
+          id={profileId}
+          userId={userId}
+          onClose={() => setProfileId('')}
+        />
+      )}
+      {confirmation && (
+        <BrokerConfirmDialog
+          key={confirmation.title}
+          confirmation={confirmation}
+          busy={action.busy}
+          error={action.error}
+          onClose={() => setConfirmation(null)}
+          onConfirm={(reason) => action.run(() => confirmation.action(reason))}
+        />
       )}
     </section>
   );

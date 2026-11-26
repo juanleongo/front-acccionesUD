@@ -63,6 +63,26 @@ export function createFetchTransport(config: TransportOptions): HttpPort {
     options: JsonRequest<T> | EmptyRequest,
   ): Promise<T | void> {
     const path = requestPath(options);
+    const publicUrl =
+      options.path === '/api/public/exchange-rates'
+        ? 'https://api.frankfurter.dev/v2/rates?base=USD'
+        : options.path === '/api/public/currencies'
+          ? 'https://api.frankfurter.dev/v2/currencies'
+          : undefined;
+    const publicRates = publicUrl !== undefined;
+    if (
+      publicRates &&
+      ((options.method ?? 'GET') !== 'GET' ||
+        options.body !== undefined ||
+        options.headers ||
+        options.requestId ||
+        Object.keys(options.query ?? {}).length)
+    ) {
+      throw new ApiError(
+        'contract',
+        'La consulta pÃºblica de tasas solo admite GET sin datos privados.',
+      );
+    }
     const timeoutMs = options.timeoutMs ?? 10_000;
     if (
       !Number.isFinite(timeoutMs) ||
@@ -71,7 +91,7 @@ export function createFetchTransport(config: TransportOptions): HttpPort {
     ) {
       throw new ApiError(
         'contract',
-        'timeoutMs debe ser un número positivo válido.',
+        'timeoutMs debe ser un nÃºmero positivo vÃ¡lido.',
       );
     }
     const controller = new AbortController();
@@ -95,7 +115,7 @@ export function createFetchTransport(config: TransportOptions): HttpPort {
       }
       const requestId = safeCorrelation(options.requestId);
       if (options.requestId && !requestId)
-        throw new ApiError('contract', 'requestId inválido.');
+        throw new ApiError('contract', 'requestId invÃ¡lido.');
       if (requestId) headers.set('X-Request-ID', requestId);
       const method = options.method ?? 'GET';
       if (
@@ -115,15 +135,19 @@ export function createFetchTransport(config: TransportOptions): HttpPort {
           throw new ApiError('contract', 'El cuerpo no es JSON serializable.');
         headers.set('Content-Type', 'application/json');
       }
-      const response = await fetch(`${config.origin ?? ''}${path}`, {
-        method,
-        headers,
-        ...(body !== undefined ? { body } : {}),
-        signal: controller.signal,
-        credentials: config.credentials,
-        cache: 'no-store',
-        redirect: 'error',
-      });
+      const response = await fetch(
+        publicUrl ?? `${config.origin ?? ''}${path}`,
+        {
+          method,
+          headers,
+          ...(body !== undefined ? { body } : {}),
+          signal: controller.signal,
+          credentials: publicRates ? 'omit' : config.credentials,
+          ...(publicRates ? { referrerPolicy: 'no-referrer' as const } : {}),
+          cache: 'no-store',
+          redirect: 'error',
+        },
+      );
       const correlation =
         safeCorrelation(response.headers.get('X-Request-ID')) ?? requestId;
       const metadata = correlation ? { requestId: correlation } : {};
@@ -213,16 +237,20 @@ export function createFetchTransport(config: TransportOptions): HttpPort {
       } catch {
         throw new ApiError(
           'contract',
-          'JSON o esquema de respuesta inválido.',
+          'JSON o esquema de respuesta invÃ¡lido.',
           metadata,
         );
       }
     } catch (error) {
       if (controller.signal.aborted) {
         throw timedOut
-          ? new ApiError('transport', 'La solicitud superó el tiempo límite.', {
-              timeout: true,
-            })
+          ? new ApiError(
+              'transport',
+              'La solicitud superÃ³ el tiempo lÃ­mite.',
+              {
+                timeout: true,
+              },
+            )
           : new ApiError('cancelled', 'Solicitud cancelada.');
       }
       if (error instanceof ApiError) throw error;
