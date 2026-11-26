@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  type ReactNode,
   useEffect,
   useId,
   useLayoutEffect,
@@ -16,6 +17,7 @@ export interface CustomSelectOption {
   label: string;
   disabled?: boolean;
   hint?: string;
+  leading?: ReactNode;
 }
 
 export interface CustomSelectProps {
@@ -222,6 +224,11 @@ export function CustomSelect({
           compact ? styles.triggerCompact : ''
         } ${open ? styles.triggerOpen : ''}`}
       >
+        {selectedOption?.leading && (
+          <span className={styles.leading} aria-hidden="true">
+            {selectedOption.leading}
+          </span>
+        )}
         <span
           className={
             selectedOption
@@ -289,6 +296,11 @@ export function CustomSelect({
                           : styles.option
                       }
                     >
+                      {opt.leading && (
+                        <span className={styles.leading} aria-hidden="true">
+                          {opt.leading}
+                        </span>
+                      )}
                       <span className={styles.optionTextWrap}>
                         <span className={styles.optionLabel}>{opt.label}</span>
                         {opt.hint && (

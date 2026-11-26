@@ -1117,8 +1117,8 @@
 
 .instrumentChip {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+  flex-direction: row;
+  align-items: center;
   gap: 0.15rem;
   min-width: 0;
   padding: 0.55rem 0.7rem;
@@ -1299,4 +1299,26 @@
 
 .selectorControl > button[aria-haspopup='listbox'] {
   min-height: var(--size-control-min);
+}
+
+.instrumentChip {
+  gap: 0.6rem;
+}
+.instrumentChipDetails {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  gap: 0.15rem;
+}
+.assetSearchMenu li > button > span.assetSearchIdentity {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.6rem;
+}
+.assetSearchIdentity > span:last-child {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 0.25rem;
 }

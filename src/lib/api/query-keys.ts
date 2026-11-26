@@ -30,6 +30,7 @@ export const queryKeys = {
       ['trading-assets', q, exchange, page] as const,
     priceHistory: (symbol: string, period: string, timeframe: string) =>
       ['price-history', symbol, period, timeframe] as const,
+    quote: (symbol: string) => ['instruments', 'quote', symbol] as const,
   },
   orders: {
     all: ['orders'] as const,
@@ -37,6 +38,7 @@ export const queryKeys = {
       ['orders', cursor, symbol, status] as const,
     detail: (id: string) => ['order-detail', id] as const,
     positions: () => ['trading-positions'] as const,
+    estimate: (input: object) => ['orders', 'estimate', input] as const,
   },
   portfolio: {
     all: ['portfolio'] as const,

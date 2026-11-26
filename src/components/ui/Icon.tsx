@@ -1,6 +1,16 @@
 import type { CSSProperties } from 'react';
 
 const paths = {
+  cursor: 'm5 3 14 9-7 1-3 7-4-17Z',
+  line: 'M4 20 20 4M3 20h2m14-16h2',
+  level: 'M3 12h18M5 9l-3 3 3 3m14-6 3 3-3 3',
+  ruler: 'm4 16 12-12 4 4L8 20l-4-4Zm5-5 2 2m2-6 2 2m-8 6 2 2',
+  rectangle: 'M4 5h16v14H4V5Z',
+  polygon: 'm5 8 10-4 6 12-12 5L5 8Z',
+  trash: 'M3 6h18M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7m4-7v7',
+  undo: 'M9 5 4 10l5 5M4 10h10a6 6 0 0 1 0 12',
+  redo: 'm15 5 5 5-5 5m5-5H10a6 6 0 0 0 0 12',
+
   arrow: 'M5 12h14m-5-5 5 5-5 5',
   trend: 'm3 17 6-6 4 4 8-10m-6 0h6v6',
   globe:

@@ -2,17 +2,20 @@
 
 import { formatMarketDateTime, formatUsd } from '@/lib/formatters';
 import { useLocale } from '@/lib/i18n';
-import type { Preview } from '../trading-api';
+import type { OrderInput, Preview } from '../trading-api';
+import { OrderCostBreakdown } from './OrderCostBreakdown';
 import styles from '../trading.module.css';
 
 export function OrderPreviewCard({
   preview,
+  draft,
   ack,
   totp,
   onAckChange,
   onTotpChange,
 }: {
   preview: Preview;
+  draft: OrderInput;
   ack: boolean;
   totp: string;
   onAckChange: (checked: boolean) => void;
@@ -52,20 +55,7 @@ export function OrderPreviewCard({
           })}
         </strong>
       </div>
-      <div className={styles.summaryRow}>
-        <span>{tx('Importe estimado', 'Estimated amount')}</span>
-        <strong className={styles.tabularNum}>
-          {formatUsd(preview.estimated_amount, { withCode: true })}
-        </strong>
-      </div>
-      <div className={styles.summaryRow}>
-        <span>
-          {tx('Comisión de referencia estimada', 'Estimated reference fee')}
-        </span>
-        <strong className={styles.tabularNum}>
-          {formatUsd(preview.reference_commission, { withCode: true })}
-        </strong>
-      </div>
+      <OrderCostBreakdown draft={draft} estimate={preview} />
       <div className={`${styles.summaryRow} ${styles.summaryTotal}`}>
         <span>
           {tx('Poder de compra disponible', 'Available buying power')}

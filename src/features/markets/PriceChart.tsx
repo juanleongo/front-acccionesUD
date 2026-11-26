@@ -28,22 +28,27 @@ import {
 import styles from './price.module.css';
 import { getInstruments } from './api';
 
-export function PriceChart({ exchange }: { exchange: string }) {
+export function PriceChart({
+  exchange,
+  initialSymbol = '',
+  initialName = '',
+}: {
+  exchange: string;
+  initialSymbol?: string;
+  initialName?: string;
+}) {
   const { locale, tx } = useLocale();
   const frameLabels = locale === 'en' ? candleFramesEn : candleFrames;
   const [letter, setLetter] = useState('A');
   const [page, setPage] = useState(1);
-  const [selected, setSelected] = useState('');
+  const [selected, setSelected] = useState(initialSymbol);
   const catalog = useQuery({
     queryKey: queryKeys.instruments.options(exchange, letter, page),
     queryFn: ({ signal }) => getInstruments(exchange, letter, page, signal),
     staleTime: QUERY_STALE_TIMES.catalog,
   });
   const options = catalog.data?.results ?? [];
-  const symbol =
-    options.find((item) => item.symbol === selected)?.symbol ??
-    options[0]?.symbol ??
-    '';
+  const symbol = (selected || options[0]?.symbol) ?? '';
   const currentIndex = Math.max(
     0,
     options.findIndex((item) => item.symbol === symbol),
@@ -115,7 +120,10 @@ export function PriceChart({ exchange }: { exchange: string }) {
                 ? `${tx('Gráfico de precios de', 'Price chart for')} ${symbol}`
                 : tx('Gráfico de precios', 'Price chart')}
             </h2>
-            <p>{options.find((item) => item.symbol === symbol)?.name}</p>
+            <p>
+              {options.find((item) => item.symbol === symbol)?.name ??
+                (symbol === initialSymbol ? initialName : '')}
+            </p>
           </div>
           <div className={styles.performance}>
             {last && !query.error && (
@@ -230,7 +238,13 @@ export function PriceChart({ exchange }: { exchange: string }) {
                             ),
                           },
                         ]
-                      : options.map((item) => ({
+                      : [
+                          ...(symbol === initialSymbol &&
+                          !options.some((item) => item.symbol === symbol)
+                            ? [{ symbol, name: initialName }]
+                            : []),
+                          ...options,
+                        ].map((item) => ({
                           value: item.symbol,
                           label: `${item.symbol} · ${item.name}`,
                         }))

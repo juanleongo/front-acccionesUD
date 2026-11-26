@@ -1,29 +1,27 @@
-# Gráficos financieros
+# Gráficos financieros propios
 
-El coordinador `src/features/markets/PriceChart.tsx` conserva TanStack Query, el catálogo paginado, filtros, intervalos y períodos. La clave histórica contiene símbolo, período e intervalo; el tipo visual no participa en ella. Cambiar de representación reutiliza las barras ya recibidas. Un filtro nuevo no presenta barras del instrumento anterior mientras espera la respuesta.
+El módulo Mercados representa históricos de Alpaca con Apache ECharts, instalado localmente. No carga iframes, scripts, datos ni bibliotecas de TradingView. El motor se importa de forma diferida y registra solamente velas, líneas, barras, ejes, tooltip y zoom. Los gráficos y las previsualizaciones de dibujo se generan localmente.
 
-## Motor y ciclo de vida
+## Datos y ventanas
 
-`chart/FinancialChart.tsx` presenta controles, lectura contextual y viewport. `use-financial-chart.ts` crea una instancia de Lightweight Charts 5.3.0 por montaje y mantiene una sola serie activa: CandlestickSeries, LineSeries o AreaSeries mediante addSeries. Al cambiar de modalidad elimina la serie anterior, aplica setData y restaura el rango lógico. Los cambios de tema e idioma aplican opciones sin recrear el gráfico; autoSize usa ResizeObserver nativo. Cada desmontaje elimina la instancia, suscripciones, observer y frame pendiente. React StrictMode puede montar/desmontar dos veces en desarrollo.
+`PriceChart.tsx` conserva las consultas de catálogo e histórico. Cambiar entre velas, línea y área, activar volumen o un indicador reutiliza las mismas barras. La API existente entrega OHLCV y paginación; el frontend ordena, valida y rechaza duplicados contradictorios. Las fechas diarias conservan la sesión; intradía se presenta en America/New_York con DST. No se rellenan huecos de negociación.
 
-No se usa update porque el contrato consultado es histórico, no un stream incremental. No hay un segundo motor SVG. No se modifica el backend ni Alpaca.
+La ventana inicial muestra hasta 60 barras. Zoom, arrastre, selector de cantidad, navegación, ajuste y restablecimiento actúan sobre el rango real. El motor conserva su instancia al cambiar de tipo, tema o indicador y libera listeners, observer y canvas al desmontarse.
 
-## Fidelidad de datos
+## Herramientas
 
-`history.ts` valida números finitos y rangos OHLC, conserva volumen si se recibe, ordena y deduplica timestamps. Duplicados contradictorios provocan error; no se corrigen precios. `chart-data.ts` normaliza los tiempos para la biblioteca sin rellenar sesiones ausentes. Las barras diarias usan fechas de sesión: medianoche UTC representa una fecha sin hora; otros timestamps se resuelven en America/New_York. Intradía conserva el instante UTC y formatea ejes/cursor con Intl en Nueva York, incluyendo DST, sin sumar offsets fijos.
+SMA 20, EMA 20, Bollinger 20/2, RSI 14 de Wilder y MACD 12/26/9 se calculan sobre cierres del histórico recibido. Las observaciones insuficientes permanecen vacías. Un indicador activo por vez; volumen opcional en panel separado. El cálculo no constituye una réplica de ratings propietarios de otros proveedores.
 
-No hay metadatos de tick size en el contrato histórico. precision/minMove se derivan de la máxima precisión significativa OHLC recibida, con mínimo 2 y máximo 8 decimales (límite previo de la aplicación). El texto contextual conserva hasta 8 decimales. No se supone que todos los instrumentos negocien en centavos.
+Nivel horizontal (un clic), segmento de tendencia y medición de diferencia/precio/porcentaje (dos clics o arrastre), área rectangular (dos puntos) y área poligonal (tres o más clics, Enter o primer vértice para cerrar). Una capa SVG propia mantiene coordenadas de barra/precio y se reproyecta con las API públicas de ECharts al hacer zoom, desplazar o redimensionar.
 
-Línea y área utilizan exclusivamente close y conexiones lineales, sin interpolación curva. El color corresponde al signo del cambio entre primer y último cierre del período consultado; es neutral con un solo punto, primer cierre cero o cambio cero. No clasifica cada fluctuación local. La variación del cursor compara el cierre señalado con la observación anterior y omite porcentaje si la base es cero. Los márgenes verticales y autoscale son nativos.
+En modo Cursor, pulsar un trazo o el interior de un área selecciona ese objeto. Arrastrar sus puntos modifica sus extremos/vértices; arrastrar el cuerpo desplaza el objeto conservando su geometría y limitándolo al histórico disponible. La barra de edición ofrece seis colores adaptados al tema, grosor, trazo, texto, opacidad de áreas y eliminación individual. Los puntos seleccionados muestran sus fechas y precios. Esc cancela o deselecciona; Supr elimina la selección. Deshacer/rehacer conserva hasta 50 estados (Ctrl+Z / Ctrl+Mayús+Z cuando el gráfico tiene foco). El teclado de campos de texto conserva su comportamiento habitual.
 
-## Ventana histórica
+Al dibujar se impide el arrastre del gráfico, se marca el primer punto y se previsualiza el trazo. Al completar se selecciona el dibujo y se vuelve al cursor. La descarga PNG compone canvas y capa SVG. Pantalla completa usa la API del navegador. Los dibujos se limitan al instrumento/período actual; no se guardan en la cuenta ni en el navegador. El tooltip y las fechas del cursor se formatean según idioma y sesión, sin exponer timestamps Unix ni nombres internos de OHLC.
 
-La vista inicial contiene hasta 60 observaciones recientes. El selector modifica el rango lógico real; después de zoom manual muestra Zoom (N) cuando la cantidad no coincide con un preset. Anteriores/siguientes mueven la ventana, sin recortar el dataset ni solicitar páginas del catálogo. Ajustar muestra el histórico recibido, Más recientes conserva el ancho actual, Restablecer vuelve a 60 y reactiva autoescala. La rueda, el arrastre y el gesto táctil son nativos. Las flechas de teclado inspeccionan barras y desplazan la ventana si es necesario.
-
-El último cierre se identifica como histórico; no se simulan ticks. Se conserva la atribución pública de TradingView y su enlace oficial.
+El gráfico es histórico, no un stream OHLCV. El stream actual de precios no basta para reconstruir el volumen de cada vela. Actualización continua, reconexión y recuperación de huecos quedan como trabajo de integración independiente; no se simulan ticks.
 
 ## Verificación
 
-Las pruebas unitarias cubren normalización, fechas DST, precisión, duplicados, reutilización de consultas y ciclo de vida. `tests/e2e/financial-chart.spec.ts` usa respuestas HTTP controladas para verificar las tres series, ventanas, zoom, arrastre, períodos, paginación, datos escasos y extremos, y responsive. Estas respuestas son exclusivamente fixtures de prueba, nunca datos de producción. No constituyen una verificación de la disponibilidad o latencia de una cuenta Alpaca real.
+Pruebas de cálculos, fidelidad de datos y ciclo de vida; E2E con respuestas controladas para las tres representaciones, zoom, navegación, casos extremos, indicadores, dibujos y responsive. Los fixtures solo se usan en pruebas.
 
-API oficial: https://tradingview.github.io/lightweight-charts/docs/ (v5.3).
+Licencia Apache ECharts: Apache-2.0. Conservar LICENSE y NOTICE del paquete distribuido. Documentación: https://echarts.apache.org/handbook/en/basics/import/.

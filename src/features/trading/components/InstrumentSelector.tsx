@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 import { CustomSelect } from '@/components/ui/CustomSelect';
+import { AssetLogo } from '@/components/market/AssetLogo';
 import { AssetSearchCombobox } from './AssetSearchCombobox';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { useLocale } from '@/lib/i18n';
@@ -173,6 +174,13 @@ export function InstrumentSelector({
                 value: a.symbol,
                 label: `${a.symbol} · ${a.name}`,
                 hint: a.exchange,
+                leading: (
+                  <AssetLogo
+                    symbol={a.symbol}
+                    exchange={a.exchange}
+                    size="sm"
+                  />
+                ),
               })),
             ]}
           />
@@ -265,6 +273,8 @@ export function InstrumentSelector({
                 <button
                   key={`${item.symbol}-${item.exchange}`}
                   type="button"
+                  data-instrument={item.symbol}
+                  aria-pressed={isSelected}
                   onClick={() => onSymbolChange(item.symbol)}
                   className={
                     isSelected
@@ -272,15 +282,24 @@ export function InstrumentSelector({
                       : styles.instrumentChip
                   }
                 >
-                  <div className={styles.instrumentChipTop}>
-                    <span className={styles.instrumentChipSymbol}>
-                      {item.symbol}
+                  <AssetLogo
+                    symbol={item.symbol}
+                    exchange={item.exchange}
+                    size="sm"
+                  />
+                  <span className={styles.instrumentChipDetails}>
+                    <span className={styles.instrumentChipTop}>
+                      <span className={styles.instrumentChipSymbol}>
+                        {item.symbol}
+                      </span>
+                      <span className={styles.instrumentChipExchange}>
+                        {item.exchange}
+                      </span>
                     </span>
-                    <span className={styles.instrumentChipExchange}>
-                      {item.exchange}
+                    <span className={styles.instrumentChipName}>
+                      {item.name}
                     </span>
-                  </div>
-                  <span className={styles.instrumentChipName}>{item.name}</span>
+                  </span>
                 </button>
               );
             })}

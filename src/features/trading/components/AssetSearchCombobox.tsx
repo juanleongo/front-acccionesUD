@@ -1,6 +1,7 @@
 'use client';
 import { useId, useRef, useState } from 'react';
 import { Icon } from '@/components/ui/Icon';
+import { AssetLogo } from '@/components/market/AssetLogo';
 import { useLocale } from '@/lib/i18n';
 import type { SelectorAssetItem } from './instrument-types';
 import styles from '../trading.module.css';
@@ -157,9 +158,16 @@ export function AssetSearchCombobox({
                       onMouseDown={(event) => event.preventDefault()}
                       onClick={() => choose(asset)}
                     >
-                      <span>
-                        <strong>{asset.symbol}</strong>
-                        <small>{asset.name}</small>
+                      <span className={styles.assetSearchIdentity}>
+                        <AssetLogo
+                          symbol={asset.symbol}
+                          exchange={asset.exchange}
+                          size="sm"
+                        />
+                        <span>
+                          <strong>{asset.symbol}</strong>
+                          <small>{asset.name}</small>
+                        </span>
                       </span>
                       <span className={styles.assetSearchExchange}>
                         {asset.exchange}

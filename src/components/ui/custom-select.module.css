@@ -69,6 +69,7 @@
 }
 
 .value {
+  flex: 1;
   display: -webkit-box;
   -webkit-line-clamp: 1;
   line-clamp: 1;
@@ -199,10 +200,16 @@
 }
 
 .optionTextWrap {
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 0.1rem;
   min-width: 0;
+}
+.leading {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
 }
 
 .optionLabel {

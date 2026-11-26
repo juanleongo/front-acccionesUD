@@ -57,6 +57,8 @@ const nextConfig: NextConfig = {
       '/api/v1/kyc/status',
       '/api/v1/kyc/account',
       '/api/v1/dashboard',
+      '/api/v1/public/market-explorer',
+      '/api/v1/public/instruments/:symbol+/logo',
       '/api/v1/markets',
       '/api/v1/markets/clock',
       '/api/v1/markets/calendar',

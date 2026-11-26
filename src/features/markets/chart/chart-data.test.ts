@@ -1,5 +1,4 @@
 import { expect, it } from 'vitest';
-import type { UTCTimestamp } from 'lightweight-charts';
 import {
   normalizeBars,
   sessionDate,
@@ -39,18 +38,10 @@ it('preserves trading dates through DST and UTC date-only bars', () => {
   expect(sessionDate(Date.parse('2026-11-19T05:00:00Z'))).toBe('2026-11-19');
   expect(sessionDate(Date.parse('2026-11-19T00:00:00Z'))).toBe('2026-11-19');
   expect(
-    formatChartTime(
-      (Date.parse('2026-07-10T14:00:00Z') / 1000) as UTCTimestamp,
-      'en',
-      true,
-    ),
+    formatChartTime(Date.parse('2026-07-10T14:00:00Z') / 1000, 'en', true),
   ).toContain('10:00');
   expect(
-    formatChartTime(
-      (Date.parse('2026-11-19T14:00:00Z') / 1000) as UTCTimestamp,
-      'en',
-      true,
-    ),
+    formatChartTime(Date.parse('2026-11-19T14:00:00Z') / 1000, 'en', true),
   ).toContain('09:00');
 });
 it('retains small-price precision and an actual sixty-bar viewport', () => {

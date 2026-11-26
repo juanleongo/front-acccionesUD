@@ -1,5 +1,7 @@
-import type { BusinessDay, Time, UTCTimestamp } from 'lightweight-charts';
 import type { Candle, CandleFrame } from '../history';
+
+export type Time =
+  string | number | { year: number; month: number; day: number };
 
 export type ChartMode = 'candles' | 'line' | 'area';
 export type ChartBar = Omit<Candle, 'time'> & { time: Time; timestamp: number };
@@ -42,9 +44,7 @@ export function normalizeBars(
     )
       throw new Error('Invalid OHLCV');
     const time: Time =
-      frame === '1Day'
-        ? sessionDate(bar.time)
-        : ((bar.time / 1000) as UTCTimestamp);
+      frame === '1Day' ? sessionDate(bar.time) : bar.time / 1000;
     const next = { ...bar, timestamp: bar.time, time };
     const key = timeKey(time);
     const prev = unique.get(key);
@@ -75,18 +75,19 @@ export function formatChartTime(
   time: Time,
   locale: string,
   intraday: boolean,
+  compact = false,
 ): string {
   let date: Date;
   let timeZone = 'America/New_York';
   if (typeof time === 'number') date = new Date(time * 1000);
   else {
-    const day = typeof time === 'string' ? time : timeKey(time as BusinessDay);
+    const day = typeof time === 'string' ? time : timeKey(time);
     date = new Date(`${day}T12:00:00Z`);
     timeZone = 'UTC';
   }
   return new Intl.DateTimeFormat(locale === 'en' ? 'en-US' : 'es-CO', {
     timeZone,
-    year: 'numeric',
+    ...(compact ? {} : { year: 'numeric' as const }),
     month: 'short',
     day: 'numeric',
     ...(intraday
