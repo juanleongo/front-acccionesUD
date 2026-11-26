@@ -1,6 +1,13 @@
 'use client';
 
 import { useEffect, useRef, useState, type FormEvent } from 'react';
+import {
+  fetchExchangeRates,
+  isRecentRate,
+  convertedUsd,
+  type DepositCurrency,
+  type ExchangeRate,
+} from './exchange-rates';
 import { CustomSelect } from '@/components/ui/CustomSelect';
 import { Icon } from '@/components/ui/Icon';
 import { LoadingState } from '@/components/ui/LoadingState';
@@ -66,6 +73,40 @@ export function FundingPanel({
   const approvedBanks = banks.filter((bank) => bank.status === 'APPROVED');
   const [bankId, setBankId] = useState('');
   const [amount, setAmount] = useState('');
+  const [currency, setCurrency] = useState<DepositCurrency>('USD');
+  const [rates, setRates] = useState<ExchangeRate[]>([]);
+  const [ratesLoading, setRatesLoading] = useState(true);
+  const [ratesError, setRatesError] = useState(false);
+  const [rateRetry, setRateRetry] = useState(0);
+  const effectiveCurrency = direction === 'deposit' ? currency : 'USD';
+  const rate = rates.find((item) => item.quote === effectiveCurrency);
+  const rateUsable = Boolean(rate);
+  const unitsPerUsd =
+    effectiveCurrency === 'USD' ? 1 : rateUsable && rate ? rate.rate : 0;
+  const usdAmount = convertedUsd(amount, unitsPerUsd);
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchExchangeRates(controller.signal)
+      .then((value) => {
+        if (!controller.signal.aborted) {
+          setRates(
+            value.filter(
+              (item) =>
+                Date.now() - Date.parse(item.date + 'T00:00:00Z') <=
+                7 * 86400000,
+            ),
+          );
+          setRatesError(false);
+        }
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setRatesError(true);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setRatesLoading(false);
+      });
+    return () => controller.abort();
+  }, [rateRetry]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [banksFetchError, setBanksFetchError] = useState(false);
@@ -137,12 +178,12 @@ export function FundingPanel({
     if (
       !/^\d+(\.\d{1,2})?$/.test(amount) ||
       !Number.isFinite(Number(amount)) ||
-      Number(amount) < 1
+      Number(amount) <= 0
     ) {
       setError(
         tx(
-          'Ingresa un monto de al menos 1 USD con máximo dos decimales.',
-          'Enter an amount of at least 1 USD with up to two decimal places.',
+          'Ingresa un monto positivo con máximo dos decimales.',
+          'Enter a positive amount with up to two decimal places.',
         ),
       );
       return;
@@ -170,7 +211,32 @@ export function FundingPanel({
       );
       return;
     }
-    const normalized = Number(amount).toFixed(2);
+    if (
+      !usdAmount ||
+      Number(usdAmount) < 1 ||
+      (effectiveCurrency !== 'USD' &&
+        (ratesLoading || ratesError || !rateUsable))
+    ) {
+      setError(
+        tx(
+          'Necesitas una tasa disponible y un equivalente de al menos 1 USD.',
+          'A valid exchange rate and an equivalent of at least 1 USD are required.',
+        ),
+      );
+      return;
+    }
+    if (effectiveCurrency !== 'USD' && rate && !isRecentRate(rate.date)) {
+      setRatesLoading(true);
+      setRateRetry((value) => value + 1);
+      setError(
+        tx(
+          'La tasa venció. Actualizando la cotización; revisa el importe y confirma de nuevo.',
+          'Rate expired. Refreshing the quote; review the amount and confirm again.',
+        ),
+      );
+      return;
+    }
+    const normalized = usdAmount;
     const fingerprint = `${direction}:${bankId}:${normalized}`;
     if (attempt.current?.fingerprint !== fingerprint)
       attempt.current = { fingerprint, key: crypto.randomUUID() };
@@ -477,15 +543,56 @@ export function FundingPanel({
               </div>
             </div>
 
+            {direction === 'deposit' && (
+              <div className={styles.fieldGroup}>
+                <label htmlFor="deposit-currency" className={styles.fieldLabel}>
+                  {tx('Moneda del depósito', 'Deposit currency')}
+                </label>
+                <CustomSelect
+                  id="deposit-currency"
+                  value={currency}
+                  onChange={setCurrency}
+                  searchable
+                  searchPlaceholder={tx(
+                    'Buscar moneda o código…',
+                    'Search currency or code…',
+                  )}
+                  options={Array.from(
+                    new Set([
+                      'USD',
+                      'COP',
+                      'EUR',
+                      'GBP',
+                      ...rates.map((item) => item.quote),
+                    ]),
+                  )
+                    .sort()
+                    .map((code) => ({
+                      value: code,
+                      label: `${code} · ${new Intl.DisplayNames([locale], { type: 'currency' }).of(code) ?? code}`,
+                    }))}
+                />
+                <p className={styles.noteHelper}>
+                  {ratesLoading
+                    ? tx('Cargando divisas…', 'Loading currencies…')
+                    : tx(
+                        'Divisas con cotización disponible en el proveedor.',
+                        'Currencies with an available provider rate.',
+                      )}
+                </p>
+              </div>
+            )}
             <div className={styles.fieldGroup}>
               <label htmlFor="funding-amount" className={styles.fieldLabel}>
-                {tx('Monto en USD', 'Amount (USD)')}
+                {effectiveCurrency === 'USD'
+                  ? tx('Monto en USD', 'Amount (USD)')
+                  : `${tx('Monto en', 'Amount in')} ${effectiveCurrency}`}
               </label>
               <input
                 id="funding-amount"
                 className={`${styles.input} ${styles.tabularNum}`}
                 type="number"
-                min="1"
+                min="0.01"
                 step="0.01"
                 placeholder={tx('Ej. 100.00', 'E.g. 100.00')}
                 required
@@ -499,14 +606,73 @@ export function FundingPanel({
             {direction === 'deposit'
               ? `${tx('Método seleccionado:', 'Selected method:')} ${tx(activeMethod.es, activeMethod.en)}.`
               : `${tx('Saldo retirable:', 'Withdrawable cash:')} ${available === null ? tx('No disponible', 'Unavailable') : `$${formatUsd(available)} USD`}.`}{' '}
-            {tx('Sin conversión de moneda.', 'No currency conversion.')}
+            {effectiveCurrency === 'USD'
+              ? tx('Sin conversión de moneda.', 'No currency conversion.')
+              : tx(
+                  'Conversión de referencia para fondos virtuales.',
+                  'Reference conversion for virtual funds.',
+                )}
           </p>
 
+          {direction === 'deposit' && (
+            <div className={styles.summaryBox} aria-live="polite">
+              {effectiveCurrency !== 'USD' &&
+                (ratesLoading ? (
+                  <p>{tx('Consultando tasa…', 'Loading exchange rate…')}</p>
+                ) : ratesError || !rateUsable ? (
+                  <p role="alert">
+                    {tx(
+                      'No hay una tasa reciente disponible.',
+                      'No recent exchange rate available.',
+                    )}{' '}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRatesLoading(true);
+                        setRatesError(false);
+                        setRateRetry((value) => value + 1);
+                      }}
+                    >
+                      {tx('Reintentar', 'Retry')}
+                    </button>
+                  </p>
+                ) : (
+                  <p>
+                    1 USD = {rate?.rate.toLocaleString(locale)} {currency} ·{' '}
+                    {tx('Fecha de la tasa', 'Rate date')}: {rate?.date} ·{' '}
+                    <a
+                      href="https://frankfurter.dev"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Frankfurter
+                    </a>
+                  </p>
+                ))}
+              <strong>
+                {tx(
+                  'Monto a depositar en tu cuenta',
+                  'Amount to deposit in your account',
+                )}
+                : {usdAmount ?? '—'} USD
+              </strong>
+              <small>
+                {tx(
+                  'Redondeado a dos decimales. Confirma este equivalente antes de enviar.',
+                  'Rounded to two decimals. Confirm this equivalent before submitting.',
+                )}
+              </small>
+            </div>
+          )}
           <div className={styles.actionsRow}>
             <button
               className={styles.btnPrimary}
               type="submit"
-              disabled={!bankId}
+              disabled={
+                !bankId ||
+                (effectiveCurrency !== 'USD' &&
+                  (ratesLoading || ratesError || !rateUsable))
+              }
             >
               {busy
                 ? tx('Procesando…', 'Processing…')

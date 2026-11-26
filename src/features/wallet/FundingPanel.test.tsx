@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
+import { browserHttp } from '@/lib/api/client';
+vi.mock('@/lib/api/client', () => ({ browserHttp: { request: vi.fn() } }));
 import { FundingPanel } from './FundingPanel';
 import { createBank, fetchBanks, requestTransfer } from './wallet-api';
 
@@ -152,4 +154,82 @@ it('abre primero la vinculación y bloquea el selector cuando no hay cuentas apr
     'no es un routing number ABA válido',
   );
   expect(createBank).not.toHaveBeenCalled();
+});
+
+it.each([
+  ['COP', 4000, '100000'],
+  ['JPY', 150, '3750'],
+  ['ZAR', 18, '450'],
+])(
+  'convierte %s a USD y envía exactamente el equivalente mostrado',
+  async (code, rate, amount) => {
+    vi.mocked(browserHttp.request).mockImplementation(
+      async (options) =>
+        (options.path === '/api/public/currencies'
+          ? [{ iso_code: code, type: 'currency' }]
+          : [
+              {
+                base: 'USD',
+                quote: code,
+                rate,
+                date: new Date().toISOString().slice(0, 10),
+              },
+            ]) as never,
+    );
+    render(
+      <FundingPanel
+        onRefresh={vi.fn().mockResolvedValue(undefined)}
+        available={100}
+      />,
+    );
+    await waitFor(() =>
+      expect(screen.getByLabelText('Cuenta bancaria vinculada')).toHaveValue(
+        'bank-1',
+      ),
+    );
+    await waitFor(() =>
+      expect(screen.getByLabelText('Moneda del depósito')).toHaveTextContent(
+        code,
+      ),
+    );
+    fireEvent.change(screen.getByLabelText('Moneda del depósito'), {
+      target: { value: code },
+    });
+    fireEvent.change(screen.getByLabelText(`Monto en ${code}`), {
+      target: { value: amount },
+    });
+    await waitFor(() =>
+      expect(
+        screen.getByText(/Monto a depositar en tu cuenta:/),
+      ).toHaveTextContent('25.00 USD'),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Confirmar depósito de prueba' }),
+    );
+    await waitFor(() =>
+      expect(requestTransfer).toHaveBeenCalledWith(
+        'deposit',
+        'bank-1',
+        '25.00',
+        expect.any(String),
+      ),
+    );
+  },
+);
+it('impide depositar en otra moneda cuando falla el proveedor de tasas', async () => {
+  vi.mocked(browserHttp.request).mockRejectedValue(new Error('offline'));
+  render(<FundingPanel onRefresh={vi.fn()} available={100} />);
+  await waitFor(() =>
+    expect(screen.getByLabelText('Cuenta bancaria vinculada')).toHaveValue(
+      'bank-1',
+    ),
+  );
+  fireEvent.change(screen.getByLabelText('Moneda del depósito'), {
+    target: { value: 'EUR' },
+  });
+  await screen.findByText('No hay una tasa reciente disponible.');
+  expect(
+    screen.getByRole('button', { name: 'Confirmar depósito de prueba' }),
+  ).toBeDisabled();
+  expect(requestTransfer).not.toHaveBeenCalled();
 });

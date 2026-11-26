@@ -34,6 +34,23 @@ beforeEach(() => {
     })),
   });
   window.scrollTo = vi.fn();
+  mockServer.use(
+    http.get('*/api/v1/broker-links', () =>
+      HttpResponse.json({ items: [], next_cursor: null }),
+    ),
+    http.get('*/api/v1/broker-links/current', () =>
+      HttpResponse.json({
+        link: null,
+        trading_authorization: null,
+        pending_broker_selection: false,
+        suggestions: [],
+      }),
+    ),
+    http.get('*/api/v1/brokers', () =>
+      HttpResponse.json({ items: [], next_cursor: null }),
+    ),
+    http.get('*/api/v1/brokers/suggestions', () => HttpResponse.json([])),
+  );
 });
 
 function renderDashboard(initialSection?: 'dashboard' | 'markets') {
@@ -178,7 +195,7 @@ it('mantiene el acceso público en /markets sin sesión iniciada', async () => {
   expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
 });
 
-it('muestra poder de compra, liquidación ACH real y la foto del asesor en el resumen', async () => {
+it('muestra saldos reales y permite explorar cuando no hay asesor asociado', async () => {
   mockServer.use(
     http.get('*/api/v1/users/me', () => HttpResponse.json(sampleProfile)),
     http.get('*/api/v1/kyc/status', () =>
@@ -207,5 +224,16 @@ it('muestra poder de compra, liquidación ACH real y la foto del asesor en el re
   expect(
     screen.getByText('En liquidación bancaria: $10,000.00 USD'),
   ).toBeVisible();
-  expect(screen.getByAltText('Foto Carlos Rodríguez, CFA')).toBeVisible();
+  expect(
+    await screen.findByText(/Aún no tienes un comisionista asociado/),
+  ).toBeVisible();
+  expect(
+    screen.queryByAltText('Foto Carlos Rodríguez, CFA'),
+  ).not.toBeInTheDocument();
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Explorar comisionistas' }),
+  );
+  expect(
+    await screen.findByRole('tab', { name: 'Directorio de Comisionistas' }),
+  ).toHaveAttribute('aria-selected', 'true');
 });

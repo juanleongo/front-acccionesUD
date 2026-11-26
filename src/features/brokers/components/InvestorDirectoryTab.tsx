@@ -3,7 +3,7 @@
 import { Icon } from '@/components/ui/Icon';
 import { formatDecimalNumber } from '@/lib/formatters';
 import { useLocale } from '@/lib/i18n';
-import type { BrokerDirectoryItem, BrokerReviewItem } from '../brokers-mock';
+import type { BrokerDirectoryItem, BrokerReviewItem } from '../brokers-types';
 import { BrokerAvatar } from './BrokerAvatar';
 import styles from '../brokers.module.css';
 
@@ -15,6 +15,7 @@ export function InvestorDirectoryTab({
   searchQuery,
   onSearchChange,
   onRequestLink,
+  onOpenProfile,
 }: {
   directory: BrokerDirectoryItem[];
   totalCount: number;
@@ -23,6 +24,7 @@ export function InvestorDirectoryTab({
   searchQuery: string;
   onSearchChange: (nextQuery: string) => void;
   onRequestLink: (broker: BrokerDirectoryItem) => void;
+  onOpenProfile: (id: string) => void;
 }) {
   const { locale, tx } = useLocale();
   const hasFilter = searchQuery.trim().length > 0;
@@ -53,13 +55,13 @@ export function InvestorDirectoryTab({
             <input
               type="search"
               aria-label={tx(
-                'Buscar comisionista por nombre, firma o especialidad',
-                'Search broker by name, firm, or specialty',
+                'Buscar comisionista por nombre o firma',
+                'Search broker by name or firm',
               )}
               className={styles.searchInput}
               placeholder={tx(
-                'Buscar por nombre, firma o especialidad…',
-                'Search by name, firm, or specialty…',
+                'Buscar por nombre o firma…',
+                'Search by name or firm…',
               )}
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
@@ -93,8 +95,8 @@ export function InvestorDirectoryTab({
           </div>
           <p className={styles.controlHint}>
             {tx(
-              'Intenta buscar por otra especialidad, firma o limpia el filtro actual.',
-              'Try searching by another specialty, firm, or clear the current filter.',
+              'Intenta buscar por otro nombre, firma o limpia el filtro actual.',
+              'Try searching by another name, firm, or clear the current filter.',
             )}
           </p>
           {hasFilter && (
@@ -196,7 +198,7 @@ export function InvestorDirectoryTab({
                     </div>
                     <div className={styles.statItem}>
                       <span className={styles.statLabel}>
-                        {tx('Ejecutadas', 'Executed')}
+                        {tx('Órdenes creadas', 'Orders created')}
                       </span>
                       <span className={styles.statVal}>
                         {formatDecimalNumber(
@@ -225,9 +227,16 @@ export function InvestorDirectoryTab({
                       locale,
                       0,
                     )}{' '}
-                    {tx('inversionistas activos', 'active investors')}
+                    {tx('inversionistas atendidos', 'investors served')}
                   </span>
 
+                  <button
+                    type="button"
+                    className={styles.secondaryBtn}
+                    onClick={() => onOpenProfile(broker.id)}
+                  >
+                    {tx('Perfil y reseñas', 'Profile and reviews')}
+                  </button>
                   {isLinked ? (
                     <span className={styles.badgeSuccess}>
                       {tx('✓ Tu Comisionista Actual', '✓ Your Current Broker')}

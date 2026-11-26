@@ -90,14 +90,6 @@ const DynamicBrokersHub = dynamic(
   { loading: () => <DashboardTabLoading /> },
 );
 
-const DynamicAdvisorsGallery = dynamic(
-  () =>
-    import('./components/DashboardAdvisorsGallery').then(
-      (mod) => mod.DashboardAdvisorsGallery,
-    ),
-  { loading: () => <DashboardTabLoading /> },
-);
-
 function subscribeMobile(callback: () => void) {
   const query = window.matchMedia('(max-width: 64rem)');
   query.addEventListener('change', callback);
@@ -120,6 +112,9 @@ export function Dashboard({
   const [mobileOpen, setMobileOpen] = useState(false);
   const [activeSection, setActiveSection] =
     useState<DashboardSection>(initialSection);
+  const [brokerEntry, setBrokerEntry] = useState<'current' | 'directory'>(
+    'current',
+  );
   const [loggingOut, setLoggingOut] = useState(false);
   const [profileTab, setProfileTab] = useState<'info' | 'edit' | 'kyc'>('info');
   const [kycModalStep, setKycModalStep] = useState(2);
@@ -242,6 +237,7 @@ export function Dashboard({
       : ['Tecnología & Semiconductores']);
 
   function navigateToSection(section: DashboardSection) {
+    setBrokerEntry('current');
     setActiveSection(section);
     if (mobile) setMobileOpen(false);
     if (typeof window !== 'undefined') {
@@ -546,6 +542,10 @@ export function Dashboard({
               isLoadingData={isLoadingAccount}
               guideDismissed={guideDismissed}
               onNavigate={navigateToSection}
+              onExploreAdvisors={() => {
+                navigateToSection('advisors');
+                setBrokerEntry('directory');
+              }}
               onStartOrderForSymbol={startOrderForSymbol}
               onOpenKycModal={() => {
                 setProfileTab('kyc');
@@ -573,11 +573,12 @@ export function Dashboard({
             <div>
               <div className={styles.sectionSpacing}>
                 <DynamicBrokersHub
+                  initialTab={brokerEntry}
+                  {...(user?.user_id ? { userId: user.user_id } : {})}
                   {...(user?.roles ? { userRoles: user.roles } : {})}
                   onNavigateToOrder={startOrderForSymbol}
                 />
               </div>
-              <DynamicAdvisorsGallery onNavigate={navigateToSection} />
             </div>
           )}
         </main>

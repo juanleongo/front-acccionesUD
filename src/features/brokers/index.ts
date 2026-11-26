@@ -11,3 +11,5 @@ export type {
   ProposalItem,
   TradingAuthorizationRecord,
 } from './brokers-mock';
+
+export { AdvisorSummaryCard } from './AdvisorSummaryCard';
