@@ -5,7 +5,8 @@ import { Icon } from '@/components/ui/Icon';
 import { useLocale } from '@/lib/i18n';
 import { Brand } from './Header';
 import { UpcomingButton } from './LandingActions';
-import styles from '../landing.module.css';
+import landing from '../landing.module.css';
+import styles from '../footer.module.css';
 
 const modules = [
   {
@@ -37,130 +38,191 @@ const modules = [
 export function Footer() {
   const { locale, tx } = useLocale();
   return (
-    <footer className={styles.footer}>
-      <div className={styles.container}>
-        <div className={styles.footerGrid}>
-          <div className={styles.footerIntro}>
-            <div className={styles.footerBrand}>
-              <Brand />
-              <span className={styles.version}>{tx('EE. UU.', 'USA')}</span>
+    <footer
+      className={styles.footer}
+      aria-label={tx('Acerca de Acciones UD', 'About Acciones UD')}
+    >
+      <div className={landing.container}>
+        <div className={styles.shell}>
+          <div className={styles.intro}>
+            <div className={styles.introText}>
+              <div className={styles.brandArea}>
+                <Brand />
+                <span className={styles.region}>
+                  <Icon name="globe" size={13} />
+                  {tx('EE. UU. · USD', 'USA · USD')}
+                </span>
+              </div>
+              <h2>
+                {tx('Aprende. Explora.', 'Learn. Explore.')}{' '}
+                <span>{tx('Simula.', 'Simulate.')}</span>
+              </h2>
+              <p>
+                {tx(
+                  'Explora empresas de Estados Unidos y dale contexto a tus decisiones. Un entorno educativo para practicar a tu ritmo.',
+                  'Explore U.S. companies and give context to your decisions. An educational environment to practise at your own pace.',
+                )}
+              </p>
             </div>
-            <p className={styles.footerTagline}>
-              {tx('Aprende. Explora. Simula.', 'Learn. Explore. Simulate.')}
-            </p>
-            <p className={styles.footerDescription}>
-              {tx(
-                'Explora acciones y practica tus decisiones de inversión en un entorno educativo de simulación de los mercados de Estados Unidos.',
-                'Explore stocks and practise investment decisions in an educational simulation of U.S. markets.',
-              )}
-            </p>
+            <div className={styles.startCard}>
+              <span className={styles.cardIcon}>
+                <Icon name="trend" size={25} />
+              </span>
+              <div>
+                <strong>
+                  {tx(
+                    'Tu próximo paso empieza aquí',
+                    'Your next step starts here',
+                  )}
+                </strong>
+                <p>
+                  {tx(
+                    'Descubre una empresa. Entiende su evolución.',
+                    'Discover a company. Understand its journey.',
+                  )}
+                </p>
+              </div>
+              <div className={styles.actions}>
+                <Link className={styles.primary} href="/markets">
+                  {tx('Ver mercados disponibles', 'View available markets')}
+                  <Icon name="arrow" size={17} />
+                </Link>
+                <Link className={styles.secondary} href="/registro">
+                  {tx('Crear mi cuenta', 'Create my account')}
+                </Link>
+              </div>
+            </div>
           </div>
-          <div>
-            <h2 className={styles.footerHeading}>
-              <Icon name="globe" size={16} />{' '}
-              {tx('Bolsas de Estados Unidos', 'U.S. Stock Exchanges')}
-            </h2>
-            <ul className={styles.footerMarkets}>
-              {[
-                'New York Stock Exchange (NYSE)',
-                'NASDAQ',
-                'NYSE Arca / NYSE American',
-              ].map((name) => (
-                <li key={name}>
-                  <span className={styles.footerMarketName}>{name}</span>
-                </li>
-              ))}
-            </ul>
-            <p className={styles.footerMarketNote}>
-              {tx(
-                'Consulta el estado y los horarios de negociación en Mercados.',
-                'Check trading hours and market status in Markets.',
-              )}
-            </p>
-          </div>
-          <div>
-            <h2 className={styles.footerHeading}>
-              <Icon name="grid" size={16} />{' '}
-              {tx('Módulos del sistema', 'Platform modules')}
-            </h2>
-            <ul className={styles.footerLinks}>
-              {modules.map((mod, index) => {
-                const label = locale === 'en' ? mod.en : mod.es;
-                return (
-                  <li key={mod.es}>
-                    <Icon name="arrow" size={14} />
-                    {index === 0 ? (
-                      <Link href="/dashboard">{label}</Link>
-                    ) : index === 1 ? (
-                      <Link href="/markets">{label}</Link>
-                    ) : (
-                      <UpcomingButton feature={label}>{label}</UpcomingButton>
+          <div className={styles.columns}>
+            <section className={styles.column}>
+              <h3>
+                <span>
+                  <Icon name="globe" size={18} />
+                </span>
+                {tx('Un mercado de posibilidades', 'A market of possibilities')}
+              </h3>
+              <div className={styles.markets}>
+                {[
+                  { code: 'NYSE', name: 'New York Stock Exchange' },
+                  { code: 'NASDAQ', name: 'Nasdaq Stock Market' },
+                  { code: 'ARCA / AMEX', name: 'NYSE Arca · NYSE American' },
+                ].map((m) => (
+                  <Link key={m.code} href="/markets">
+                    <span>
+                      <strong>{m.code}</strong>
+                      <small>{m.name}</small>
+                    </span>
+                    <Icon name="arrow" size={16} />
+                  </Link>
+                ))}
+              </div>
+              <p className={styles.marketNote}>
+                {tx(
+                  'Consulta las sesiones y los horarios oficiales en Mercados.',
+                  'Check official sessions and trading hours in Markets.',
+                )}
+              </p>
+            </section>
+            <nav
+              className={styles.column}
+              aria-label={tx('Módulos de Acciones UD', 'Acciones UD modules')}
+            >
+              <h3>
+                <span>
+                  <Icon name="grid" size={18} />
+                </span>
+                {tx('Todo en un mismo lugar', 'Everything in one place')}
+              </h3>
+              <ul className={styles.links}>
+                {modules.map((mod, index) => {
+                  const label = locale === 'en' ? mod.en : mod.es;
+                  return (
+                    <li key={mod.es}>
+                      <Icon name="arrow" size={14} />
+                      {index < 2 ? (
+                        <Link href={index === 0 ? '/dashboard' : '/markets'}>
+                          {label}
+                        </Link>
+                      ) : (
+                        <UpcomingButton feature={label}>{label}</UpcomingButton>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </nav>
+            <section className={`${styles.column} ${styles.trust}`}>
+              <h3>
+                <span>
+                  <Icon name="shield" size={18} />
+                </span>
+                {tx('Practica con confianza', 'Practise with confidence')}
+              </h3>
+              <ul className={styles.links}>
+                <li>
+                  <Icon name="lock" size={17} />
+                  <span>
+                    {tx(
+                      'Verificación en dos pasos (2FA)',
+                      'Two-factor authentication (2FA)',
                     )}
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-          <div>
-            <h2 className={styles.footerHeading}>
-              <Icon name="shield" size={16} />{' '}
-              {tx(
-                'Seguridad y uso de la plataforma',
-                'Security and platform use',
-              )}
-            </h2>
-            <ul className={styles.footerLinks}>
-              <li>
-                <Icon name="lock" size={16} />
-                <span>
-                  {tx(
-                    'Verificación en dos pasos (2FA)',
-                    'Two-factor authentication (2FA)',
-                  )}
-                </span>
-              </li>
-              <li>
-                <Icon name="pie" size={16} />
-                <span>
-                  {tx(
-                    'Consulta los costos antes de operar',
-                    'Review costs before placing an order',
-                  )}
-                </span>
-              </li>
-              <li>
-                <Icon name="shield" size={16} />
-                <span>
-                  {tx(
-                    'Seguimiento de movimientos y operaciones',
-                    'Transaction and trading history',
-                  )}
-                </span>
-              </li>
-              <li>
-                <Icon name="file" size={16} />
-                <UpcomingButton
-                  feature={tx('Condiciones de uso', 'Terms of use')}
-                >
-                  {tx('Condiciones de uso', 'Terms of use')}
-                </UpcomingButton>
-              </li>
-            </ul>
+                  </span>
+                </li>
+                <li>
+                  <Icon name="pie" size={17} />
+                  <span>
+                    {tx(
+                      'Costos claros antes de operar',
+                      'Clear costs before you trade',
+                    )}
+                  </span>
+                </li>
+                <li>
+                  <Icon name="file" size={17} />
+                  <span>
+                    {tx(
+                      'Historial de movimientos y operaciones',
+                      'Transaction and trading history',
+                    )}
+                  </span>
+                </li>
+              </ul>
+              <span className={styles.education}>
+                <Icon name="info" size={16} />
+                {tx(
+                  'Entorno educativo de simulación',
+                  'Educational simulation environment',
+                )}
+              </span>
+              <UpcomingButton
+                className={styles.terms}
+                feature={tx('Condiciones de uso', 'Terms of use')}
+              >
+                {tx('Condiciones de uso', 'Terms of use')}
+                <Icon name="arrow" size={14} />
+              </UpcomingButton>
+            </section>
           </div>
         </div>
-        <div className={styles.footerBottom}>
-          <p className={styles.footerCopyright}>
-            <strong>© 2026 Acciones UD</strong> ·{' '}
-            {tx('Todos los derechos reservados.', 'All rights reserved.')}
+        <div className={styles.bottom}>
+          <p>
+            <strong>© 2026 Acciones UD</strong>
+            <span>
+              {tx('Todos los derechos reservados.', 'All rights reserved.')}
+            </span>
           </p>
-          <nav
-            className={styles.footerNav}
-            aria-label={tx('Enlaces del pie', 'Footer links')}
-          >
+          <nav aria-label={tx('Enlaces del pie', 'Footer links')}>
             <Link href="/markets">{tx('Mercados', 'Markets')}</Link>
             <Link href="/dashboard">Dashboard</Link>
             <Link href="/registro">{tx('Registro', 'Sign up')}</Link>
             <Link href="/login">{tx('Iniciar sesión', 'Sign in')}</Link>
+            <a
+              href="#inicio"
+              className={styles.backTop}
+              aria-label={tx('Volver al inicio', 'Back to top')}
+            >
+              <Icon name="arrow" size={16} />
+            </a>
           </nav>
         </div>
       </div>

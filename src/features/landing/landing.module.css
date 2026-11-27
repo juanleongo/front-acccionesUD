@@ -132,15 +132,12 @@
   color: var(--color-accent-text);
 }
 
-.navLink:hover,
-.footerLinks a:hover,
-.footerLinks button:hover {
+.navLink:hover {
   color: var(--color-primary);
 }
 
 .navigation button,
-.loginButton,
-.footerLinks button {
+.loginButton {
   padding: 0;
   background: none;
   border: 0;
@@ -313,11 +310,12 @@
   overflow: visible;
   background: var(--color-card-gradient);
   border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-xl);
+  border-radius: 1.75rem;
   box-shadow: var(--shadow-card-elevated);
 }
 
 .marketHeadingGroup {
+  padding: 1.5rem;
   flex: none;
   min-width: 0;
 }
@@ -852,245 +850,6 @@
   font-weight: 600;
 }
 
-/* Pie de página */
-.footer {
-  background: var(--color-footer);
-  border-top: 2px solid var(--color-footer-border);
-  padding: 3rem 0 2rem;
-  color: var(--color-text-muted);
-  font-size: var(--font-size-sm);
-}
-
-.footerGrid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 2rem 3rem;
-  padding-bottom: 2rem;
-}
-
-.footerIntro {
-  grid-column: 1 / -1;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  align-items: center;
-  column-gap: 3rem;
-  padding-bottom: 1.75rem;
-  border-bottom: 1px solid var(--color-footer-border);
-}
-
-.footerIntro .footerDescription {
-  grid-column: 2;
-  grid-row: 1 / 3;
-  max-width: 44rem;
-  font-size: var(--font-size-sm);
-}
-
-.footerGrid > div {
-  min-width: 0;
-}
-
-@media (max-width: 48rem) {
-  .footerIntro {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 0.65rem;
-  }
-  .footerIntro .footerDescription {
-    grid-column: auto;
-    grid-row: auto;
-  }
-}
-
-.footerBrand {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: center;
-}
-
-.footerBrand .brand {
-  font-size: var(--font-size-base);
-  color: var(--color-text);
-}
-
-.version {
-  color: var(--color-accent-text);
-  border: 1px solid var(--color-accent-border);
-  background: var(--color-surface);
-  padding: 0.15rem 0.5rem;
-  border-radius: var(--radius-pill);
-  font-family: ui-monospace, monospace;
-  font-size: 0.68rem;
-  font-weight: 700;
-}
-
-.footerTagline {
-  letter-spacing: var(--letter-spacing-tight);
-  margin: 0.45rem 0 0.75rem;
-  font-size: var(--font-size-sm);
-  font-weight: 700;
-  color: var(--color-text-secondary);
-}
-
-.footerDescription {
-  line-height: 1.65;
-  margin: 0;
-  color: var(--color-text-muted);
-}
-
-.company {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  padding: 0.85rem;
-  background: var(--color-card-gradient);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sm);
-  margin-top: 1rem;
-}
-
-.companyTitle {
-  font-size: var(--font-size-sm);
-  color: var(--color-text);
-}
-
-.companySub {
-  font-size: var(--font-size-xs);
-  color: var(--color-text-subtle);
-  line-height: 1.45;
-}
-
-.footerHeading {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: var(--font-size-sm);
-  font-weight: 700;
-  line-height: 1.4;
-  color: var(--color-text);
-  letter-spacing: var(--letter-spacing-tight);
-  border-bottom: 1px solid var(--color-divider);
-  padding-bottom: 0.55rem;
-  margin: 0 0 0.85rem;
-}
-
-.footerHeading svg {
-  color: var(--color-primary);
-}
-
-.footerMarkets,
-.footerLinks {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.footerMarkets li {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.45rem;
-  padding: 0.6rem 0.75rem;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sm);
-  margin-bottom: 0.6rem;
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-}
-
-.footerMarketName {
-  color: var(--color-text-secondary);
-}
-
-.footerOpen,
-.footerClosed {
-  padding: 0.15rem 0.5rem;
-  border-radius: var(--radius-pill);
-  font-family: ui-monospace, monospace;
-  font-size: 0.68rem;
-  font-weight: 700;
-}
-
-.footerOpen {
-  background: var(--color-success-bg);
-  color: var(--color-success);
-}
-
-.footerClosed {
-  background: var(--color-warning-bg);
-  color: var(--color-warning);
-}
-
-.footerMarketNote {
-  color: var(--color-accent-text);
-  font-size: var(--font-size-xs);
-  font-weight: 600;
-  margin: 0.35rem 0 0;
-}
-
-.footerLinks {
-  display: flex;
-  flex-direction: column;
-  gap: 0.7rem;
-}
-
-.footerLinks li {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.5rem;
-  font-size: var(--font-size-sm);
-  line-height: 1.5;
-  color: var(--color-text-muted);
-}
-
-.footerLinks svg {
-  flex-shrink: 0;
-  color: var(--color-text-subtle);
-  margin-top: 0.1rem;
-}
-
-.footerGrid > div:last-child .footerLinks svg {
-  color: var(--color-accent-text);
-}
-
-.footerBottom {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem 1.25rem;
-  padding-top: 1.25rem;
-  border-top: 1px solid var(--color-footer-border);
-  font-size: var(--font-size-sm);
-}
-
-.footerCopyright {
-  margin: 0;
-  color: var(--color-text-muted);
-}
-
-.footerNav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  color: var(--color-text-secondary);
-  font-weight: 600;
-}
-
-.footerNav a {
-  padding: 0.5rem 0.65rem;
-  border-radius: var(--radius-md);
-  text-decoration: none;
-}
-
-.footerNav a:hover {
-  background: var(--color-primary-soft);
-  color: var(--color-primary);
-}
-
 .previewDisclaimer {
   color: var(--color-text-subtle);
   font-size: 0.7rem;
@@ -1155,10 +914,6 @@
   .brand {
     font-size: 1.05rem;
   }
-
-  .footerGrid {
-    gap: 1.5rem;
-  }
   .advisorsHeading {
     flex-direction: column;
     align-items: flex-start;
@@ -1189,8 +944,7 @@
   .menuButton {
     display: inline-grid;
   }
-  .cardGrid,
-  .footerGrid {
+  .cardGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -1216,11 +970,6 @@
   }
   .stepCard {
     padding: 1.25rem;
-  }
-
-  .footerBottom {
-    align-items: flex-start;
-    flex-direction: column;
   }
 }
 
@@ -1252,8 +1001,7 @@
     width: 2.15rem;
     height: 2.15rem;
   }
-  .cardGrid,
-  .footerGrid {
+  .cardGrid {
     grid-template-columns: minmax(0, 1fr);
   }
   .stepCard {
@@ -1270,13 +1018,6 @@
   .advisorBottom {
     flex-direction: column;
     align-items: flex-start;
-  }
-  .footer {
-    padding-top: 2.25rem;
-  }
-  .footerGrid {
-    gap: 1.75rem;
-    padding-bottom: 1.75rem;
   }
 }
 

@@ -14,10 +14,7 @@ export function MarketExplorer() {
       aria-labelledby="markets-title"
     >
       <div className={landing.marketPanel}>
-        <header
-          className={landing.marketHeadingGroup}
-          style={{ padding: '1.25rem' }}
-        >
+        <header className={landing.marketHeadingGroup}>
           <span className={landing.marketEyebrow}>
             {tx(
               'Exploración bursátil · Estados Unidos',
