@@ -277,6 +277,7 @@ export function useFinancialChart(props: {
                     xy(event),
                     project,
                     plot(),
+                    event.altKey,
                   )
                 : null;
           if (p.tool === 'cursor' && !hit) {

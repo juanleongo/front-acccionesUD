@@ -1,5 +1,6 @@
 'use client';
 import { Icon } from '@/components/ui/Icon';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { useLocale } from '@/lib/i18n';
 import styles from '../portfolio.module.css';
 export function PortfolioDateFilters({
@@ -33,24 +34,24 @@ export function PortfolioDateFilters({
         </div>
       </div>
       <div className={styles.filterRow}>
-        <label className={styles.fieldGroup}>
+        <div className={styles.fieldGroup}>
           <span className={styles.fieldLabel}>{tx('Desde', 'From')}</span>
-          <input
-            className={styles.filterInput}
-            type="date"
+          <DatePicker
+            label={tx('Desde', 'From')}
             value={from}
-            onChange={(e) => onFrom(e.target.value)}
+            onChange={onFrom}
+            max={to || undefined}
           />
-        </label>
-        <label className={styles.fieldGroup}>
+        </div>
+        <div className={styles.fieldGroup}>
           <span className={styles.fieldLabel}>{tx('Hasta', 'To')}</span>
-          <input
-            className={styles.filterInput}
-            type="date"
+          <DatePicker
+            label={tx('Hasta', 'To')}
             value={to}
-            onChange={(e) => onTo(e.target.value)}
+            onChange={onTo}
+            min={from || undefined}
           />
-        </label>
+        </div>
       </div>
       {!valid && (
         <p role="alert" className={styles.alertError}>

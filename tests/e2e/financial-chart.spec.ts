@@ -626,3 +626,147 @@ test('calendar dates share one row and the chart exchange does not restrict stoc
         .screenshot({ path: 'test-results/calendar-dates-aligned.png' });
   }
 });
+
+test('selects and edits a line underneath a filled area and cycles coincident drawings', async ({
+  page,
+}) => {
+  const { errors } = await fixture(page);
+  await page.setViewportSize({ width: 1440, height: 1100 });
+  await page.goto('/markets');
+  const root = page.locator('[data-chart-mode]');
+  await expect(root.locator('canvas').first()).toBeVisible();
+  await page.locator('#price-chart-type').selectOption('area');
+  await expect(root).toHaveAttribute('data-chart-mode', 'area');
+  const graph = page.getByRole('img', { name: 'Histórico de UP' });
+  await graph.scrollIntoViewIfNeeded();
+  const box = (await graph.boundingBox())!;
+  await page
+    .getByRole('button', { name: 'Línea de tendencia', exact: true })
+    .click();
+  await page.mouse.click(box.x + box.width * 0.25, box.y + box.height * 0.3);
+  await page.mouse.click(box.x + box.width * 0.7, box.y + box.height * 0.48);
+  const firstLine = root.locator('[data-kind="trend"]').first();
+  await expect(firstLine).toHaveAttribute('data-selected', 'true');
+  const lineId = (await firstLine.getAttribute('data-drawing-id'))!;
+  const line = root.locator(`[data-drawing-id="${lineId}"]`);
+  await page
+    .getByRole('button', { name: 'Área rectangular', exact: true })
+    .click();
+  await page.mouse.click(box.x + box.width * 0.17, box.y + box.height * 0.22);
+  await page.mouse.click(box.x + box.width * 0.78, box.y + box.height * 0.58);
+  const rectangle = root.locator('[data-kind="rectangle"]');
+  await expect(rectangle).toHaveAttribute('data-selected', 'true');
+  const rectId = (await rectangle.getAttribute('data-drawing-id'))!;
+  const rectPoints = await rectangle.locator('polygon').getAttribute('points');
+  const coordinates = () =>
+    line.locator('polyline').evaluate((el) =>
+      el
+        .getAttribute('points')!
+        .split(' ')
+        .map((p) => p.split(',').map(Number)),
+    );
+  const points = await coordinates();
+  const middle = {
+    x: box.x + (points[0]![0]! + points[1]![0]!) / 2,
+    y: box.y + (points[0]![1]! + points[1]![1]!) / 2,
+  };
+  await page.mouse.click(middle.x, middle.y);
+  await expect(line).toHaveAttribute('data-selected', 'true');
+  await expect(rectangle).toHaveAttribute('data-selected', 'false');
+  await expect(page.locator('#chart-drawing-select')).toHaveValue(lineId);
+  const editor = page.getByRole('group', {
+    name: 'Editar dibujo seleccionado',
+  });
+  await editor.getByRole('button', { name: 'Verde', exact: true }).click();
+  await expect(line.locator('polyline')).toHaveAttribute(
+    'stroke',
+    'var(--color-drawing-green)',
+  );
+  await expect(rectangle.locator('polygon')).toHaveAttribute(
+    'stroke',
+    'var(--color-drawing-blue)',
+  );
+  const before = await line.locator('polyline').getAttribute('points');
+  await page.mouse.move(middle.x, middle.y);
+  await page.mouse.down();
+  await page.mouse.move(middle.x + 20, middle.y + 14, { steps: 6 });
+  await page.mouse.up();
+  await expect(line.locator('polyline')).not.toHaveAttribute('points', before!);
+  await expect(rectangle.locator('polygon')).toHaveAttribute(
+    'points',
+    rectPoints!,
+  );
+  await expect(root).toContainText('1041–1100 de 1100');
+  await page.mouse.click(box.x + box.width * 0.3, box.y + box.height * 0.53);
+  await expect(rectangle).toHaveAttribute('data-selected', 'true');
+  const moved = await coordinates();
+  await page
+    .getByRole('button', { name: 'Línea de tendencia', exact: true })
+    .click();
+  await page.mouse.click(box.x + moved[0]![0]!, box.y + moved[0]![1]!);
+  await page.mouse.click(box.x + moved[1]![0]!, box.y + moved[1]![1]!);
+  await expect(root).toHaveAttribute('data-drawing-count', '3');
+  const lastLine = root.locator('[data-kind="trend"][data-selected="true"]');
+  const duplicateId = (await lastLine.getAttribute('data-drawing-id'))!;
+  const duplicate = root.locator(`[data-drawing-id="${duplicateId}"]`);
+  const midpoint = {
+    x: box.x + (moved[0]![0]! + moved[1]![0]!) / 2,
+    y: box.y + (moved[0]![1]! + moved[1]![1]!) / 2,
+  };
+  for (const expected of [lineId, rectId, duplicateId]) {
+    await page.keyboard.down('Alt');
+    await page.mouse.click(midpoint.x, midpoint.y);
+    await page.keyboard.up('Alt');
+    await expect(page.locator('#chart-drawing-select')).toHaveValue(expected);
+  }
+  await page.locator('#chart-drawing-select').selectOption(lineId);
+  await expect(line).toHaveAttribute('data-selected', 'true');
+  const coincident = await line.locator('polyline').getAttribute('points');
+  const duplicatePoints = await duplicate
+    .locator('polyline')
+    .getAttribute('points');
+  await page.mouse.move(midpoint.x, midpoint.y);
+  await page.mouse.down();
+  await page.mouse.move(midpoint.x - 15, midpoint.y + 10, { steps: 6 });
+  await page.mouse.up();
+  await expect(line.locator('polyline')).not.toHaveAttribute(
+    'points',
+    coincident!,
+  );
+  await expect(duplicate.locator('polyline')).toHaveAttribute(
+    'points',
+    duplicatePoints!,
+  );
+  await expect(page.locator('#chart-drawing-select')).toHaveValue(lineId);
+
+  await editor
+    .getByRole('button', { name: 'Eliminar dibujo seleccionado' })
+    .click();
+  await expect(root).toHaveAttribute('data-drawing-count', '2');
+  await expect(rectangle.locator('polygon')).toHaveAttribute(
+    'points',
+    rectPoints!,
+  );
+  await page
+    .getByRole('button', { name: 'Deshacer dibujo', exact: true })
+    .click();
+  await expect(root).toHaveAttribute('data-drawing-count', '3');
+  await page.locator('#chart-drawing-select').selectOption(lineId);
+  for (const theme of ['light', 'dark']) {
+    await page.evaluate((theme) => {
+      document.documentElement.dataset.theme = theme;
+    }, theme);
+    await root.screenshot({
+      path: `test-results/overlapping-drawings-${theme}.png`,
+    });
+  }
+  await page.setViewportSize({ width: 320, height: 1000 });
+  await page.locator('#chart-drawing-select').selectOption(rectId);
+  await expect(rectangle).toHaveAttribute('data-selected', 'true');
+  await expect
+    .poll(() =>
+      page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+    )
+    .toBe(true);
+  expect(errors).toEqual([]);
+});

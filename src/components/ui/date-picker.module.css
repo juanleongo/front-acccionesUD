@@ -38,9 +38,7 @@
   flex: none;
 }
 .calendar {
-  position: absolute;
-  top: calc(100% + 0.5rem);
-  right: 0;
+  position: fixed;
   z-index: 70;
   width: min(20rem, calc(100vw - 2rem));
   padding: 0.85rem;
@@ -49,6 +47,8 @@
   background: var(--color-surface-elevated);
   color: var(--color-text);
   box-shadow: var(--shadow-dropdown);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .heading {
   display: flex;
@@ -63,7 +63,7 @@
   text-transform: capitalize;
 }
 .calendar button {
-  min-height: 2.5rem;
+  min-height: var(--size-control-min);
   border: 0;
   border-radius: var(--radius-md);
   color: var(--color-text);
@@ -109,15 +109,4 @@
 .footer button {
   padding-inline: 0.7rem;
   color: var(--color-primary);
-}
-@media (max-width: 40rem) {
-  .calendar {
-    position: fixed;
-    inset: auto 1rem 1rem;
-    width: auto;
-    max-width: 22rem;
-    max-height: calc(100dvh - 7rem);
-    overflow-y: auto;
-    margin-inline: auto;
-  }
 }

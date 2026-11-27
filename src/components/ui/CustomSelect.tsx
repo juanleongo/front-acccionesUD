@@ -93,18 +93,34 @@ export function CustomSelect({
       const below = bottom - rect.bottom - 12;
       const above = rect.top - top - 12;
       const flip = below < 240 && above > below;
-      menu.style.top = flip ? 'auto' : 'calc(100% + 0.35rem)';
-      menu.style.bottom = flip ? 'calc(100% + 0.35rem)' : 'auto';
-      menu.style.maxHeight = `${Math.max(64, Math.min(352, flip ? above : below))}px`;
+      const left = (viewport?.offsetLeft ?? 0) + 8;
+      const width = Math.min(
+        rect.width,
+        (viewport?.width ?? window.innerWidth) - 16,
+      );
+      menu.style.width = `${width}px`;
+      menu.style.left = `${Math.max(left, Math.min(rect.left, left + (viewport?.width ?? window.innerWidth) - 16 - width))}px`;
+      menu.style.right = 'auto';
+      menu.style.bottom = 'auto';
+      menu.style.maxHeight = `${Math.max(32, Math.min(352, bottom - top - 16, flip ? above : below))}px`;
+      menu.style.top = `${Math.max(top, Math.min(flip ? rect.top - menu.getBoundingClientRect().height - 6 : rect.bottom + 6, bottom - menu.getBoundingClientRect().height - 8))}px`;
     }
     positionMenu();
+    const observer =
+      typeof ResizeObserver === 'undefined'
+        ? undefined
+        : new ResizeObserver(positionMenu);
+    if (menuRef.current) observer?.observe(menuRef.current);
     window.addEventListener('resize', positionMenu);
     window.addEventListener('scroll', positionMenu, true);
     window.visualViewport?.addEventListener('resize', positionMenu);
+    window.visualViewport?.addEventListener('scroll', positionMenu);
     return () => {
+      observer?.disconnect();
       window.removeEventListener('resize', positionMenu);
       window.removeEventListener('scroll', positionMenu, true);
       window.visualViewport?.removeEventListener('resize', positionMenu);
+      window.visualViewport?.removeEventListener('scroll', positionMenu);
     };
   }, [open]);
 
@@ -136,6 +152,8 @@ export function CustomSelect({
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
         setOpen(false);
         setSearch('');
         triggerRef.current?.focus();
@@ -182,6 +200,15 @@ export function CustomSelect({
     <div
       ref={wrapperRef}
       className={className ? `${styles.wrapper} ${className}` : styles.wrapper}
+      onKeyDown={(event) => {
+        if (open && event.key === 'Escape') {
+          event.preventDefault();
+          event.stopPropagation();
+          setOpen(false);
+          setSearch('');
+          triggerRef.current?.focus({ preventScroll: true });
+        }
+      }}
     >
       <select
         id={selectId}
@@ -272,7 +299,16 @@ export function CustomSelect({
           )}
 
           {filteredOptions.length === 0 ? (
-            <div className={styles.emptyState}>{effectiveEmptyText}</div>
+            <div
+              id={listboxId}
+              role="listbox"
+              aria-label={ariaLabel ?? effectivePlaceholder}
+              className={styles.emptyState}
+            >
+              <span role="option" aria-disabled="true" aria-selected="false">
+                {effectiveEmptyText}
+              </span>
+            </div>
           ) : (
             <ul
               id={listboxId}

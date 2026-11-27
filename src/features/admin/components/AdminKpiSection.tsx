@@ -1,14 +1,11 @@
 'use client';
 
 import { Icon } from '@/components/ui/Icon';
-import { formatDecimalNumber } from '@/lib/formatters';
 import { useLocale } from '@/lib/i18n';
 import type { PendingBrokerItem } from '../admin-api';
 import styles from '../admin.module.css';
 
 export interface AdminKpiSectionProps {
-  pendingCount: number;
-  usersCount: number;
   brokers: PendingBrokerItem[];
   processingId: string | null;
   onViewAllBrokers: () => void;
@@ -16,89 +13,18 @@ export interface AdminKpiSectionProps {
 }
 
 export function AdminKpiSection({
-  pendingCount,
-  usersCount,
   brokers,
   processingId,
   onViewAllBrokers,
   onActivateBroker,
 }: AdminKpiSectionProps) {
-  const { locale, tx } = useLocale();
+  const { tx } = useLocale();
   const pendingBrokers = brokers.filter(
     (b) => b.status === 'pending_broker_activation',
   );
 
   return (
     <div>
-      <div className={styles.pageHeader}>
-        <span className={styles.pageEyebrow}>
-          {tx(
-            'Consola Ejecutiva · Wall Street',
-            'Executive Console · Wall Street',
-          )}
-        </span>
-        <h1>{tx('Resumen de administración', 'Administration Overview')}</h1>
-        <p>
-          {tx(
-            'Consulta las cuentas, los mercados y las solicitudes que requieren tu atención.',
-            'Review accounts, market schedules, and broker applications requiring attention.',
-          )}
-        </p>
-      </div>
-
-      <div className={styles.kpiGrid}>
-        <div className={styles.kpiCard}>
-          <div className={styles.kpiIcon}>
-            <Icon name="users" size={24} />
-          </div>
-          <div className={styles.kpiInfo}>
-            <small>{tx('Comisionistas Pendientes', 'Pending Brokers')}</small>
-            <strong>{formatDecimalNumber(pendingCount, locale, 0)}</strong>
-            <span>
-              {tx('Solicitudes por revisar', 'Applications to review')}
-            </span>
-          </div>
-        </div>
-
-        <div className={styles.kpiCard}>
-          <div className={styles.kpiIcon}>
-            <Icon name="user" size={24} />
-          </div>
-          <div className={styles.kpiInfo}>
-            <small>{tx('Usuarios Registrados', 'Registered Users')}</small>
-            <strong>{formatDecimalNumber(usersCount, locale, 0)}</strong>
-            <span>{tx('Cuentas en la plataforma', 'Platform accounts')}</span>
-          </div>
-        </div>
-
-        <div className={styles.kpiCard}>
-          <div className={styles.kpiIcon}>
-            <Icon name="trend" size={24} />
-          </div>
-          <div className={styles.kpiInfo}>
-            <small>{tx('Mercados Bursátiles', 'Stock Markets')}</small>
-            <strong>{tx('3 Bolsas', '3 Exchanges')}</strong>
-            <span>NYSE · NASDAQ · NYSE Arca</span>
-          </div>
-        </div>
-
-        <div className={styles.kpiCard}>
-          <div className={styles.kpiIcon}>
-            <Icon name="shield" size={24} />
-          </div>
-          <div className={styles.kpiInfo}>
-            <small>{tx('Políticas de Seguridad', 'Security Policies')}</small>
-            <strong>{tx('2FA Obligatorio', 'Mandatory 2FA')}</strong>
-            <span>
-              {tx(
-                'Protección RBAC y TOTP Activa',
-                'RBAC & TOTP Protection Active',
-              )}
-            </span>
-          </div>
-        </div>
-      </div>
-
       <div className={styles.tableCard}>
         <div className={styles.tableHeader}>
           <h2>{tx('Solicitudes pendientes', 'Pending Applications')}</h2>
@@ -125,22 +51,39 @@ export function AdminKpiSection({
             <tbody>
               {pendingBrokers.map((broker) => (
                 <tr key={broker.userId}>
-                  <td>
+                  <td
+                    data-label={tx(
+                      'Candidato a Comisionista',
+                      'Broker Candidate',
+                    )}
+                  >
                     <strong>{broker.fullName}</strong>
                     <div className={styles.cellMeta}>
                       {broker.email} · {broker.phone}
                     </div>
                   </td>
-                  <td>
+                  <td
+                    data-label={tx(
+                      'Licencia AMV Reportada',
+                      'Reported AMV License',
+                    )}
+                  >
                     <code className={styles.codeTag}>{broker.licenseAMV}</code>
                   </td>
-                  <td>{broker.specialty}</td>
-                  <td>
+                  <td
+                    data-label={tx(
+                      'Especialidad en EE. UU.',
+                      'US Market Specialty',
+                    )}
+                  >
+                    {broker.specialty}
+                  </td>
+                  <td data-label={tx('Estado Actual', 'Current Status')}>
                     <span className={styles.statusPending}>
                       {tx('Pendiente de activación', 'Pending activation')}
                     </span>
                   </td>
-                  <td>
+                  <td data-label={tx('Acción de Auditoría', 'Audit Action')}>
                     <button
                       type="button"
                       className={styles.btnPrimary}
@@ -153,7 +96,7 @@ export function AdminKpiSection({
                   </td>
                 </tr>
               ))}
-              {pendingCount === 0 && (
+              {pendingBrokers.length === 0 && (
                 <tr>
                   <td colSpan={5} className={styles.emptyRow}>
                     {tx(

@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { useLocale } from '@/lib/i18n';
 import { Icon } from './Icon';
+import { useViewportPopover } from './use-viewport-popover';
 import styles from './date-picker.module.css';
 
 function isoDate(year: number, month: number, day: number) {
@@ -60,6 +61,7 @@ export function DatePicker({
     const next = new Date(Date.UTC(year, monthIndex + delta, 1));
     setMonth(isoDate(next.getUTCFullYear(), next.getUTCMonth(), 1).slice(0, 7));
   }
+  useViewportPopover(open, trigger, calendar);
   useEffect(() => {
     if (!open) return;
     function outside(event: PointerEvent) {
@@ -82,6 +84,7 @@ export function DatePicker({
       className={styles.wrapper}
       onKeyDown={(event) => {
         if (event.key === 'Escape' && open) {
+          event.preventDefault();
           event.stopPropagation();
           close();
         }

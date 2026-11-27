@@ -15,7 +15,7 @@ export function RegistrationStepper({ steps, step }: RegistrationStepperProps) {
       className={styles.stepperCard}
       aria-label={tx('Pasos del registro', 'Registration steps')}
     >
-      <p className={styles.srOnly} aria-live="polite">
+      <p className={styles.mobileStepSummary} aria-live="polite">
         {tx('Paso', 'Step')} {step + 1} {tx('de', 'of')} {steps.length} ·{' '}
         {steps[step]}
       </p>

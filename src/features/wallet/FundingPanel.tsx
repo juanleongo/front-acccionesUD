@@ -12,6 +12,10 @@ import { CustomSelect } from '@/components/ui/CustomSelect';
 import { Icon } from '@/components/ui/Icon';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { ApiError } from '@/lib/api';
+import {
+  formatMarketDateTime,
+  formatUsd as formatUsdAmount,
+} from '@/lib/formatters';
 import { formatPersonName } from '@/lib/format-person-name';
 import { useLocale } from '@/lib/i18n';
 import {
@@ -618,15 +622,19 @@ export function FundingPanel({
             <div className={styles.summaryBox} aria-live="polite">
               {effectiveCurrency !== 'USD' &&
                 (ratesLoading ? (
-                  <p>{tx('Consultando tasa…', 'Loading exchange rate…')}</p>
+                  <LoadingState
+                    mode="compact"
+                    label={tx('Consultando tasa…', 'Loading exchange rate…')}
+                  />
                 ) : ratesError || !rateUsable ? (
-                  <p role="alert">
+                  <div role="alert" className={styles.fxError}>
                     {tx(
                       'No hay una tasa reciente disponible.',
                       'No recent exchange rate available.',
                     )}{' '}
                     <button
                       type="button"
+                      className={styles.btnCompact}
                       onClick={() => {
                         setRatesLoading(true);
                         setRatesError(false);
@@ -635,12 +643,20 @@ export function FundingPanel({
                     >
                       {tx('Reintentar', 'Retry')}
                     </button>
-                  </p>
+                  </div>
                 ) : (
-                  <p>
+                  <p className={styles.fxRate}>
                     1 USD = {rate?.rate.toLocaleString(locale)} {currency} ·{' '}
-                    {tx('Fecha de la tasa', 'Rate date')}: {rate?.date} ·{' '}
+                    {tx('Fecha de la tasa', 'Rate date')}:{' '}
+                    {rate?.date
+                      ? formatMarketDateTime(`${rate.date}T12:00:00Z`, locale, {
+                          includeTime: false,
+                          timeZone: 'UTC',
+                        })
+                      : '—'}{' '}
+                    ·{' '}
                     <a
+                      className={styles.fxSource}
                       href="https://frankfurter.dev"
                       target="_blank"
                       rel="noreferrer"
@@ -649,14 +665,17 @@ export function FundingPanel({
                     </a>
                   </p>
                 ))}
-              <strong>
+              <strong className={styles.fxTotal}>
                 {tx(
                   'Monto a depositar en tu cuenta',
                   'Amount to deposit in your account',
                 )}
-                : {usdAmount ?? '—'} USD
+                :{' '}
+                {usdAmount
+                  ? formatUsdAmount(usdAmount, { withCode: true })
+                  : '—'}
               </strong>
-              <small>
+              <small className={styles.fxCaption}>
                 {tx(
                   'Redondeado a dos decimales. Confirma este equivalente antes de enviar.',
                   'Rounded to two decimals. Confirm this equivalent before submitting.',

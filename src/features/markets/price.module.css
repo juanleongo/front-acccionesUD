@@ -516,6 +516,22 @@
 .toolStatus strong {
   color: var(--color-primary);
 }
+.drawingPicker {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  min-width: 0;
+  margin-left: auto;
+  flex: 0 1 23rem;
+}
+.drawingPicker > div {
+  flex: 1;
+  min-width: 0;
+}
+.drawingPicker label {
+  font-weight: 700;
+}
 .chartCanvas:not([data-tool='cursor']) {
   cursor: crosshair;
   touch-action: none;

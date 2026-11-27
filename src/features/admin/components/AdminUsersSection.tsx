@@ -128,7 +128,10 @@ export function AdminUsersSection({
               onChange={setPlanFilter}
               options={[
                 { value: '', label: tx('Todos los planes', 'All plans') },
-                { value: 'premium', label: tx('★ Plan Prémium', '★ Premium') },
+                {
+                  value: 'premium',
+                  label: tx('★ Plan Prémium', '★ Premium'),
+                },
                 { value: 'standard', label: tx('Estándar', 'Standard') },
               ]}
             />
@@ -164,16 +167,16 @@ export function AdminUsersSection({
             <tbody>
               {filteredUsers.map((usr) => (
                 <tr key={usr.userId}>
-                  <td>
+                  <td data-label={tx('Usuario / Correo', 'User / Email')}>
                     <strong>{usr.fullName}</strong>
                     <div className={styles.cellMeta}>{usr.email}</div>
                   </td>
-                  <td>
+                  <td data-label={tx('Rol Asignado', 'Assigned Role')}>
                     <span className={styles.roleCode}>
                       {formatRoleLabel(usr.role, locale)}
                     </span>
                   </td>
-                  <td>
+                  <td data-label={tx('Estatus Prémium', 'Premium Status')}>
                     {usr.isPremium ? (
                       <span className={styles.badgePremium}>
                         {tx('★ Plan Prémium', '★ Premium Plan')}
@@ -184,7 +187,7 @@ export function AdminUsersSection({
                       </span>
                     )}
                   </td>
-                  <td>
+                  <td data-label={tx('Estado de Cuenta', 'Account Status')}>
                     <span
                       className={
                         usr.accountStatus === 'active'
@@ -199,10 +202,13 @@ export function AdminUsersSection({
                           : tx('Por revisar', 'Under review')}
                     </span>
                   </td>
-                  <td className={styles.mutedText}>
+                  <td
+                    className={styles.mutedText}
+                    data-label={tx('Fecha de Alta', 'Registered')}
+                  >
                     {formatAdminDate(usr.registeredAt, locale)}
                   </td>
-                  <td>
+                  <td data-label={tx('Acción Prémium', 'Actions')}>
                     <div className={styles.inlineActions}>
                       <button
                         type="button"

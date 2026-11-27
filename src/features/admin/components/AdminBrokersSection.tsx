@@ -117,7 +117,10 @@ export function AdminBrokersSection({
                   value: 'pending_broker_activation',
                   label: tx('Pendiente de activación', 'Pending activation'),
                 },
-                { value: 'active', label: tx('Activo', 'Active') },
+                {
+                  value: 'active',
+                  label: tx('Activo', 'Active'),
+                },
               ]}
             />
           </div>
@@ -153,21 +156,24 @@ export function AdminBrokersSection({
             <tbody>
               {filteredBrokers.map((broker) => (
                 <tr key={broker.userId}>
-                  <td>
+                  <td data-label={tx('Nombre y Contacto', 'Name & Contact')}>
                     <strong>{broker.fullName}</strong>
                     <div className={styles.cellMeta}>
                       {broker.email} · {tx('País:', 'Country:')}{' '}
                       {broker.country}
                     </div>
                   </td>
-                  <td>
+                  <td data-label={tx('Acreditación AMV', 'AMV Accreditation')}>
                     <code className={styles.codeTag}>{broker.licenseAMV}</code>
                   </td>
                   <td>{broker.specialty}</td>
-                  <td className={styles.mutedText}>
+                  <td
+                    className={styles.mutedText}
+                    data-label={tx('Fecha de Solicitud', 'Application Date')}
+                  >
                     {formatAdminDate(broker.requestedAt, locale)}
                   </td>
-                  <td>
+                  <td data-label={tx('Estatus', 'Status')}>
                     {broker.status === 'active' ? (
                       <span className={styles.statusActive}>
                         {tx('Activo', 'Active')}
@@ -178,7 +184,7 @@ export function AdminBrokersSection({
                       </span>
                     )}
                   </td>
-                  <td>
+                  <td data-label={tx('Operación', 'Action')}>
                     {broker.status === 'pending_broker_activation' ? (
                       <button
                         type="button"

@@ -282,7 +282,12 @@ export function KycFields({
                 onChange={setSelectedCity}
                 placeholder={tx('Selecciona una ciudad', 'Select a city')}
                 required
-                disabled={disabled}
+                disabled={
+                  disabled ||
+                  !activeState ||
+                  citiesQuery.isFetching ||
+                  cities.length === 0
+                }
               />
             </div>
           </div>

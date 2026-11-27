@@ -268,11 +268,13 @@ export function AdminMarketsSection({
             <tbody>
               {overrides.map((ov) => (
                 <tr key={ov.id}>
-                  <td>
+                  <td data-label={tx('Mercado', 'Exchange')}>
                     <span className={styles.roleCode}>{ov.market}</span>
                   </td>
-                  <td>{ov.date}</td>
-                  <td>
+                  <td data-label={tx('Fecha Programada', 'Scheduled Date')}>
+                    {ov.date}
+                  </td>
+                  <td data-label={tx('Estado de la Bolsa', 'Market Status')}>
                     {ov.closed ? (
                       <span className={styles.statusPending}>
                         {tx('Bolsa Cerrada', 'Market Closed')}
@@ -283,12 +285,12 @@ export function AdminMarketsSection({
                       </span>
                     )}
                   </td>
-                  <td>
+                  <td data-label={tx('Horario Aplicable', 'Effective Hours')}>
                     {ov.closed
                       ? tx('Sin operaciones', 'No trading')
                       : `${ov.open_time} - ${ov.close_time} EST`}
                   </td>
-                  <td>
+                  <td data-label={tx('Acción', 'Action')}>
                     <button
                       type="button"
                       className={styles.btnDanger}

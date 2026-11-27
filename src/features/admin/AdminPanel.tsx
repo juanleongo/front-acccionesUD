@@ -1,5 +1,7 @@
 'use client';
 
+import dynamic from 'next/dynamic';
+import { LoadingState } from '@/components/ui/LoadingState';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { SessionClosedOverlay } from '@/components/ui/SessionClosedOverlay';
@@ -14,10 +16,7 @@ import {
   deleteMarketOverride,
   getAdminAuditLog,
   getAdminUsersDirectory,
-  initialAuditLogs,
-  initialManagedUsers,
-  initialMarketOverrides,
-  initialPendingBrokers,
+  listMarketOverrides,
   reconcileUserKyc,
   setMarketDefaultSchedule,
   setUserPremium,
@@ -27,6 +26,7 @@ import {
   type PendingBrokerItem,
   type ScheduleOverride,
 } from './admin-api';
+import { adminRead, marketSchema } from './operations/operations-api';
 import type { AdminTab } from './admin-labels';
 import { AdminAuditSection } from './components/AdminAuditSection';
 import { AdminBrokersSection } from './components/AdminBrokersSection';
@@ -38,6 +38,38 @@ import { AdminRbacSection } from './components/AdminRbacSection';
 import { AdminSidebar } from './components/AdminSidebar';
 import { AdminUsersSection } from './components/AdminUsersSection';
 import styles from './admin.module.css';
+
+const RealKpis = dynamic(() =>
+  import('./operations/FinanceOperations').then((module) => module.RealKpis),
+);
+const CommissionOperations = dynamic(() =>
+  import('./operations/FinanceOperations').then(
+    (module) => module.CommissionOperations,
+  ),
+);
+const FeeOperations = dynamic(() =>
+  import('./operations/FinanceOperations').then(
+    (module) => module.FeeOperations,
+  ),
+);
+const HaltOperations = dynamic(() =>
+  import('./operations/HaltOperations').then((module) => module.HaltOperations),
+);
+const ComplianceOperations = dynamic(() =>
+  import('./operations/ComplianceOperations').then(
+    (module) => module.ComplianceOperations,
+  ),
+);
+const AuditOperations = dynamic(() =>
+  import('./operations/AuditOperations').then(
+    (module) => module.AuditOperations,
+  ),
+);
+const MarketOperations = dynamic(() =>
+  import('./operations/MarketOperations').then(
+    (module) => module.MarketOperations,
+  ),
+);
 
 const EMPTY_ADMIN_FORM: AdminCreateAdminIn = {
   first_names: '',
@@ -56,17 +88,18 @@ interface AuditState {
 
 export function AdminPanel() {
   const { tx } = useLocale();
+  const [marketLoadedFor, setMarketLoadedFor] = useState<string | null>(null);
+  const [marketError, setMarketError] = useState(false);
+  const [auditError, setAuditError] = useState(false);
+  const [directoryLoading, setDirectoryLoading] = useState(true);
+  const [directoryError, setDirectoryError] = useState(false);
   const [activeTab, setActiveTab] = useState<AdminTab>('kpi');
-  const [brokers, setBrokers] = useState<PendingBrokerItem[]>(
-    initialPendingBrokers,
-  );
-  const [users, setUsers] = useState<ManagedUserItem[]>(initialManagedUsers);
-  const [overrides, setOverrides] = useState<ScheduleOverride[]>(
-    initialMarketOverrides,
-  );
+  const [brokers, setBrokers] = useState<PendingBrokerItem[]>([]);
+  const [users, setUsers] = useState<ManagedUserItem[]>([]);
+  const [overrides, setOverrides] = useState<ScheduleOverride[]>([]);
   const [auditFilterAction, setAuditFilterAction] = useState('');
   const [auditState, setAuditState] = useState<AuditState>({
-    items: initialAuditLogs,
+    items: [],
     loadedForFilter: null,
     isLive: false,
   });
@@ -100,7 +133,7 @@ export function AdminPanel() {
     const controller = new AbortController();
     getAdminUsersDirectory(controller.signal)
       .then((page) => {
-        if (page.items.length > 0) {
+        if (!controller.signal.aborted) {
           setUsers(
             page.items.map((item) => ({
               userId: item.user_id,
@@ -120,7 +153,7 @@ export function AdminPanel() {
               item.roles.includes('broker') ||
               item.broker_requested,
           );
-          if (brokerEntries.length > 0) {
+          {
             setBrokers(
               brokerEntries.map((item) => ({
                 userId: item.user_id,
@@ -128,10 +161,10 @@ export function AdminPanel() {
                   `${item.first_names} ${item.last_names}`,
                 ),
                 email: item.email,
-                phone: item.phone ?? '+57',
-                country: item.country ?? 'CO',
-                licenseAMV: `AMV-${item.user_id.slice(0, 6).toUpperCase()}`,
-                specialty: 'Renta Variable & ETFs en NYSE / NASDAQ',
+                phone: item.phone ?? '—',
+                country: item.country ?? '—',
+                licenseAMV: '—',
+                specialty: '—',
                 requestedAt: item.registered_at,
                 status:
                   item.account_status === 'pending_broker_activation'
@@ -147,7 +180,10 @@ export function AdminPanel() {
           setSessionClosed(true);
           return;
         }
-        /* Mantiene respaldo inicial si aún no hay sesión admin */
+        if (!controller.signal.aborted) setDirectoryError(true);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setDirectoryLoading(false);
       });
 
     return () => {
@@ -163,6 +199,7 @@ export function AdminPanel() {
     const controller = new AbortController();
     getAdminAuditLog(auditFilterAction || undefined, controller.signal)
       .then((page) => {
+        setAuditError(false);
         setAuditState({
           items: page.items,
           loadedForFilter: auditFilterAction,
@@ -175,8 +212,9 @@ export function AdminPanel() {
           return;
         }
         if (controller.signal.aborted) return;
+        setAuditError(true);
         setAuditState((prev) => ({
-          items: prev.isLive ? prev.items : initialAuditLogs,
+          items: prev.isLive ? prev.items : [],
           loadedForFilter: auditFilterAction,
           isLive: prev.isLive,
         }));
@@ -184,6 +222,43 @@ export function AdminPanel() {
 
     return () => controller.abort();
   }, [auditFilterAction]);
+
+  useEffect(() => {
+    if (activeTab !== 'markets') return;
+    const controller = new AbortController();
+    Promise.all([
+      adminRead(
+        `/admin/markets/${encodeURIComponent(selectedMarket)}`,
+        marketSchema,
+        {},
+        controller.signal,
+      ),
+      listMarketOverrides(selectedMarket, controller.signal),
+    ])
+      .then(([market, overrides]) => {
+        if (controller.signal.aborted) return;
+        setOpenTime(
+          typeof market.default_schedule?.open_time === 'string'
+            ? market.default_schedule.open_time.slice(0, 5)
+            : '',
+        );
+        setCloseTime(
+          typeof market.default_schedule?.close_time === 'string'
+            ? market.default_schedule.close_time.slice(0, 5)
+            : '',
+        );
+        setOverrides(overrides);
+        setMarketError(false);
+        setMarketLoadedFor(selectedMarket);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          setMarketError(true);
+          setMarketLoadedFor(selectedMarket);
+        }
+      });
+    return () => controller.abort();
+  }, [activeTab, selectedMarket]);
 
   function clearNotification() {
     if (notificationTimerRef.current !== null) {
@@ -216,9 +291,7 @@ export function AdminPanel() {
     if (processingId) return;
     setProcessingId(broker.userId);
     try {
-      await activateBroker(broker.userId).catch(() => {
-        /* Fallback simulado para demo */
-      });
+      await activateBroker(broker.userId);
       setBrokers((prev) =>
         prev.map((b) =>
           b.userId === broker.userId ? { ...b, status: 'active' as const } : b,
@@ -248,9 +321,7 @@ export function AdminPanel() {
     setProcessingId(user.userId);
     const nextVal = !user.isPremium;
     try {
-      await setUserPremium(user.userId, nextVal).catch(() => {
-        /* Fallback simulado */
-      });
+      await setUserPremium(user.userId, nextVal);
       setUsers((prev) =>
         prev.map((u) =>
           u.userId === user.userId ? { ...u, isPremium: nextVal } : u,
@@ -288,11 +359,7 @@ export function AdminPanel() {
       return;
     }
     try {
-      await setMarketDefaultSchedule(selectedMarket, openTime, closeTime).catch(
-        () => {
-          /* Fallback */
-        },
-      );
+      await setMarketDefaultSchedule(selectedMarket, openTime, closeTime);
       showNotification(
         tx(
           `Horario oficial de ${selectedMarket} actualizado: Apertura ${openTime} EST · Cierre ${closeTime} EST.`,
@@ -346,15 +413,13 @@ export function AdminPanel() {
       close_time: newOverrideClosed ? null : newOverrideCloseTime,
     };
     try {
-      await createMarketOverride(selectedMarket, {
+      const created = await createMarketOverride(selectedMarket, {
         date: payload.date,
         closed: payload.closed,
         open_time: payload.open_time,
         close_time: payload.close_time,
-      }).catch(() => {
-        /* Fallback */
       });
-      setOverrides((prev) => [payload, ...prev]);
+      setOverrides((prev) => [created, ...prev]);
       setNewOverrideDate('');
       showNotification(
         tx(
@@ -375,9 +440,7 @@ export function AdminPanel() {
 
   async function handleDeleteOverride(overrideId: string) {
     try {
-      await deleteMarketOverride(selectedMarket, overrideId).catch(() => {
-        /* Fallback */
-      });
+      await deleteMarketOverride(selectedMarket, overrideId);
       setOverrides((prev) => prev.filter((o) => o.id !== overrideId));
       showNotification(
         tx(
@@ -486,9 +549,10 @@ export function AdminPanel() {
     } catch {
       showNotification(
         tx(
-          `Solicitud de reconciliación KYC ejecutada para ${user.fullName} (${user.email}).`,
-          `KYC reconciliation requested for ${user.fullName} (${user.email}).`,
+          `No se pudo reconciliar la cuenta de ${user.fullName}.`,
+          `Could not reconcile the account for ${user.fullName}.`,
         ),
+        true,
       );
     } finally {
       setProcessingId(null);
@@ -555,10 +619,46 @@ export function AdminPanel() {
             </div>
           )}
 
+          {directoryLoading &&
+            ['kpi', 'users', 'brokers'].includes(activeTab) && (
+              <LoadingState
+                mode="compact"
+                label={tx('Consultando cuentas…', 'Loading accounts…')}
+              />
+            )}
+          {directoryError &&
+            ['kpi', 'users', 'brokers'].includes(activeTab) && (
+              <p className={styles.alertError} role="alert">
+                {tx(
+                  'No pudimos consultar el directorio. Vuelve a abrir el panel para reintentar.',
+                  'Could not load the directory. Reopen the panel to retry.',
+                )}
+              </p>
+            )}
           {activeTab === 'kpi' && (
+            <>
+              <header className={styles.pageHeader}>
+                <h1>
+                  {tx('Resumen de administración', 'Administration overview')}
+                </h1>
+                <p>
+                  {tx(
+                    'Actividad, cuentas y solicitudes que requieren tu atención.',
+                    'Activity, accounts and applications requiring your attention.',
+                  )}
+                </p>
+              </header>
+              <RealKpis />
+            </>
+          )}
+          {activeTab === 'commissions' && <CommissionOperations />}
+          {activeTab === 'fees' && <FeeOperations />}
+          {activeTab === 'halts' && <HaltOperations />}
+          {activeTab === 'compliance' && <ComplianceOperations />}
+          {activeTab === 'trail' && <AuditOperations />}
+          {activeTab === 'markets' && <MarketOperations />}
+          {activeTab === 'kpi' && !directoryLoading && !directoryError && (
             <AdminKpiSection
-              pendingCount={pendingCount}
-              usersCount={users.length}
               brokers={brokers}
               processingId={processingId}
               onViewAllBrokers={() => setActiveTab('brokers')}
@@ -566,7 +666,7 @@ export function AdminPanel() {
             />
           )}
 
-          {activeTab === 'brokers' && (
+          {activeTab === 'brokers' && !directoryLoading && !directoryError && (
             <AdminBrokersSection
               brokers={brokers}
               processingId={processingId}
@@ -574,7 +674,7 @@ export function AdminPanel() {
             />
           )}
 
-          {activeTab === 'users' && (
+          {activeTab === 'users' && !directoryLoading && !directoryError && (
             <AdminUsersSection
               users={users}
               processingId={processingId}
@@ -585,28 +685,49 @@ export function AdminPanel() {
 
           {activeTab === 'rbac' && <AdminRbacSection />}
 
-          {activeTab === 'markets' && (
-            <AdminMarketsSection
-              selectedMarket={selectedMarket}
-              openTime={openTime}
-              closeTime={closeTime}
-              newOverrideDate={newOverrideDate}
-              newOverrideClosed={newOverrideClosed}
-              newOverrideOpenTime={newOverrideOpenTime}
-              newOverrideCloseTime={newOverrideCloseTime}
-              overrides={overrides}
-              onChangeMarket={setSelectedMarket}
-              onChangeOpenTime={setOpenTime}
-              onChangeCloseTime={setCloseTime}
-              onChangeOverrideDate={setNewOverrideDate}
-              onChangeOverrideClosed={setNewOverrideClosed}
-              onChangeOverrideOpenTime={setNewOverrideOpenTime}
-              onChangeOverrideCloseTime={setNewOverrideCloseTime}
-              onSaveSchedule={handleSaveMarketSchedule}
-              onCreateOverride={handleCreateOverride}
-              onDeleteOverride={handleDeleteOverride}
+          {activeTab === 'markets' && marketLoadedFor !== selectedMarket && (
+            <LoadingState
+              mode="compact"
+              label={tx(
+                'Consultando horario configurado…',
+                'Loading configured schedule…',
+              )}
             />
           )}
+          {activeTab === 'markets' &&
+            marketLoadedFor === selectedMarket &&
+            marketError && (
+              <p className={styles.alertError} role="alert">
+                {tx(
+                  'No pudimos consultar la configuración de esta bolsa.',
+                  'Could not load this exchange configuration.',
+                )}
+              </p>
+            )}
+          {activeTab === 'markets' &&
+            marketLoadedFor === selectedMarket &&
+            !marketError && (
+              <AdminMarketsSection
+                selectedMarket={selectedMarket}
+                openTime={openTime}
+                closeTime={closeTime}
+                newOverrideDate={newOverrideDate}
+                newOverrideClosed={newOverrideClosed}
+                newOverrideOpenTime={newOverrideOpenTime}
+                newOverrideCloseTime={newOverrideCloseTime}
+                overrides={overrides}
+                onChangeMarket={setSelectedMarket}
+                onChangeOpenTime={setOpenTime}
+                onChangeCloseTime={setCloseTime}
+                onChangeOverrideDate={setNewOverrideDate}
+                onChangeOverrideClosed={setNewOverrideClosed}
+                onChangeOverrideOpenTime={setNewOverrideOpenTime}
+                onChangeOverrideCloseTime={setNewOverrideCloseTime}
+                onSaveSchedule={handleSaveMarketSchedule}
+                onCreateOverride={handleCreateOverride}
+                onDeleteOverride={handleDeleteOverride}
+              />
+            )}
 
           {activeTab === 'create-admin' && (
             <AdminCreateAdminSection
@@ -617,6 +738,14 @@ export function AdminPanel() {
             />
           )}
 
+          {activeTab === 'audit' && auditError && (
+            <p className={styles.alertError} role="alert">
+              {tx(
+                'No se pudo actualizar la bitácora. Los registros conservados pueden estar desactualizados.',
+                'Could not refresh the audit log. Retained records may be outdated.',
+              )}
+            </p>
+          )}
           {activeTab === 'audit' && (
             <AdminAuditSection
               auditLogs={auditState.items}

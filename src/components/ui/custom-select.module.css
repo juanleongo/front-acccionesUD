@@ -102,7 +102,7 @@
 }
 
 .menu {
-  position: absolute;
+  position: fixed;
   top: calc(100% + 0.35rem);
   left: 0;
   min-width: 0;

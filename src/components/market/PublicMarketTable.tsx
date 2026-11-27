@@ -2,15 +2,13 @@
 import { useId, useState } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
+import { Icon } from '@/components/ui/Icon';
+import { MarketQuoteStatus } from './MarketQuoteStatus';
 import { CustomSelect } from '@/components/ui/CustomSelect';
 import { AssetLogo } from './AssetLogo';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { useLocale } from '@/lib/i18n';
-import {
-  formatDecimalNumber,
-  formatPercent,
-  formatMarketDateTime,
-} from '@/lib/formatters';
+import { formatDecimalNumber, formatPercent } from '@/lib/formatters';
 import {
   getPublicMarketPage,
   type PublicMarketAsset,
@@ -36,6 +34,8 @@ export function PublicMarketTable({
       getPublicMarketPage(q, selectedExchange, page, signal),
     staleTime: 30_000,
     refetchInterval: 30_000,
+    refetchOnWindowFocus: 'always',
+    refetchOnReconnect: 'always',
     retry: false,
   });
   const data = query.data;
@@ -45,9 +45,17 @@ export function PublicMarketTable({
     !exchanges.some((market) => market.code === selectedExchange)
       ? [...exchanges, { code: selectedExchange, name: selectedExchange }]
       : exchanges;
+  const checkedAt = data
+    ? new Intl.DateTimeFormat(locale === 'en' ? 'en-US' : 'es-CO', {
+        timeZone: 'America/New_York',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      }).format(new Date(data.retrieved_at))
+    : '';
   const pages = data ? Math.max(1, Math.ceil(data.total / data.page_size)) : 1;
   return (
-    <div className={styles.panel}>
+    <div className={styles.panel} aria-busy={query.isFetching}>
       <div className={styles.controls}>
         <form
           noValidate
@@ -62,14 +70,22 @@ export function PublicMarketTable({
             {tx('Empresa o símbolo', 'Company or symbol')}
           </label>
           <div className={styles.searchRow}>
-            <input
-              id={`${id}-search`}
-              value={draft}
-              maxLength={50}
-              placeholder={tx('Ej. Apple o AAPL', 'E.g. Apple or AAPL')}
-              onChange={(event) => setDraft(event.target.value)}
-            />
-            <button type="submit">{tx('Buscar', 'Search')}</button>
+            <div className={styles.searchInput}>
+              <Icon name="search" size={18} />
+              <input
+                id={`${id}-search`}
+                value={draft}
+                maxLength={50}
+                placeholder={tx('Ej. Apple o AAPL', 'E.g. Apple or AAPL')}
+                onChange={(event) => setDraft(event.target.value)}
+              />
+            </div>
+            <button
+              className={`${styles.button} ${styles.searchButton}`}
+              type="submit"
+            >
+              {tx('Buscar', 'Search')}
+            </button>
           </div>
         </form>
         <div className={styles.exchange}>
@@ -94,28 +110,47 @@ export function PublicMarketTable({
           className={styles.refresh}
           type="button"
           disabled={query.isFetching}
+          aria-busy={query.isFetching}
           onClick={() => query.refetch()}
         >
-          {tx('Actualizar', 'Refresh')}
+          <Icon name="exchange" size={17} />
+          {query.isFetching
+            ? tx('Actualizando…', 'Refreshing…')
+            : tx('Actualizar', 'Refresh')}
         </button>
       </div>
       <div className={styles.summary}>
-        <span className={styles.source}>Alpaca · USD</span>
+        <span className={styles.source}>
+          <Icon name="globe" size={16} />
+          Alpaca <span>USD</span>
+        </span>
         <span>
           {data
             ? `${data.total.toLocaleString(locale === 'en' ? 'en-US' : 'es-CO')} ${tx('instrumentos', 'instruments')}`
             : tx('Catálogo bursátil', 'Asset catalog')}
         </span>
         {data && (
-          <span>
-            {data.market_open === null
-              ? tx(
-                  'Estado de sesión no disponible',
-                  'Session status unavailable',
-                )
-              : data.market_open
-                ? tx('Sesión abierta', 'Session open')
-                : tx('Sesión cerrada', 'Session closed')}
+          <span
+            className={styles.session}
+            data-session={
+              query.isError || data.market_open === null
+                ? 'unknown'
+                : data.market_open
+                  ? 'open'
+                  : 'closed'
+            }
+          >
+            <span className={styles.sessionDot} />
+            {query.isError
+              ? tx('Sesión sin verificar', 'Session unverified')
+              : data.market_open === null
+                ? tx(
+                    'Estado de sesión no disponible',
+                    'Session status unavailable',
+                  )
+                : data.market_open
+                  ? tx('Sesión abierta', 'Session open')
+                  : tx('Sesión cerrada', 'Session closed')}
           </span>
         )}
       </div>
@@ -123,6 +158,9 @@ export function PublicMarketTable({
         <LoadingState label={tx('Cargando acciones…', 'Loading stocks…')} />
       ) : query.isError && !data ? (
         <div className={styles.feedback} role="alert">
+          <span className={styles.feedbackIcon}>
+            <Icon name="info" size={27} />
+          </span>
           <strong>
             {tx(
               'No pudimos actualizar el mercado.',
@@ -135,20 +173,69 @@ export function PublicMarketTable({
               'Retry to view available data.',
             )}
           </p>
-          <button type="button" onClick={() => query.refetch()}>
+          <button
+            className={styles.button}
+            type="button"
+            onClick={() => query.refetch()}
+          >
             {tx('Reintentar', 'Retry')}
           </button>
         </div>
       ) : (
         data && (
           <>
+            <div className={styles.syncBar} role="status" aria-live="off">
+              <span className={styles.syncLabel}>
+                <span className={styles.sessionDot} />
+                {query.isFetching
+                  ? tx('Consultando el mercado…', 'Checking market data…')
+                  : tx(
+                      'Consulta automática cada 30 s',
+                      'Automatic check every 30 s',
+                    )}
+              </span>
+              <span>
+                {tx('Última consulta', 'Last checked')} ·{' '}
+                <time dateTime={data.retrieved_at}>{checkedAt} ET</time>
+              </span>
+            </div>
             {query.isError && (
-              <p className={styles.notice} role="status">
-                {tx(
-                  'No pudimos renovar las cotizaciones. Se muestra la última información recibida, con su hora de actualización.',
-                  'Could not refresh quotes. The last received data is shown with its update time.',
-                )}
-              </p>
+              <div className={styles.notice} data-tone="warning" role="status">
+                <Icon name="info" size={20} />
+                <div>
+                  <strong>
+                    {tx(
+                      'No pudimos renovar las cotizaciones.',
+                      'Could not refresh quotes.',
+                    )}
+                  </strong>
+                  <p>
+                    {tx(
+                      'Conservamos la última información recibida y su hora de cotización. Reintenta en unos instantes.',
+                      'The last received data and quote timestamps are retained. Try again shortly.',
+                    )}
+                  </p>
+                </div>
+              </div>
+            )}
+            {data.market_open === false && !query.isError && (
+              <div className={styles.notice} data-tone="neutral">
+                <Icon name="moon" size={20} />
+                <div>
+                  <strong>
+                    {tx(
+                      'Mercado cerrado · última cotización disponible',
+                      'Market closed · latest available quote',
+                    )}
+                  </strong>
+                  <p>
+                    {tx(
+                      'Seguimos consultando cada 30 segundos. La fecha del precio cambia cuando el proveedor entrega una nueva cotización.',
+                      'We keep checking every 30 seconds. The quote timestamp changes when the provider delivers a new quote.',
+                    )}
+                  </p>
+                </div>
+              </div>
             )}
             <div
               className={styles.scroll}
@@ -174,8 +261,11 @@ export function PublicMarketTable({
                   </tr>
                 </thead>
                 <tbody>
-                  {data.results.map((asset) => (
-                    <tr key={asset.symbol}>
+                  {data.results.map((asset, index) => (
+                    <tr
+                      key={asset.symbol}
+                      style={{ animationDelay: `${index * 45}ms` }}
+                    >
                       <th scope="row">
                         <div className={styles.company}>
                           <AssetLogo
@@ -200,41 +290,50 @@ export function PublicMarketTable({
                           </span>
                         </div>
                       </th>
-                      <td>{asset.exchange}</td>
                       <td>
-                        {asset.price === null
-                          ? '—'
-                          : formatDecimalNumber(asset.price, locale, 8)}
-                      </td>
-                      <td
-                        className={
-                          asset.change_ratio === null ||
-                          asset.change_ratio === 0
-                            ? ''
-                            : asset.change_ratio > 0
-                              ? styles.up
-                              : styles.down
-                        }
-                      >
-                        {asset.change_ratio === null
-                          ? '—'
-                          : formatPercent(asset.change_ratio, locale, {
-                              fractionDigits: 2,
-                            })}
-                      </td>
-                      <td>
-                        {asset.as_of
-                          ? formatMarketDateTime(asset.as_of, locale)
-                          : '—'}
-                        <span className={styles.detail}>
-                          {asset.feed}
-                          {asset.is_delayed
-                            ? ` · ${tx('Con demora', 'Delayed')}`
-                            : ''}
-                          {asset.is_stale
-                            ? ` · ${tx('Dato antiguo', 'Stale')}`
-                            : ''}
+                        <span className={styles.exchangeBadge}>
+                          {asset.exchange}
                         </span>
+                      </td>
+                      <td>
+                        <strong
+                          className={styles.quotePrice}
+                          key={`${asset.symbol}:${asset.price}`}
+                        >
+                          {asset.price === null
+                            ? '—'
+                            : formatDecimalNumber(asset.price, locale, 8)}
+                        </strong>
+                      </td>
+                      <td>
+                        <span
+                          className={styles.change}
+                          data-direction={
+                            asset.change_ratio === null ||
+                            asset.change_ratio === 0
+                              ? 'flat'
+                              : asset.change_ratio > 0
+                                ? 'up'
+                                : 'down'
+                          }
+                        >
+                          {asset.change_ratio !== null &&
+                            asset.change_ratio !== 0 && (
+                              <Icon name="arrow" size={14} />
+                            )}
+                          {asset.change_ratio === null
+                            ? '—'
+                            : formatPercent(asset.change_ratio, locale, {
+                                fractionDigits: 2,
+                              })}
+                        </span>
+                      </td>
+                      <td>
+                        <MarketQuoteStatus
+                          asset={asset}
+                          marketOpen={data.market_open}
+                          refreshFailed={query.isError}
+                        />
                       </td>
                       <td>
                         <span className={styles.badge}>
@@ -264,6 +363,7 @@ export function PublicMarketTable({
                         )}
                       </p>
                       <button
+                        className={styles.button}
                         type="button"
                         onClick={() => {
                           setExchange('');
@@ -281,18 +381,37 @@ export function PublicMarketTable({
               )}
             </div>
             {data.quotes_unavailable && (
-              <p className={styles.notice} role="status">
-                {tx(
-                  'Algunas cotizaciones no están disponibles.',
-                  'Some quotes are unavailable.',
-                )}
-              </p>
+              <div className={styles.notice} data-tone="warning" role="status">
+                <Icon name="info" size={20} />
+                <div>
+                  <strong>
+                    {tx(
+                      'Algunas cotizaciones no están disponibles.',
+                      'Some quotes are unavailable.',
+                    )}
+                  </strong>
+                  <p>
+                    {tx(
+                      'Las mostramos con un guion para que puedas distinguirlas de un precio confirmado.',
+                      'A dash identifies them so you can distinguish them from confirmed prices.',
+                    )}
+                  </p>
+                </div>
+              </div>
             )}
             <div className={styles.pagination}>
               <span>
-                {tx('Página', 'Page')} {page} / {pages}
+                <strong>
+                  {tx('Página', 'Page')} {page} / {pages}
+                </strong>
+                <small>
+                  {data.results.length
+                    ? `${tx('Mostrando', 'Showing')} ${(page - 1) * data.page_size + 1}–${(page - 1) * data.page_size + data.results.length} ${tx('de', 'of')} ${data.total.toLocaleString(locale === 'en' ? 'en-US' : 'es-CO')}`
+                    : tx('Sin instrumentos', 'No instruments')}
+                </small>
               </span>
               <button
+                className={styles.button}
                 type="button"
                 disabled={page <= 1 || query.isFetching}
                 onClick={() => setPage(page - 1)}
@@ -300,6 +419,7 @@ export function PublicMarketTable({
                 {tx('Anterior', 'Previous')}
               </button>
               <button
+                className={styles.button}
                 type="button"
                 disabled={page >= pages || query.isFetching}
                 onClick={() => setPage(page + 1)}
@@ -307,12 +427,15 @@ export function PublicMarketTable({
                 {tx('Siguiente', 'Next')}
               </button>
             </div>
-            <p className={styles.notice}>
-              {tx(
-                'Precios y cobertura según el feed contratado. Actualización automática cada 30 segundos.',
-                'Prices and coverage depend on the subscribed feed. Refreshes automatically every 30 seconds.',
-              )}
-            </p>
+            <div className={styles.coverageNote}>
+              <Icon name="shield" size={18} />
+              <p>
+                {tx(
+                  'Precios en USD. La cobertura y los retrasos dependen del feed contratado con Alpaca; la hora de cada cotización se muestra en ET.',
+                  'Prices in USD. Coverage and delays depend on the Alpaca feed subscription; each quote timestamp is shown in ET.',
+                )}
+              </p>
+            </div>
           </>
         )
       )}

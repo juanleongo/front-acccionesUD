@@ -39,6 +39,7 @@ const nextConfig: NextConfig = {
       API_INTERNAL_ORIGIN: process.env.API_INTERNAL_ORIGIN,
     });
     return [
+      '/api/v1/auth/interest-options',
       '/api/v1/auth/register',
       '/api/v1/auth/register/broker',
       '/api/v1/auth/login',

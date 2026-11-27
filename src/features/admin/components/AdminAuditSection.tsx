@@ -118,27 +118,30 @@ export function AdminAuditSection({
             <tbody>
               {filteredLogs.map((entry) => (
                 <tr key={entry.id}>
-                  <td className={styles.mutedText}>
+                  <td
+                    className={styles.mutedText}
+                    data-label={tx('Fecha / Hora', 'Date / Time')}
+                  >
                     {formatMarketDateTime(entry.occurred_at, locale)}
                   </td>
-                  <td>
+                  <td data-label={tx('Acción', 'Action')}>
                     <span className={styles.roleCode}>
                       {formatActionLabel(entry.action, locale)}
                     </span>
                   </td>
-                  <td>
+                  <td data-label={tx('Responsable', 'Actor')}>
                     <span>
                       {users.find((user) => user.userId === entry.actor_user_id)
                         ?.fullName ?? tx('Administrador', 'Administrator')}
                     </span>
                   </td>
-                  <td>
+                  <td data-label={tx('Objetivo', 'Target')}>
                     <strong>{entry.target_type}:</strong>{' '}
                     <code className={styles.codeTag}>
                       {entry.target_id.slice(0, 12)}…
                     </code>
                   </td>
-                  <td>
+                  <td data-label={tx('Detalles', 'Details')}>
                     <code className={styles.payloadCode}>
                       {JSON.stringify(entry.payload)}
                     </code>

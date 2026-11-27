@@ -138,7 +138,10 @@ export function DashboardSidebar({
         <button
           type="button"
           className={styles.navButton}
-          onClick={onOpenProfile}
+          onClick={() => {
+            if (mobile) onCloseMobile();
+            onOpenProfile();
+          }}
         >
           <Icon name="user" />
           <span className={styles.sidebarText}>

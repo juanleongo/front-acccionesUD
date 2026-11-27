@@ -10,6 +10,10 @@ for (const locale of ['es', 'en'] as const) {
     }, locale);
     const instant = '2026-11-26T15:00:00Z';
     let submissions = 0;
+    let previews = 0;
+    let commissionRate = 0.02;
+    let marketOpen = true;
+    let staleQuote = false;
     await page.route('**/api/v1/**', async (route) => {
       const request = route.request();
       const path = new URL(request.url()).pathname;
@@ -51,7 +55,7 @@ for (const locale of ['es', 'en'] as const) {
         data = [{ code: 'NASDAQ', name: 'Nasdaq' }];
       else if (path === '/api/v1/markets/clock')
         data = {
-          is_open: true,
+          is_open: marketOpen,
           timestamp: new Date().toISOString(),
           next_open: instant,
           next_close: instant,
@@ -61,7 +65,7 @@ for (const locale of ['es', 'en'] as const) {
         data = {
           market: 'NASDAQ',
           date: '2026-11-26',
-          open: true,
+          open: marketOpen,
           open_at: instant,
           close_at: '2026-11-26T21:00:00Z',
           override: false,
@@ -89,11 +93,19 @@ for (const locale of ['es', 'en'] as const) {
           currency: 'USD',
           source: 'Alpaca',
           is_delayed: true,
-          is_stale: false,
+          is_stale: staleQuote,
+        };
+      else if (/\/api\/v1\/instruments\/(AAPL|NVDA)$/.test(path))
+        data = {
+          symbol: path.split('/').at(-1),
+          tradable: true,
+          fractionable: true,
+          exchange: 'NASDAQ',
         };
       else if (path === '/api/v1/portfolio/positions')
         data = { positions: [], positions_as_of: instant };
       else if (path === '/api/v1/orders/preview') {
+        previews++;
         const body = request.postDataJSON();
         expect(body.confirmed).toBeUndefined();
         expect(body.totp_code).toBeUndefined();
@@ -101,10 +113,10 @@ for (const locale of ['es', 'en'] as const) {
         const gross = Number(body.qty) * base;
         data = {
           reference_price: '100',
-          estimated_amount: (gross * (body.side === 'buy' ? 1.02 : 1)).toFixed(
-            2,
-          ),
-          reference_commission: (gross * 0.02).toFixed(2),
+          estimated_amount: (
+            gross * (body.side === 'buy' ? 1 + commissionRate : 1)
+          ).toFixed(2),
+          reference_commission: (gross * commissionRate).toFixed(2),
           available_buying_power: '1000',
           requires_extra_authorization: false,
           authorization_method: 'none',
@@ -136,10 +148,43 @@ for (const locale of ['es', 'en'] as const) {
         exact: true,
       })
       .click();
+    const orderPanel = page
+      .getByRole('heading', {
+        name: locale === 'es' ? 'Comprar y vender' : 'Buy & sell',
+        exact: true,
+      })
+      .locator('xpath=ancestor::section[1]');
     const quote = page.getByRole('region', {
       name: locale === 'es' ? 'Precio de AAPL' : 'AAPL price',
     });
     await expect(quote.getByText('$100.00 USD', { exact: true })).toBeVisible();
+    await quote
+      .getByRole('button', {
+        name: locale === 'es' ? 'Actualizar precio' : 'Refresh price',
+      })
+      .click();
+    await expect(
+      quote.getByText(
+        locale === 'es' ? /El precio no ha cambiado/ : /price has not changed/,
+      ),
+    ).toBeVisible();
+    staleQuote = true;
+    marketOpen = false;
+    await quote
+      .getByRole('button', {
+        name: locale === 'es' ? 'Actualizar precio' : 'Refresh price',
+      })
+      .click();
+    await expect(
+      quote.getByText(locale === 'es' ? /^Mercado cerrado/ : /^Market closed/),
+    ).toBeVisible();
+    staleQuote = false;
+    marketOpen = true;
+    await quote
+      .getByRole('button', {
+        name: locale === 'es' ? 'Actualizar precio' : 'Refresh price',
+      })
+      .click();
     const apple = page.locator('[data-instrument="AAPL"]');
     const assertLogo = async (
       image: ReturnType<typeof page.locator>,
@@ -203,9 +248,8 @@ for (const locale of ['es', 'en'] as const) {
     const estimate = page.getByRole('region', {
       name: locale === 'es' ? 'Estimación automática' : 'Automatic estimate',
     });
-    await expect(
-      estimate.getByText('$102.00 USD', { exact: true }),
-    ).toBeVisible();
+    expect(previews).toBe(0);
+    await expect(orderPanel.getByRole('alert')).toHaveCount(0);
     await page
       .getByLabel(locale === 'es' ? 'Cantidad de acciones' : 'Share quantity', {
         exact: true,
@@ -229,6 +273,76 @@ for (const locale of ['es', 'en'] as const) {
     await expect(page.locator('#order-type-help')).toContainText(
       locale === 'es' ? 'precio máximo' : 'maximum price',
     );
+    await page
+      .locator('summary')
+      .filter({
+        hasText:
+          locale === 'es'
+            ? 'Calcular una compra por monto'
+            : 'Calculate a purchase by amount',
+      })
+      .click();
+    await expect(orderPanel.getByRole('alert')).toHaveCount(0);
+    await expect(estimate).toHaveCount(0);
+    await expect(
+      page.getByLabel(
+        locale === 'es'
+          ? 'Precio máximo por acción (USD)'
+          : 'Maximum price per share (USD)',
+      ),
+    ).toHaveCount(0);
+    await page
+      .getByLabel(
+        locale === 'es' ? 'Presupuesto total (USD)' : 'Total budget (USD)',
+        { exact: true },
+      )
+      .fill('100');
+    await page
+      .getByRole('button', {
+        name: locale === 'es' ? 'Calcular compra' : 'Calculate purchase',
+        exact: true,
+      })
+      .click();
+    await expect(
+      page.getByText(
+        locale === 'es'
+          ? /Total estimado.*incluida la comisión/
+          : /Estimated total.*including commission/,
+      ),
+    ).toBeVisible();
+    await page
+      .getByRole('radio', {
+        name:
+          locale === 'es'
+            ? /^Sumar comisión al monto/
+            : /^Add commission to the amount/,
+      })
+      .check();
+    await expect(
+      page.getByLabel(
+        locale === 'es' ? 'Cantidad de acciones' : 'Share quantity',
+        { exact: true },
+      ),
+    ).toHaveCount(0);
+    await page
+      .getByRole('button', {
+        name: locale === 'es' ? 'Calcular compra' : 'Calculate purchase',
+        exact: true,
+      })
+      .click();
+    const breakdown = page.getByRole('region', {
+      name: locale === 'es' ? 'Desglose del cálculo' : 'Calculation breakdown',
+    });
+    await expect(
+      breakdown.getByText('$100.00 USD', { exact: true }),
+    ).toHaveCount(2);
+    await expect(
+      breakdown.getByText('$2.00 USD', { exact: true }),
+    ).toBeVisible();
+    await expect(
+      breakdown.getByText('$102.00 USD', { exact: true }),
+    ).toBeVisible();
+    expect(submissions).toBe(0);
     for (const theme of ['light', 'dark']) {
       await page.evaluate((value) => {
         document.documentElement.dataset.theme = value;
@@ -257,7 +371,7 @@ for (const locale of ['es', 'en'] as const) {
             path: testInfo.outputPath(`quote-${theme}-${width}.png`),
             animations: 'disabled',
           });
-          await estimate.screenshot({
+          await breakdown.screenshot({
             path: testInfo.outputPath(`estimate-${theme}-${width}.png`),
             animations: 'disabled',
           });
@@ -278,6 +392,24 @@ for (const locale of ['es', 'en'] as const) {
             : 'Confirm & submit order',
         exact: true,
       }),
+    ).toBeVisible();
+    commissionRate = 0.03;
+    await page
+      .getByRole('button', {
+        name:
+          locale === 'es'
+            ? 'Confirmar y enviar orden'
+            : 'Confirm & submit order',
+        exact: true,
+      })
+      .click();
+    await expect(
+      page.getByText(
+        locale === 'es'
+          ? 'Los costos se actualizaron. Revisa el nuevo total y confirma de nuevo.'
+          : 'Costs were updated. Review the new total and confirm again.',
+        { exact: true },
+      ),
     ).toBeVisible();
     expect(submissions).toBe(0);
   });

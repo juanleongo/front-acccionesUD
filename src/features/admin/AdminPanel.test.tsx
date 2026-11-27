@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { afterAll, afterEach, beforeAll, beforeEach, expect, it } from 'vitest';
 import { setAppLocale } from '@/lib/i18n';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { applyTheme } from '@/lib/theme';
 import { mockServer } from '../../../tests/fixtures/http';
 import { AdminPanel } from './AdminPanel';
@@ -15,6 +16,41 @@ beforeEach(() => {
   window.localStorage.clear();
   setAppLocale('es');
   applyTheme('dark', false);
+  const market = {
+    code: 'NYSE',
+    name: 'NYSE',
+    timezone: 'America/New_York',
+    default_schedule: { open_time: '09:30', close_time: '16:00' },
+    overrides: [],
+    commission_terms: {
+      fee_version_id: null,
+      commission_rate_pct: '2',
+      platform_share_pct: '60',
+    },
+    fee_origin: 'default',
+    trading_halts: [],
+  };
+  mockServer.use(
+    http.get('*/api/v1/admin/kpis', () =>
+      HttpResponse.json({
+        period: {},
+        definitions_version: 'kpi-v1',
+        computed_at: '2026-11-26T15:00:00Z',
+        as_of: '2026-11-26T15:00:00Z',
+        cache_hit: false,
+        stale: false,
+        metrics: {},
+      }),
+    ),
+    http.get('*/api/v1/admin/markets', () => HttpResponse.json([market])),
+    http.get('*/api/v1/admin/markets/NYSE', () => HttpResponse.json(market)),
+    http.get('*/api/v1/admin/markets/NYSE/schedule-overrides', () =>
+      HttpResponse.json([]),
+    ),
+    http.get('*/api/v1/admin/markets/NYSE/schedule-changes', () =>
+      HttpResponse.json({ items: [], next_cursor: null }),
+    ),
+  );
 });
 
 const sampleUsersPage = {
@@ -116,7 +152,15 @@ it('consulta GET /api/v1/admin/audit-log con el parámetro real action y filtra 
     }),
   );
 
-  render(<AdminPanel />);
+  render(
+    <QueryClientProvider
+      client={
+        new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      }
+    >
+      <AdminPanel />
+    </QueryClientProvider>,
+  );
 
   await waitFor(() =>
     expect(screen.getByText('Maria Velez')).toBeInTheDocument(),
@@ -157,14 +201,24 @@ it('alterna tema con @/lib/theme y valida formularios noValidate en Mercados y A
     ),
   );
 
-  render(<AdminPanel />);
+  render(
+    <QueryClientProvider
+      client={
+        new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      }
+    >
+      <AdminPanel />
+    </QueryClientProvider>,
+  );
 
   fireEvent.click(screen.getByRole('button', { name: 'Cambiar tema' }));
   expect(document.documentElement.dataset.theme).toBe('light');
 
   fireEvent.click(screen.getByRole('button', { name: /Horarios Bursátiles/ }));
   fireEvent.click(
-    screen.getByRole('button', { name: /\+ Agregar Excepción al Calendario/ }),
+    await screen.findByRole('button', {
+      name: /\+ Agregar Excepción al Calendario/,
+    }),
   );
   expect(await screen.findByRole('alert')).toHaveTextContent(
     /Debes seleccionar una fecha para la excepción/,
@@ -191,7 +245,15 @@ it('muestra SessionClosedOverlay cuando la sesión admin expira con 401', async 
     ),
   );
 
-  render(<AdminPanel />);
+  render(
+    <QueryClientProvider
+      client={
+        new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      }
+    >
+      <AdminPanel />
+    </QueryClientProvider>,
+  );
 
   expect(await screen.findByRole('alertdialog')).toHaveTextContent(
     /Vuelve a iniciar sesión/,

@@ -59,7 +59,7 @@ export function ActiveOrdersTable({
 
             return (
               <tr key={order.id}>
-                <td>
+                <td data-label={tx('Instrumento', 'Symbol')}>
                   <strong>{order.symbol}</strong>
                   <small
                     className={`${styles.subtleLine} ${styles.tabularNum}`}
@@ -67,17 +67,20 @@ export function ActiveOrdersTable({
                     {formatMarketDateTime(order.created_at, locale)}
                   </small>
                 </td>
-                <td>
+                <td data-label={tx('Operación / tipo', 'Side / type')}>
                   {order.side === 'buy'
                     ? tx('Compra', 'Buy')
                     : tx('Venta', 'Sell')}{' '}
                   · {typeLabels[order.type]}
                   {order.order_class === 'bracket' ? ' · Bracket' : ''}
                 </td>
-                <td className={styles.tabularNum}>
+                <td
+                  className={styles.tabularNum}
+                  data-label={tx('Cantidad / ejecutada', 'Qty / filled')}
+                >
                   {order.qty} / {order.filled_qty}
                 </td>
-                <td>
+                <td data-label={tx('Estado', 'Status')}>
                   <span
                     className={`${styles.statusBadge} ${TONE_CLASS_MAP[tone]}`}
                   >
@@ -93,7 +96,10 @@ export function ActiveOrdersTable({
                     </small>
                   )}
                 </td>
-                <td className={styles.tabularNum}>
+                <td
+                  className={styles.tabularNum}
+                  data-label={tx('Precio ejecutado', 'Fill price')}
+                >
                   {order.filled_avg_price
                     ? formatUsd(order.filled_avg_price, {
                         withCode: true,
@@ -102,7 +108,7 @@ export function ActiveOrdersTable({
                       })
                     : '—'}
                 </td>
-                <td>
+                <td data-label={tx('Acciones', 'Actions')}>
                   <button
                     type="button"
                     className={styles.btnCompact}

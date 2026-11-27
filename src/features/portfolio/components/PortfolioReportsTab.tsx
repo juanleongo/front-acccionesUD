@@ -60,7 +60,7 @@ export function PortfolioExecutionsTab({
       </div>
 
       <div className={styles.tableWrapper}>
-        <table className={styles.table}>
+        <table className={`${styles.table} ${styles.executionsTable}`}>
           <thead>
             <tr>
               <th>{tx('Referencia', 'Reference')}</th>
@@ -86,15 +86,23 @@ export function PortfolioExecutionsTab({
             ) : (
               executions.map((ex) => (
                 <tr key={ex.execution_id}>
-                  <td className={styles.monoCell}>{ex.execution_id}</td>
-                  <td className={styles.tabularNum}>
+                  <td
+                    className={styles.monoCell}
+                    data-label={tx('Referencia', 'Reference')}
+                  >
+                    {ex.execution_id}
+                  </td>
+                  <td
+                    className={styles.tabularNum}
+                    data-label={tx('Fecha / Hora', 'Date / Time')}
+                  >
                     {formatMarketDateTime(ex.executed_at, locale)}
                   </td>
-                  <td>
+                  <td data-label={tx('Símbolo', 'Symbol')}>
                     <span className={styles.symbolTicker}>{ex.symbol}</span>{' '}
                     <span className={styles.exchangeBadge}>{ex.exchange}</span>
                   </td>
-                  <td>
+                  <td data-label={tx('Operación', 'Side')}>
                     <span
                       className={
                         ex.side === 'buy'
@@ -107,14 +115,27 @@ export function PortfolioExecutionsTab({
                         : tx('Venta', 'Sell')}
                     </span>
                   </td>
-                  <td className={styles.monoCell}>{ex.qty}</td>
-                  <td className={styles.monoCell}>
+                  <td
+                    className={styles.monoCell}
+                    data-label={tx('Cantidad', 'Qty')}
+                  >
+                    {ex.qty}
+                  </td>
+                  <td
+                    className={styles.monoCell}
+                    data-label={tx('Precio Liquidación', 'Execution Price')}
+                  >
                     {formatPortfolioUsd(ex.price)}
                   </td>
-                  <td className={styles.monoCell}>
+                  <td
+                    className={styles.monoCell}
+                    data-label={tx('Comisión', 'Commission')}
+                  >
                     {formatPortfolioUsd(ex.commission)}
                   </td>
-                  <td>
+                  <td
+                    data-label={tx('Tipo de Liquidación', 'Settlement Source')}
+                  >
                     <span className={styles.exchangeBadge}>
                       {ex.commission_source === 'official'
                         ? tx('Confirmada', 'Confirmed')
@@ -244,7 +265,7 @@ export function PortfolioReportsTab({
                       includeTime: false,
                     })}
                   </td>
-                  <td>
+                  <td data-label={tx('Acción', 'Action')}>
                     <button
                       type="button"
                       className={styles.secondaryBtn}

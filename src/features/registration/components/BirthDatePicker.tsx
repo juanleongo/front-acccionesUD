@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useViewportPopover } from '@/components/ui/use-viewport-popover';
 import { Icon } from '@/components/ui/Icon';
 import { useLocale } from '@/lib/i18n';
 import {
@@ -40,6 +41,9 @@ export function BirthDatePicker({ value, onChange }: BirthDatePickerProps) {
   const calendarRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
+  const popupRef = useRef<HTMLDivElement>(null);
+  useViewportPopover(calendarOpen, triggerRef, popupRef);
+
   useEffect(() => {
     if (!calendarOpen) return;
     function handleOutside(event: MouseEvent) {
@@ -51,7 +55,7 @@ export function BirthDatePicker({ value, onChange }: BirthDatePickerProps) {
       }
     }
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
+      if (event.key === 'Escape' && !event.defaultPrevented) {
         setCalendarOpen(false);
         triggerRef.current?.focus();
       }
@@ -112,6 +116,8 @@ export function BirthDatePicker({ value, onChange }: BirthDatePickerProps) {
           }`}
           onClick={() => setCalendarOpen((prev) => !prev)}
           aria-expanded={calendarOpen}
+          aria-haspopup="dialog"
+          aria-controls="birth-calendar"
         >
           <span
             className={
@@ -129,6 +135,8 @@ export function BirthDatePicker({ value, onChange }: BirthDatePickerProps) {
 
         {calendarOpen ? (
           <div
+            ref={popupRef}
+            id="birth-calendar"
             className={styles.customCalendarPopover}
             role="dialog"
             aria-label={tx(

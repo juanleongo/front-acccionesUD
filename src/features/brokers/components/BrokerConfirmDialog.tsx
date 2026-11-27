@@ -1,6 +1,8 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { useLocale } from '@/lib/i18n';
+import { Icon } from '@/components/ui/Icon';
+import ui from '../brokers-details.module.css';
 import styles from '../brokers.module.css';
 export interface Confirmation {
   title: string;
@@ -53,9 +55,25 @@ export function BrokerConfirmDialog({
           if (await onConfirm(reason.trim())) onClose();
         }}
       >
-        <h3 id="broker-confirm-title" className={styles.cardTitle}>
-          {confirmation.title}
-        </h3>
+        <header className={ui.dialogHeader}>
+          <div className={ui.identity}>
+            <span className={ui.dialogIcon}>
+              <Icon name="shield" size={25} />
+            </span>
+            <h3 id="broker-confirm-title" className={styles.cardTitle}>
+              {confirmation.title}
+            </h3>
+          </div>
+          <button
+            type="button"
+            disabled={busy}
+            className={ui.close}
+            aria-label={tx('Cerrar confirmación', 'Close confirmation')}
+            onClick={onClose}
+          >
+            <Icon name="close" />
+          </button>
+        </header>
         <p className={styles.cardDesc}>{confirmation.description}</p>
         {confirmation.reason && (
           <div className={styles.fieldGroup}>

@@ -18,6 +18,65 @@ const line: Drawing = {
   text: '',
 };
 describe('editable drawing geometry', () => {
+  it('selects a line through a newer filled rectangle or polygon, even while the area is selected', () => {
+    const rectangle: Drawing = {
+      ...line,
+      id: 'area',
+      kind: 'rectangle',
+      a: { index: 0, price: 0 },
+      b: { index: 10, price: 10 },
+    };
+    const polygon: Drawing = {
+      ...rectangle,
+      kind: 'polygon',
+      vertices: [
+        { index: 0, price: 0 },
+        { index: 10, price: 0 },
+        { index: 10, price: 10 },
+        { index: 0, price: 10 },
+      ],
+    };
+    for (const area of [rectangle, polygon]) {
+      expect(
+        hitDrawing([line, area], area.id, [50, 45], project, plot)?.drawing.id,
+      ).toBe('line');
+      expect(
+        hitDrawing([line, area], area.id, [50, 80], project, plot)?.drawing.id,
+      ).toBe('area');
+    }
+  });
+  it('selects the nearest outline instead of a newer nearby line or a covering fill', () => {
+    const nearby: Drawing = {
+      ...line,
+      id: 'nearby',
+      a: { index: 2, price: 3.5 },
+      b: { index: 8, price: 6.5 },
+    };
+    expect(
+      hitDrawing([line, nearby], null, [50, 45], project, plot)?.drawing.id,
+    ).toBe('line');
+  });
+  it('cycles coincident drawings with Alt+click while normal selection preserves handle dragging', () => {
+    const duplicate = { ...line, id: 'duplicate' };
+    expect(
+      hitDrawing([line, duplicate], 'line', [50, 45], project, plot)?.drawing
+        .id,
+    ).toBe('line');
+    expect(
+      hitDrawing([line, duplicate], null, [50, 45], project, plot)?.drawing.id,
+    ).toBe('duplicate');
+    expect(
+      hitDrawing([line, duplicate], 'duplicate', [50, 45], project, plot, true)
+        ?.drawing.id,
+    ).toBe('line');
+    expect(
+      hitDrawing([line, duplicate], 'line', [50, 45], project, plot, true)
+        ?.drawing.id,
+    ).toBe('duplicate');
+    expect(
+      hitDrawing([line, duplicate], 'line', [20, 30], project, plot),
+    ).toMatchObject({ drawing: line, handle: 0 });
+  });
   it('selects segments, prioritizes selected handles and ignores distant empty space', () => {
     expect(hitDrawing([line], null, [50, 45], project, plot)).toMatchObject({
       drawing: line,
