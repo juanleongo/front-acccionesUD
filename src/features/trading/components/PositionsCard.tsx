@@ -81,14 +81,25 @@ export function PositionsCard({
                 );
                 return (
                   <tr key={position.symbol}>
-                    <td>
+                    <td data-label={tx('Instrumento', 'Symbol')}>
                       <strong>{position.symbol}</strong>
                     </td>
-                    <td className={styles.tabularNum}>{position.qty}</td>
-                    <td className={styles.tabularNum}>
+                    <td
+                      className={styles.tabularNum}
+                      data-label={tx('Cantidad', 'Qty')}
+                    >
+                      {position.qty}
+                    </td>
+                    <td
+                      className={styles.tabularNum}
+                      data-label={tx('Reservada', 'Reserved')}
+                    >
                       {position.reserved_qty}
                     </td>
-                    <td className={styles.tabularNum}>
+                    <td
+                      className={styles.tabularNum}
+                      data-label={tx('Disponible', 'Available')}
+                    >
                       <strong>{formatDecimalNumber(available, locale)}</strong>
                     </td>
                   </tr>

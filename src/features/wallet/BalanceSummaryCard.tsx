@@ -10,6 +10,7 @@ export function BalanceSummaryCard({ balance }: { balance: WalletBalance }) {
   const totalWalletCash =
     balance.available_balance_usd + balance.reserved_balance_usd;
   const totalEquity = totalWalletCash + balance.invested_equity_usd;
+  const investedValue = formatUsd(balance.invested_equity_usd);
 
   return (
     <section className={styles.card} aria-labelledby="balance-summary-heading">
@@ -76,8 +77,8 @@ export function BalanceSummaryCard({ balance }: { balance: WalletBalance }) {
           <strong className={styles.kpiValue}>{formatUsd(totalEquity)}</strong>
           <span className={`${styles.kpiHint} ${styles.tabularNum}`}>
             {tx(
-              `Efectivo + ${formatUsd(balance.invested_equity_usd)} invertido`,
-              `Cash + ${formatUsd(balance.invested_equity_usd)} invested`,
+              `Efectivo + ${investedValue} invertido`,
+              `Cash + ${investedValue} invested`,
             )}
           </span>
         </div>

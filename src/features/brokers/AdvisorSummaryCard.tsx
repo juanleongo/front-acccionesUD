@@ -4,7 +4,8 @@ import { useLocale } from '@/lib/i18n';
 import { fetchLatestActiveLink } from './advisor-summary-api';
 import { brokerRequest } from './brokers-api';
 import { brokerSchema } from './brokers-schemas';
-import { getInitials } from './broker-labels';
+import { BrokerAvatar } from './components/BrokerAvatar';
+import { LoadingState } from '@/components/ui/LoadingState';
 import styles from './advisor-summary.module.css';
 export function AdvisorSummaryCard({
   userId,
@@ -51,9 +52,10 @@ export function AdvisorSummaryCard({
         )}
       </div>
       {!userId || link.isPending ? (
-        <p className={styles.note}>
-          {tx('Consultando tu comisionista…', 'Loading your broker…')}
-        </p>
+        <LoadingState
+          mode="compact"
+          label={tx('Consultando tu comisionista…', 'Loading your broker…')}
+        />
       ) : link.isError ? (
         <div role="alert" className={styles.note}>
           <p>
@@ -68,9 +70,7 @@ export function AdvisorSummaryCard({
         </div>
       ) : link.data && name ? (
         <div className={styles.advisor}>
-          <span className={styles.avatar} aria-hidden="true">
-            {getInitials(name)}
-          </span>
+          <BrokerAvatar brokerId={brokerId ?? ''} name={name} size={56} />
           <div className={styles.details}>
             <strong>{name}</strong>
             <small>
@@ -90,15 +90,15 @@ export function AdvisorSummaryCard({
                 )
               </b>
             ) : profile.isError ? (
-              <small role="alert">
+              <div role="alert" className={styles.reputationError}>
                 {tx('Reputación no disponible.', 'Reputation unavailable.')}{' '}
                 <button
-                  className={styles.button}
+                  className={styles.retry}
                   onClick={() => void profile.refetch()}
                 >
                   {tx('Reintentar', 'Retry')}
                 </button>
-              </small>
+              </div>
             ) : (
               <small>
                 {tx('Consultando reputación…', 'Loading reputation…')}

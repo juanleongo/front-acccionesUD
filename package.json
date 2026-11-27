@@ -22,6 +22,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "test:responsive": "playwright test --config playwright.responsive.config.ts",
     "check:boundaries": "node scripts/check-boundaries.mjs",
     "api:generate": "node scripts/openapi.mjs generate",
     "api:check": "node scripts/openapi.mjs check",

@@ -144,7 +144,7 @@ function getCustomFieldError(
   return t(
     locale,
     'Por favor completa todos los campos obligatorios de este paso.',
-    'Please complete all required fields in this step.',
+    'Please fill in all required fields in this step.',
   );
 }
 

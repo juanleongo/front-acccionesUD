@@ -85,28 +85,53 @@ export function hitDrawing(
   xy: Pixel,
   project: (p: DrawingPoint) => Pixel,
   plot: Plot,
+  cycle = false,
 ) {
   const active = drawings.find((d) => d.id === selected);
-  if (active) {
+  if (active && !cycle) {
     const handle = anchors(active).findIndex(
       (p) => Math.hypot(project(p)[0] - xy[0], project(p)[1] - xy[1]) <= 10,
     );
     if (handle >= 0) return { drawing: active, handle };
   }
+  const edges: { drawing: Drawing; handle: number; distance: number }[] = [];
+  const fills: { drawing: Drawing; handle: number; distance: number }[] = [];
   for (const drawing of [...drawings].reverse()) {
     const points = outline(drawing, project, plot);
     const closed = drawing.kind === 'rectangle' || drawing.kind === 'polygon';
-    if (
-      (closed && inside(xy, points)) ||
-      points.some(
-        (p, i) =>
-          (i > 0 && segmentDistance(xy, points[i - 1]!, p) <= 8) ||
-          (closed && i === 0 && segmentDistance(xy, points.at(-1)!, p) <= 8),
-      )
-    )
-      return { drawing, handle: -1 };
+    const distances = points
+      .slice(1)
+      .map((p, i) => segmentDistance(xy, points[i]!, p));
+    if (closed) distances.push(segmentDistance(xy, points.at(-1)!, points[0]!));
+    const distance = Math.min(...distances);
+    if (distance <= Math.max(8, drawing.style.width / 2 + 5))
+      edges.push({ drawing, handle: -1, distance });
+    else if (closed && inside(xy, points))
+      fills.push({ drawing, handle: -1, distance });
   }
-  return null;
+  // A filled area must not hide a closer line or another area's border.
+  // Reverse creation order breaks equal-distance ties; Alt+click can reach every hit.
+  // Half-pixel buckets avoid unstable ties after data/pixel round trips.
+  edges.sort((a, b) => Math.round(a.distance * 2) - Math.round(b.distance * 2));
+  const hits = [...edges, ...fills];
+  if (cycle && hits.length) {
+    const index = hits.findIndex((hit) => hit.drawing.id === selected);
+    return hits[(index + 1) % hits.length]!;
+  }
+  if (edges.length) {
+    const closest = Math.round(edges[0]!.distance * 2);
+    return (
+      edges.find(
+        (hit) =>
+          hit.drawing.id === selected &&
+          Math.round(hit.distance * 2) === closest,
+      ) ?? edges[0]!
+    );
+  }
+  // An explicitly selected area remains draggable through other overlapping fills.
+  if (selected)
+    return fills.find((hit) => hit.drawing.id === selected) ?? fills[0] ?? null;
+  return hits[0] ?? null;
 }
 export function moveDrawing(
   drawing: Drawing,

@@ -400,37 +400,33 @@ export function FinancialChart({
             tools.find((item) => item.value === tool)!.en,
           )}
         </strong>
-        <span>
-          {status === 'loading'
-            ? tx('Preparando gráfico…', 'Preparing chart…')
-            : tool === 'cursor'
-              ? tx(
-                  'Selecciona un dibujo para editarlo. Arrastra sus puntos o el dibujo completo. Rueda: zoom.',
-                  'Select a drawing to edit it. Drag its handles or the whole drawing. Wheel: zoom.',
-                )
-              : tool === 'polygon'
-                ? tx(
-                    'Marca al menos tres vértices. Enter o pulsa el primer punto para cerrar; Esc cancela.',
-                    'Mark at least three vertices. Enter or click the first point to close; Esc cancels.',
-                  )
-                : tool === 'level'
-                  ? tx(
-                      'Pulsa sobre el precio que quieres marcar.',
-                      'Click the price you want to mark.',
-                    )
-                  : pendingPoint
-                    ? tx(
-                        'Primer punto marcado. Selecciona el segundo punto; Esc cancela.',
-                        'First point marked. Select the second point; Esc cancels.',
-                      )
-                    : tx(
-                        'Marca dos puntos o arrastra desde el inicio hasta el final.',
-                        'Mark two points or drag from start to end.',
-                      )}
-        </span>
-        <span>
-          {tx('Dibujos', 'Drawings')}: {drawings.length}
-        </span>
+
+        <div className={styles.drawingPicker}>
+          <label htmlFor="chart-drawing-select">
+            {tx('Dibujos', 'Drawings')} ({drawings.length})
+          </label>
+          <CustomSelect
+            id="chart-drawing-select"
+            compact
+            value={selected?.id ?? ''}
+            disabled={!drawings.length || status !== 'ready'}
+            options={[
+              { value: '', label: tx('Sin selección', 'No selection') },
+              ...drawings.map((drawing, index) => {
+                const name = tools.find((item) => item.value === drawing.kind)!;
+                return {
+                  value: drawing.id,
+                  label: `${index + 1}. ${tx(name.es, name.en)}${drawing.text ? ` · ${drawing.text}` : ''}`,
+                };
+              }),
+            ]}
+            onChange={(value) => {
+              setTool('cursor');
+              setPendingPoint(null);
+              setSelectedId(value || null);
+            }}
+          />
+        </div>
       </div>
       {indicator !== 'none' &&
         bars.length <
@@ -526,6 +522,34 @@ export function FinancialChart({
           </div>
         </div>
       </div>
+      <p className={styles.analysisNote} role="status" aria-live="polite">
+        {status === 'loading'
+          ? tx('Preparando gráfico…', 'Preparing chart…')
+          : tool === 'cursor'
+            ? tx(
+                'Selecciona un trazo para editarlo. Alt+clic: alternar dibujos superpuestos. Arrastra sus puntos o el dibujo completo.',
+                'Select an outline to edit it. Alt+click: cycle overlapping drawings. Drag its handles or the whole drawing.',
+              )
+            : tool === 'polygon'
+              ? tx(
+                  'Marca al menos tres vértices. Enter o pulsa el primer punto para cerrar; Esc cancela.',
+                  'Mark at least three vertices. Enter or click the first point to close; Esc cancels.',
+                )
+              : tool === 'level'
+                ? tx(
+                    'Pulsa sobre el precio que quieres marcar.',
+                    'Click the price you want to mark.',
+                  )
+                : pendingPoint
+                  ? tx(
+                      'Primer punto marcado. Selecciona el segundo punto; Esc cancela.',
+                      'First point marked. Select the second point; Esc cancels.',
+                    )
+                  : tx(
+                      'Marca dos puntos o arrastra desde el inicio hasta el final.',
+                      'Mark two points or drag from start to end.',
+                    )}
+      </p>
       <div className={styles.chartHelp}>
         <span>
           {tx('Mostrando', 'Showing')}{' '}
@@ -539,20 +563,10 @@ export function FinancialChart({
         <span>Apache ECharts</span>
       </div>
       <p className={styles.analysisNote}>
-        {tool === 'trend' || tool === 'measure'
-          ? tx(
-              'Selecciona dos puntos dentro del gráfico. Esc cancela el primer punto.',
-              'Select two points inside the chart. Esc cancels the first point.',
-            )
-          : tool === 'level'
-            ? tx(
-                'Pulsa en el gráfico para marcar un nivel de precio.',
-                'Click the chart to mark a price level.',
-              )
-            : tx(
-                'Supr: eliminar selección · Ctrl+Z: deshacer · Ctrl+Mayús+Z: rehacer. Los dibujos se reinician al cambiar de instrumento o período.',
-                'Delete: remove selection · Ctrl+Z: undo · Ctrl+Shift+Z: redo. Drawings reset when the instrument or period changes.',
-              )}
+        {tx(
+          'Supr: eliminar selección · Ctrl+Z: deshacer · Ctrl+Mayús+Z: rehacer. Los dibujos se reinician al cambiar de instrumento o período.',
+          'Delete: remove selection · Ctrl+Z: undo · Ctrl+Shift+Z: redo. Drawings reset when the instrument or period changes.',
+        )}
         {indicator !== 'none' &&
           ` · ${tx('Los indicadores necesitan suficiente histórico previo.', 'Indicators require enough prior history.')}`}
       </p>

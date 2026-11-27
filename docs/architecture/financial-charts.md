@@ -25,3 +25,9 @@ El gráfico es histórico, no un stream OHLCV. El stream actual de precios no ba
 Pruebas de cálculos, fidelidad de datos y ciclo de vida; E2E con respuestas controladas para las tres representaciones, zoom, navegación, casos extremos, indicadores, dibujos y responsive. Los fixtures solo se usan en pruebas.
 
 Licencia Apache ECharts: Apache-2.0. Conservar LICENSE y NOTICE del paquete distribuido. Documentación: https://echarts.apache.org/handbook/en/basics/import/.
+
+## Selección de dibujos superpuestos
+
+Los puntos de control del dibujo seleccionado conservan prioridad para editarlo. Para seleccionar un objeto diferente, los trazos y bordes se ordenan por distancia real al cursor antes de considerar los rellenos de áreas; empates conservan el orden visual. El relleno de un rectángulo o polígono ya no intercepta una línea que pasa por su interior. Alt+clic alterna los objetos bajo el cursor, incluyendo trazos exactamente coincidentes. El selector «Dibujos» permite seleccionar cualquier objeto por nombre sin apuntar al gráfico y también está disponible con teclado o en móvil. Cambiar la selección no modifica el dibujo ni el rango del histórico.
+
+El dibujo seleccionado se representa por encima de los demás para mantener visibles su trazo y puntos de control. En coincidencias de trazos conserva la selección explícita para permitir arrastrar el objeto elegido desde el selector; los rellenos seleccionados no tienen prioridad sobre otros trazos. Las distancias se comparan en intervalos de medio píxel para evitar empates inestables por conversiones entre datos y pantalla.

@@ -7,6 +7,10 @@
   font-family: var(--font-family-body);
 }
 
+.mobileModulePicker {
+  display: none;
+}
+
 .container button,
 .container input {
   font-family: inherit;
@@ -900,6 +904,24 @@
     display: none;
   }
 
+  .mobileModulePicker {
+    display: grid;
+    gap: 0.45rem;
+    width: 100%;
+    min-width: 0;
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    color: var(--color-text-muted);
+  }
+
+  .sidebar {
+    overflow: visible;
+  }
+
+  .sidebar .navItem {
+    display: none;
+  }
+
   .navItem {
     flex: 0 0 auto;
     width: auto;
@@ -909,6 +931,64 @@
 }
 
 @media (max-width: 40rem) {
+  .tableResponsive {
+    overflow: visible;
+  }
+  .adminTable,
+  .adminTable tbody {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+  .adminTable thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .adminTable tbody tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.9rem;
+    padding: 1rem;
+    margin-block: 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
+  }
+  .adminTable tbody td {
+    display: block;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .adminTable tbody td::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 0.4rem;
+    color: var(--color-text-muted);
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+  }
+  .adminTable tbody td:first-child,
+  .adminTable tbody td:last-child,
+  .adminTable tbody td[colspan] {
+    grid-column: 1 / -1;
+  }
+  .adminTable tbody td:last-child button {
+    min-height: var(--size-control-min);
+    max-width: 100%;
+  }
+  .topBar {
+    position: static;
+    background: var(--color-surface);
+  }
+  .brandText span {
+    display: none;
+  }
   .topBarInner {
     padding: 0.85rem 1rem;
   }

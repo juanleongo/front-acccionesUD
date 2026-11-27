@@ -56,12 +56,17 @@ export function AdminRbacSection() {
             <tbody>
               {defaultSystemRoles.map((r) => (
                 <tr key={r.role}>
-                  <td>
+                  <td data-label={tx('Rol del Sistema', 'System Role')}>
                     <span className={styles.roleCode}>
                       {formatRoleLabel(r.role, locale)}
                     </span>
                   </td>
-                  <td>
+                  <td
+                    data-label={tx(
+                      'Permisos Habilitados',
+                      'Enabled Permissions',
+                    )}
+                  >
                     <div className={styles.permissionList}>
                       {r.permissions.map((p) => (
                         <span key={p} className={styles.permissionChip}>
@@ -70,7 +75,13 @@ export function AdminRbacSection() {
                       ))}
                     </div>
                   </td>
-                  <td className={styles.roleScopeCell}>
+                  <td
+                    className={styles.roleScopeCell}
+                    data-label={tx(
+                      'Alcance y Responsabilidad',
+                      'Scope & Responsibility',
+                    )}
+                  >
                     {formatRoleDescription(r.role, locale)}
                   </td>
                 </tr>
@@ -99,13 +110,16 @@ export function AdminRbacSection() {
             <tbody>
               {defaultSystemPermissions.map((perm) => (
                 <tr key={perm.code}>
-                  <td>
+                  <td data-label={tx('Permiso', 'Permission')}>
                     <strong>{formatPermissionLabel(perm.code, locale)}</strong>
                     <div className={styles.cellMeta}>
                       <code className={styles.codeTag}>{perm.code}</code>
                     </div>
                   </td>
-                  <td className={styles.mutedText}>
+                  <td
+                    className={styles.mutedText}
+                    data-label={tx('Descripción', 'Description')}
+                  >
                     {formatPermissionDescription(
                       perm.code,
                       locale,

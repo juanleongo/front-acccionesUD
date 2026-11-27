@@ -1,6 +1,11 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Icon } from '@/components/ui/Icon';
+import { LoadingState } from '@/components/ui/LoadingState';
+import { formatMarketDateTime } from '@/lib/formatters';
+import { BrokerAvatar } from './BrokerAvatar';
+import ui from '../brokers-details.module.css';
 import { useLocale } from '@/lib/i18n';
 import { brokerRequest } from '../brokers-api';
 import {
@@ -20,7 +25,7 @@ export function BrokerProfileDialog({
   userId: string;
   onClose: () => void;
 }) {
-  const { tx } = useLocale();
+  const { tx, locale } = useLocale();
   const [cursors, setCursors] = useState(['']);
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
@@ -80,9 +85,33 @@ export function BrokerProfileDialog({
         onClose();
       }}
     >
-      <h3 id="broker-public-profile-title" className={styles.cardTitle}>
-        {profile.data?.name ?? tx('Perfil del comisionista', 'Broker profile')}
-      </h3>
+      <header className={ui.dialogHeader}>
+        <div className={ui.identity}>
+          <BrokerAvatar
+            brokerId={id}
+            name={profile.data?.name ?? tx('Comisionista', 'Broker')}
+            size={64}
+          />
+          <div>
+            <p className={ui.eyebrow}>
+              {tx('Perfil profesional', 'Professional profile')}
+            </p>
+            <h3 id="broker-public-profile-title" className={styles.cardTitle}>
+              {profile.data?.name ??
+                tx('Perfil del comisionista', 'Broker profile')}
+            </h3>
+            <p className={styles.cardDesc}>{profile.data?.firm_name}</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          className={ui.close}
+          aria-label={tx('Cerrar perfil', 'Close profile')}
+          onClick={onClose}
+        >
+          <Icon name="close" />
+        </button>
+      </header>
       {[profile, reputation, reviews]
         .filter((q) => q.isError)
         .map((q, i) => (
@@ -97,22 +126,86 @@ export function BrokerProfileDialog({
           </p>
         ))}
       {profile.isPending && (
-        <p className={styles.fieldHint}>{tx('Cargando…', 'Loading…')}</p>
+        <LoadingState
+          mode="compact"
+          label={tx('Consultando perfil…', 'Loading profile…')}
+        />
       )}
       <p className={styles.cardDesc}>{profile.data?.description}</p>
-      <p className={styles.controlHint}>
-        {profile.data?.specialty} · {profile.data?.certifications.join(', ')}
-      </p>
+      {profile.data && (
+        <div className={ui.profileFacts}>
+          <div>
+            <span className={ui.eyebrow}>
+              {tx('Especialidad', 'Specialty')}
+            </span>
+            <strong>{profile.data.specialty}</strong>
+          </div>
+          <div>
+            <span className={ui.eyebrow}>
+              {tx('Experiencia', 'Experience')}
+            </span>
+            <strong>
+              {profile.data.years_experience} {tx('años', 'years')}
+            </strong>
+          </div>
+        </div>
+      )}
+      {profile.data && profile.data.certifications.length > 0 && (
+        <ul
+          className={ui.chips}
+          aria-label={tx('Certificaciones', 'Certifications')}
+        >
+          {profile.data.certifications.map((certification) => (
+            <li key={certification}>
+              <Icon name="check" size={15} />
+              {certification}
+            </li>
+          ))}
+        </ul>
+      )}
       {reputation.data && (
-        <p className={styles.controlTitle}>
-          ★ {reputation.data.average ?? '—'} · {reputation.data.reviews_count}{' '}
-          {tx('reseñas', 'reviews')}
+        <p className={ui.reputation}>
+          ★{' '}
+          {reputation.data.average === null
+            ? '—'
+            : Number(reputation.data.average).toLocaleString(locale, {
+                maximumFractionDigits: 2,
+              })}{' '}
+          · {reputation.data.reviews_count}{' '}
+          {reputation.data.reviews_count === 1
+            ? tx('reseña', 'review')
+            : tx('reseñas', 'reviews')}
         </p>
       )}
+      <h4 className={ui.sectionTitle}>
+        {tx('Opiniones de inversionistas', 'Investor reviews')}
+      </h4>
+      {reviews.isPending && (
+        <LoadingState
+          mode="compact"
+          label={tx('Consultando reseñas…', 'Loading reviews…')}
+        />
+      )}
       {reviews.data?.items.map((review, i) => (
-        <blockquote key={i} className={styles.reviewQuote}>
-          ★ {review.stars} · {review.comment}
-          <p className={styles.fieldHint}>{review.created_at}</p>
+        <blockquote key={i} className={ui.review}>
+          <div className={ui.reviewMeta}>
+            <strong
+              aria-label={`${review.stars} ${tx('de 5 estrellas', 'out of 5 stars')}`}
+            >
+              {'★'.repeat(review.stars)}
+              {'☆'.repeat(5 - review.stars)}
+            </strong>
+            <time dateTime={review.created_at}>
+              {formatMarketDateTime(review.created_at, locale, {
+                timeZone: 'America/New_York',
+              })}{' '}
+              ET
+            </time>
+          </div>
+          <p>
+            {review.comment ||
+              tx('Sin comentario adicional.', 'No additional comment.')}
+          </p>
         </blockquote>
       ))}
       {reviews.isSuccess && reviews.data.items.length === 0 && (
@@ -126,7 +219,11 @@ export function BrokerProfileDialog({
         onPrevious={() => setCursors((c) => c.slice(0, -1))}
         onNext={() => setCursors((c) => [...c, reviews.data!.next_cursor!])}
       />
-      <button className={styles.secondaryBtn} onClick={onClose}>
+      <button
+        type="button"
+        className={`${styles.secondaryBtn} ${ui.footerClose}`}
+        onClick={onClose}
+      >
         {tx('Cerrar', 'Close')}
       </button>
     </dialog>

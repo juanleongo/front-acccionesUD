@@ -238,12 +238,14 @@ export async function setMarketDefaultSchedule(
 
 export async function listMarketOverrides(
   marketCode: string,
+  signal?: AbortSignal,
 ): Promise<ScheduleOverride[]> {
   return browserHttp.request({
     path: `/api/v1/admin/markets/${marketCode}/schedule-overrides`,
     method: 'GET',
     response: 'json',
     parse: z.array(scheduleOverrideSchema).parse,
+    ...(signal ? { signal } : {}),
   });
 }
 

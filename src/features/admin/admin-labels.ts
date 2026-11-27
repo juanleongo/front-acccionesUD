@@ -2,7 +2,18 @@ import { formatMarketDateTime } from '@/lib/formatters';
 import { tx, type Locale } from '@/lib/i18n/locale';
 
 export type AdminTab =
-  'kpi' | 'brokers' | 'users' | 'rbac' | 'markets' | 'create-admin' | 'audit';
+  | 'kpi'
+  | 'brokers'
+  | 'users'
+  | 'rbac'
+  | 'markets'
+  | 'create-admin'
+  | 'audit'
+  | 'commissions'
+  | 'fees'
+  | 'halts'
+  | 'compliance'
+  | 'trail';
 
 export const actionLabels: Record<string, string> = {
   administrator_created: 'Administrador creado',

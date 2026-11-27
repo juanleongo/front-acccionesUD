@@ -1,6 +1,7 @@
 'use client';
 
 import { Icon, type IconName } from '@/components/ui/Icon';
+import { CustomSelect } from '@/components/ui/CustomSelect';
 import { useLocale } from '@/lib/i18n';
 import type { AdminTab } from '../admin-labels';
 import styles from '../admin.module.css';
@@ -56,6 +57,36 @@ const navItems: ReadonlyArray<{
     icon: 'lock',
   },
   {
+    id: 'commissions',
+    label: 'Comisiones',
+    labelEn: 'Commissions',
+    icon: 'trend',
+  },
+  {
+    id: 'fees',
+    label: 'Tarifas y versiones',
+    labelEn: 'Fees and versions',
+    icon: 'grid',
+  },
+  {
+    id: 'halts',
+    label: 'Pausas de negociación',
+    labelEn: 'Trading halts',
+    icon: 'lock',
+  },
+  {
+    id: 'compliance',
+    label: 'Cumplimiento',
+    labelEn: 'Compliance',
+    icon: 'shield',
+  },
+  {
+    id: 'trail',
+    label: 'Auditoría consolidada',
+    labelEn: 'Consolidated audit',
+    icon: 'devices',
+  },
+  {
     id: 'audit',
     label: 'Bitácora de Auditoría',
     labelEn: 'Audit Log',
@@ -76,6 +107,20 @@ export function AdminSidebar({
     >
       <div className={styles.sidebarTitle}>
         {tx('Módulos de Administración', 'Admin Modules')}
+      </div>
+      <div className={styles.mobileModulePicker}>
+        <label htmlFor="admin-module">
+          {tx('Sección de administración', 'Administration section')}
+        </label>
+        <CustomSelect
+          id="admin-module"
+          value={activeTab}
+          onChange={(value) => onSelectTab(value as AdminTab)}
+          options={navItems.map((item) => ({
+            value: item.id,
+            label: `${tx(item.label, item.labelEn)}${item.showBadge && pendingCount > 0 ? ` (${pendingCount})` : ''}`,
+          }))}
+        />
       </div>
       {navItems.map((item) => (
         <button

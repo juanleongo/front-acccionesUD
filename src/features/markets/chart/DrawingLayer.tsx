@@ -47,6 +47,11 @@ export function DrawingLayer({
           visibleDates.reduce((a, b) => (a.x > b.x ? a : b)),
         ]
       : visibleDates;
+  const shapes = [
+    ...frame.shapes.filter((shape) => shape.drawing.id !== selectedId),
+    ...frame.shapes.filter((shape) => shape.drawing.id === selectedId),
+    ...(frame.draft ? [frame.draft] : []),
+  ];
   return (
     <svg
       className={styles.layer}
@@ -78,89 +83,87 @@ export function DrawingLayer({
               className={styles.guide}
             />
           ))}
-        {[...frame.shapes, ...(frame.draft ? [frame.draft] : [])].map(
-          ({ drawing, points, handles }) => {
-            const selected =
-              drawing.id === selectedId || drawing === frame.draft?.drawing;
-            const area =
-              drawing.kind === 'rectangle' || drawing.kind === 'polygon';
-            const color = `var(--color-drawing-${drawing.style.color})`;
-            const a = handles[0]!,
-              b = handles.at(-1)!;
-            const delta = drawing.b.price - drawing.a.price;
-            const text =
-              drawing.kind === 'measure'
-                ? `${numeric.format(delta)} · ${drawing.a.price === 0 ? '—' : numeric.format((delta / drawing.a.price) * 100) + '%'} · ${Math.abs(drawing.b.index - drawing.a.index)} ${locale === 'en' ? 'bars' : 'barras'}`
-                : drawing.text;
-            return (
-              <g
-                key={drawing.id}
-                data-drawing-id={drawing.id}
-                data-kind={drawing.kind}
-                data-selected={selected}
-                style={{ '--drawing-color': color } as CSSProperties}
-              >
-                {area ? (
-                  <polygon
-                    points={points.map((p) => p.join(',')).join(' ')}
-                    fill={color}
-                    fillOpacity={drawing.style.opacity}
-                    stroke={color}
-                    strokeWidth={drawing.style.width}
-                    strokeDasharray={
-                      drawing.style.dash === 'solid'
-                        ? undefined
-                        : drawing.style.dash === 'dotted'
-                          ? '2 5'
-                          : '8 5'
-                    }
+        {shapes.map(({ drawing, points, handles }) => {
+          const selected =
+            drawing.id === selectedId || drawing === frame.draft?.drawing;
+          const area =
+            drawing.kind === 'rectangle' || drawing.kind === 'polygon';
+          const color = `var(--color-drawing-${drawing.style.color})`;
+          const a = handles[0]!,
+            b = handles.at(-1)!;
+          const delta = drawing.b.price - drawing.a.price;
+          const text =
+            drawing.kind === 'measure'
+              ? `${numeric.format(delta)} · ${drawing.a.price === 0 ? '—' : numeric.format((delta / drawing.a.price) * 100) + '%'} · ${Math.abs(drawing.b.index - drawing.a.index)} ${locale === 'en' ? 'bars' : 'barras'}`
+              : drawing.text;
+          return (
+            <g
+              key={drawing.id}
+              data-drawing-id={drawing.id}
+              data-kind={drawing.kind}
+              data-selected={selected}
+              style={{ '--drawing-color': color } as CSSProperties}
+            >
+              {area ? (
+                <polygon
+                  points={points.map((p) => p.join(',')).join(' ')}
+                  fill={color}
+                  fillOpacity={drawing.style.opacity}
+                  stroke={color}
+                  strokeWidth={drawing.style.width}
+                  strokeDasharray={
+                    drawing.style.dash === 'solid'
+                      ? undefined
+                      : drawing.style.dash === 'dotted'
+                        ? '2 5'
+                        : '8 5'
+                  }
+                />
+              ) : (
+                <polyline
+                  points={points.map((p) => p.join(',')).join(' ')}
+                  fill="none"
+                  stroke={color}
+                  strokeWidth={drawing.style.width}
+                  strokeDasharray={
+                    drawing.style.dash === 'solid'
+                      ? undefined
+                      : drawing.style.dash === 'dotted'
+                        ? '2 5'
+                        : '8 5'
+                  }
+                />
+              )}
+              {drawing.kind === 'measure' && (
+                <path
+                  d={`M${a[0]},${a[1]} H${b[0]} V${b[1]}`}
+                  className={styles.guide}
+                />
+              )}
+              {text && (
+                <text
+                  x={(a[0] + b[0]) / 2}
+                  y={(a[1] + b[1]) / 2 - 12}
+                  textAnchor="middle"
+                  className={styles.annotation}
+                >
+                  {text}
+                </text>
+              )}
+              {selected &&
+                handles.map((p, i) => (
+                  <circle
+                    key={i}
+                    data-handle={i}
+                    cx={p[0]}
+                    cy={p[1]}
+                    r={5}
+                    className={styles.handle}
                   />
-                ) : (
-                  <polyline
-                    points={points.map((p) => p.join(',')).join(' ')}
-                    fill="none"
-                    stroke={color}
-                    strokeWidth={drawing.style.width}
-                    strokeDasharray={
-                      drawing.style.dash === 'solid'
-                        ? undefined
-                        : drawing.style.dash === 'dotted'
-                          ? '2 5'
-                          : '8 5'
-                    }
-                  />
-                )}
-                {drawing.kind === 'measure' && (
-                  <path
-                    d={`M${a[0]},${a[1]} H${b[0]} V${b[1]}`}
-                    className={styles.guide}
-                  />
-                )}
-                {text && (
-                  <text
-                    x={(a[0] + b[0]) / 2}
-                    y={(a[1] + b[1]) / 2 - 12}
-                    textAnchor="middle"
-                    className={styles.annotation}
-                  >
-                    {text}
-                  </text>
-                )}
-                {selected &&
-                  handles.map((p, i) => (
-                    <circle
-                      key={i}
-                      data-handle={i}
-                      cx={p[0]}
-                      cy={p[1]}
-                      r={5}
-                      className={styles.handle}
-                    />
-                  ))}
-              </g>
-            );
-          },
-        )}
+                ))}
+            </g>
+          );
+        })}
       </g>
       {active &&
         dateTags.map((p, i) => {

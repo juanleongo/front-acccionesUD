@@ -2,6 +2,9 @@
 import { useState } from 'react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { z } from 'zod';
+import { LoadingState } from '@/components/ui/LoadingState';
+import { BrokerAvatar } from './components/BrokerAvatar';
+import ui from './brokers-details.module.css';
 import { useLocale } from '@/lib/i18n';
 import { formatMarketDateTime } from '@/lib/formatters';
 import * as api from './brokers-api';
@@ -265,9 +268,7 @@ export function BrokersHub({
         ))}
       </div>
       {selectedQuery?.isPending && selectedQuery.fetchStatus !== 'idle' && (
-        <p className={styles.emptyNotice}>
-          {tx('Cargando información…', 'Loading…')}
-        </p>
+        <LoadingState label={tx('Cargando información…', 'Loading…')} />
       )}
       {selectedQuery?.isError && (
         <div role="alert" className={styles.formError}>
@@ -379,10 +380,32 @@ export function BrokersHub({
         {role === 'investor' && activeTab === 'directory' && (
           <>
             {suggestions.data && suggestions.data.length > 0 && (
-              <p className={styles.fieldHint}>
-                {tx('Sugeridos para ti:', 'Suggested for you:')}{' '}
-                {suggestions.data.map((b) => b.name).join(' · ')}
-              </p>
+              <section
+                aria-label={tx('Sugeridos para ti', 'Suggested for you')}
+              >
+                <h3 className={ui.sectionTitle}>
+                  {tx('Sugeridos para ti', 'Suggested for you')}
+                </h3>
+                <div className={ui.suggestions}>
+                  {suggestions.data.map((b) => (
+                    <button
+                      key={b.id}
+                      type="button"
+                      className={ui.suggestion}
+                      onClick={() => setProfileId(b.id)}
+                    >
+                      <BrokerAvatar brokerId={b.id} name={b.name} />
+                      <span>
+                        <strong>{b.name}</strong>
+                        <small>
+                          {b.specialty} · {b.years_experience}{' '}
+                          {tx('años', 'years')}
+                        </small>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </section>
             )}
             {directory.isSuccess && (
               <>
@@ -454,11 +477,28 @@ export function BrokersHub({
             />
             {history.data?.items.map((item) => (
               <div key={item.id} className={styles.controlBox}>
-                <strong className={styles.controlTitle}>
-                  {item.broker.name}
-                </strong>
+                <div className={ui.identity}>
+                  <BrokerAvatar
+                    brokerId={item.broker_id}
+                    name={item.broker.name}
+                    size={44}
+                  />
+                  <strong className={styles.controlTitle}>
+                    {item.broker.name}
+                  </strong>
+                  <span
+                    className={
+                      item.status === 'active'
+                        ? styles.badgeSuccess
+                        : item.status === 'requested'
+                          ? styles.badgeWarning
+                          : ui.badge
+                    }
+                  >
+                    {formatLinkStatus(item.status, locale)}
+                  </span>
+                </div>
                 <p className={styles.controlHint}>
-                  {formatLinkStatus(item.status, locale)} ·{' '}
                   {formatMarketDateTime(item.requested_at, locale)}
                 </p>
                 <p className={styles.controlHint}>

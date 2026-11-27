@@ -148,3 +148,103 @@
   flex: 1 1 auto;
   gap: 0.65rem;
 }
+.budgetInput {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  padding: 0.75rem;
+  margin-block: 0.5rem;
+  color: var(--color-text);
+  background: var(--color-control);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  font: inherit;
+}
+.budgetModes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  min-width: 0;
+  padding: 0;
+  margin: 1rem 0;
+  border: 0;
+}
+.budgetModes legend {
+  padding: 0;
+  margin-bottom: 0.75rem;
+}
+.budgetMode {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  min-width: 0;
+  padding: 0.85rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-control);
+  cursor: pointer;
+}
+.budgetModeSelected {
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+.budgetMode:focus-within {
+  outline: var(--focus-width) solid var(--color-focus);
+  outline-offset: var(--focus-offset);
+}
+.budgetMode input {
+  flex-shrink: 0;
+  width: 1rem;
+  height: 1rem;
+  margin: 0.2rem 0 0;
+  accent-color: var(--color-button);
+}
+.budgetMode span {
+  min-width: 0;
+}
+.budgetMode strong,
+.budgetMode small {
+  display: block;
+  font-size: var(--font-size-xs);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.budgetMode strong {
+  color: var(--color-text);
+  font-weight: 700;
+}
+.budgetMode small {
+  margin-top: 0.35rem;
+  color: var(--color-text-muted);
+}
+.budgetModes:disabled {
+  opacity: 0.65;
+}
+.budgetResult {
+  display: grid;
+  gap: 0.85rem;
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-card-gradient);
+}
+@media (max-width: 32rem) {
+  .budgetModes {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.info {
+  margin: 0.6rem 0;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid var(--color-primary-border);
+  border-radius: var(--radius-md);
+  background: var(--color-primary-soft);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.7;
+}
+.amountField {
+  max-width: 28rem;
+  margin-block: 1rem;
+}

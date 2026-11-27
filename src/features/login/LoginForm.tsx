@@ -46,6 +46,10 @@ function getServerThemeSnapshot(): Theme {
   return 'dark';
 }
 
+const subscribeReadiness = () => () => {};
+const getClientReadiness = () => true;
+const getServerReadiness = () => false;
+
 import { startLogin, type Challenge } from './challenge';
 import { RecoveryCodesDisplay, usePendingCodes } from './RecoveryCodes';
 import { TotpQrCode } from './TotpQrCode';
@@ -73,6 +77,12 @@ export function LoginForm({
 } = {}) {
   const router = useRouter();
   const { tx } = useLocale();
+  // Controlled fields must not accept edits before React can retain them.
+  const ready = useSyncExternalStore(
+    subscribeReadiness,
+    getClientReadiness,
+    getServerReadiness,
+  );
   const activeTheme = useSyncExternalStore(
     subscribeDocumentTheme,
     getDocumentTheme,
@@ -314,6 +324,7 @@ export function LoginForm({
               <button
                 type="button"
                 className={`${styles.roleTab} ${!isAdminLogin ? styles.roleTabActive : ''}`}
+                disabled={busy || !ready}
                 onClick={() => {
                   setIsAdminLogin(false);
                   setError('');
@@ -326,6 +337,7 @@ export function LoginForm({
               <button
                 type="button"
                 className={`${styles.roleTab} ${isAdminLogin ? styles.roleTabAdminActive : ''}`}
+                disabled={busy || !ready}
                 onClick={() => {
                   setIsAdminLogin(true);
                   setError('');
@@ -395,7 +407,7 @@ export function LoginForm({
               onSubmit={submit}
               noValidate
             >
-              <fieldset disabled={busy} className={styles.fieldset}>
+              <fieldset disabled={busy || !ready} className={styles.fieldset}>
                 {challenge ? (
                   <>
                     {challenge.totp_enrollment && (

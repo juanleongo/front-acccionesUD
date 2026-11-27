@@ -25,9 +25,16 @@ test('carga regiones y ciudades reales bajo demanda sin incluir el catálogo mun
   }))
     await page.locator(`[name="${name}"]`).fill(value);
   expect(catalogRequests).toBe(0);
-  await page.locator('input[role="combobox"]').fill('Colombia');
   await page
-    .getByRole('listbox', { name: 'Países disponibles' })
+    .locator('select[name="country"]')
+    .locator('..')
+    .locator(':scope > button')
+    .click();
+  await page
+    .getByRole('searchbox', { name: 'Buscar país o código…' })
+    .fill('Colombia');
+  await page
+    .getByRole('listbox', { name: 'País' })
     .getByRole('option', { name: /Colombia/ })
     .click();
   const next = page.getByRole('button', { name: 'Continuar', exact: true });

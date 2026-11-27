@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useLocale } from '@/lib/i18n';
 import { CustomSelect } from '@/components/ui/CustomSelect';
+import { DatePicker } from '@/components/ui/DatePicker';
 import type { Filters } from '../brokers-api';
 import styles from '../brokers.module.css';
 export function HistoryFilters({
@@ -42,24 +43,24 @@ export function HistoryFilters({
         <label htmlFor="broker-history-from" className={styles.fieldLabel}>
           {tx('Desde', 'From')}
         </label>
-        <input
+        <DatePicker
           id="broker-history-from"
-          type="date"
+          label={tx('Desde', 'From')}
           value={from}
-          onChange={(e) => setFrom(e.target.value)}
-          className={styles.inputField}
+          onChange={setFrom}
+          max={to || undefined}
         />
       </div>
       <div className={styles.fieldGroup}>
         <label htmlFor="broker-history-to" className={styles.fieldLabel}>
           {tx('Hasta', 'To')}
         </label>
-        <input
+        <DatePicker
           id="broker-history-to"
-          type="date"
+          label={tx('Hasta', 'To')}
           value={to}
-          onChange={(e) => setTo(e.target.value)}
-          className={styles.inputField}
+          onChange={setTo}
+          min={from || undefined}
         />
       </div>
       <div className={styles.fieldGroup}>

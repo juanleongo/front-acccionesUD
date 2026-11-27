@@ -35,6 +35,15 @@ beforeEach(() => {
   });
   window.scrollTo = vi.fn();
   mockServer.use(
+    http.get('*/api/v1/portfolio/positions', () =>
+      HttpResponse.json({
+        positions: [],
+        positions_as_of: '2026-11-26T15:00:00Z',
+      }),
+    ),
+    http.get('*/api/v1/markets/clock', () =>
+      HttpResponse.json({ code: 'TEST_UNAVAILABLE' }, { status: 503 }),
+    ),
     http.get('*/api/v1/broker-links', () =>
       HttpResponse.json({ items: [], next_cursor: null }),
     ),
@@ -224,9 +233,11 @@ it('muestra saldos reales y permite explorar cuando no hay asesor asociado', asy
   expect(
     screen.getByText('En liquidación bancaria: $10,000.00 USD'),
   ).toBeVisible();
-  expect(
-    await screen.findByText(/Aún no tienes un comisionista asociado/),
-  ).toBeVisible();
+  await waitFor(() =>
+    expect(
+      screen.getByText(/Aún no tienes un comisionista asociado/),
+    ).toBeVisible(),
+  );
   expect(
     screen.queryByAltText('Foto Carlos Rodríguez, CFA'),
   ).not.toBeInTheDocument();

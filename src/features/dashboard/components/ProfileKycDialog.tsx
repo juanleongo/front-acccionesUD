@@ -1,13 +1,12 @@
 'use client';
 
 import type { FormEvent, RefObject } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { LoadingState } from '@/components/ui/LoadingState';
+import { PersonalProfileForm } from './PersonalProfileForm';
+import { getInterestOptions, type PersonalProfile } from '../user-api';
 import { Icon } from '@/components/ui/Icon';
-import {
-  countries,
-  CustomSelect,
-  KycFields,
-  marketInterestsCatalog,
-} from '@/features/registration';
+import { countries, CustomSelect, KycFields } from '@/features/registration';
 import { useLocale } from '@/lib/i18n';
 import {
   formatAccountStatusLabel,
@@ -42,6 +41,7 @@ export interface ProfileKycDialogProps {
   onClearKycError: () => void;
   onSubmitKyc: (e: FormEvent<HTMLFormElement>) => void;
   onLogout: () => void;
+  onPersonalProfileSaved: (profile: PersonalProfile) => void;
 }
 
 export function ProfileKycDialog({
@@ -69,11 +69,19 @@ export function ProfileKycDialog({
   onClearKycError,
   onSubmitKyc,
   onLogout,
+  onPersonalProfileSaved,
 }: ProfileKycDialogProps) {
   const { locale, tx } = useLocale();
+  const catalog = useQuery({
+    queryKey: ['users', 'interest-options'],
+    queryFn: ({ signal }) => getInterestOptions(signal),
+    enabled: profileTab === 'edit',
+    staleTime: 300_000,
+    retry: false,
+  });
   const countryName = user?.country
     ? (countries.find((c) => c.code === user.country)?.name ?? user.country)
-    : 'Colombia';
+    : '—';
 
   const accountStatusLabel = formatAccountStatusLabel(
     user?.account_status,
@@ -113,6 +121,7 @@ export function ProfileKycDialog({
         <button
           type="button"
           className={`${styles.profileTab} ${profileTab === 'info' ? styles.profileTabActive : ''}`}
+          aria-pressed={profileTab === 'info'}
           onClick={() => onChangeProfileTab('info')}
         >
           {tx('Datos & Seguridad', 'Profile & Security')}
@@ -120,6 +129,7 @@ export function ProfileKycDialog({
         <button
           type="button"
           className={`${styles.profileTab} ${profileTab === 'edit' ? styles.profileTabActive : ''}`}
+          aria-pressed={profileTab === 'edit'}
           onClick={() => onChangeProfileTab('edit')}
         >
           {tx('Editar Intereses & Nivel', 'Edit Interests & Level')}
@@ -127,6 +137,7 @@ export function ProfileKycDialog({
         <button
           type="button"
           className={`${styles.profileTab} ${profileTab === 'kyc' ? styles.profileTabActive : ''}`}
+          aria-pressed={profileTab === 'kyc'}
           onClick={() => onChangeProfileTab('kyc')}
         >
           {tx('Trámite KYC', 'KYC Verification')}{' '}
@@ -136,13 +147,25 @@ export function ProfileKycDialog({
 
       {profileTab === 'info' ? (
         <>
+          {user && (
+            <PersonalProfileForm
+              user={user}
+              locked={
+                hasRealAccount ||
+                Boolean(
+                  kycData?.has_account || kycData?.status || user.kyc_status,
+                )
+              }
+              onSaved={onPersonalProfileSaved}
+            />
+          )}
           <div className={styles.profileCardsGrid}>
             <div className={styles.profileCard}>
               <span className={styles.profileCardTitle}>
                 {tx('Correo Electrónico', 'Email Address')}
               </span>
               <span className={styles.profileCardValue}>
-                {user?.email ?? 'correo@ejemplo.com'}
+                {user?.email ?? '—'}
               </span>
             </div>
 
@@ -151,7 +174,7 @@ export function ProfileKycDialog({
                 {tx('Teléfono de Contacto', 'Contact Phone')}
               </span>
               <span className={styles.profileCardValue}>
-                {user?.phone ?? '+57 300 000 0000'}
+                {user?.phone ?? '—'}
               </span>
             </div>
 
@@ -264,6 +287,30 @@ export function ProfileKycDialog({
         </>
       ) : profileTab === 'edit' ? (
         <div className={styles.editorSection}>
+          {catalog.isPending && (
+            <LoadingState
+              mode="compact"
+              label={tx(
+                'Consultando intereses disponibles…',
+                'Loading available interests…',
+              )}
+            />
+          )}
+          {catalog.isError && (
+            <p className={styles.profileErrorMessage} role="alert">
+              {tx(
+                'No pudimos consultar los intereses.',
+                'Could not load interests.',
+              )}{' '}
+              <button
+                type="button"
+                className={styles.secondary}
+                onClick={() => void catalog.refetch()}
+              >
+                {tx('Reintentar', 'Retry')}
+              </button>
+            </p>
+          )}
           {saveSuccess && (
             <p className={styles.profileSuccessMessage} role="status">
               {saveSuccess}
@@ -333,7 +380,7 @@ export function ProfileKycDialog({
               aria-labelledby="profile-exchanges-label"
               className={`${styles.chipsGrid} ${styles.chipsGridSpaced}`}
             >
-              {['NYSE', 'NASDAQ', 'AMEX'].map((mkt) => {
+              {(catalog.data?.markets ?? []).map((mkt) => {
                 const isSelected = editableInterests.includes(mkt);
                 return (
                   <button
@@ -366,17 +413,17 @@ export function ProfileKycDialog({
               aria-labelledby="profile-sectors-label"
               className={styles.chipsGrid}
             >
-              {marketInterestsCatalog.map((cat) => {
-                const isSelected = editableInterests.includes(cat.value);
+              {(catalog.data?.sectors ?? []).map((cat) => {
+                const isSelected = editableInterests.includes(cat);
                 return (
                   <button
-                    key={cat.value}
+                    key={cat}
                     type="button"
                     aria-pressed={isSelected}
                     className={`${styles.chipBtn} ${isSelected ? styles.chipBtnSelected : ''}`}
-                    onClick={() => onToggleInterest(cat.value)}
+                    onClick={() => onToggleInterest(cat)}
                   >
-                    <span>{isSelected ? '✓' : '+'}</span> {cat.value}
+                    <span>{isSelected ? '✓' : '+'}</span> {cat}
                   </button>
                 );
               })}

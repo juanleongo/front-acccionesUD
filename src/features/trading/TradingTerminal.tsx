@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { CustomSelect } from '@/components/ui/CustomSelect';
 import { LoadingState } from '@/components/ui/LoadingState';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { QUERY_STALE_TIMES, queryKeys } from '@/lib/api';
 import { useLocale } from '@/lib/i18n';
 import { ActiveOrdersTable } from './ActiveOrdersTable';
@@ -83,8 +84,8 @@ export function TradingTerminal({
             </h2>
             <p className={styles.cardSubtitle}>
               {tx(
-                'Seguimiento de órdenes activas, programadas, devueltas e historial reciente.',
-                'Track active, scheduled, returned orders and recent history.',
+                'Aquí aparecen tus solicitudes de compra y venta. Una orden pendiente aún no es una compra realizada: la cantidad ejecutada y el precio ejecutado muestran lo que realmente se negoció.',
+                'Your buy and sell requests appear here. A pending order is not a completed trade: filled quantity and execution price show what actually traded.',
               )}
             </p>
           </div>
@@ -130,32 +131,30 @@ export function TradingTerminal({
               ]}
             />
           </div>
-          <label className={styles.fieldGroup}>
-            {tx('Desde', 'From')}
-            <input
-              className={styles.input}
-              type="date"
+          <div className={styles.fieldGroup}>
+            <span className={styles.fieldLabel}>{tx('Desde', 'From')}</span>
+            <DatePicker
+              label={tx('Desde', 'From')}
               value={fromDate}
               max={toDate || undefined}
-              onChange={(e) => {
-                setFromDate(e.target.value);
+              onChange={(value) => {
+                setFromDate(value);
                 setCursors(['']);
               }}
             />
-          </label>
-          <label className={styles.fieldGroup}>
-            {tx('Hasta', 'To')}
-            <input
-              className={styles.input}
-              type="date"
+          </div>
+          <div className={styles.fieldGroup}>
+            <span className={styles.fieldLabel}>{tx('Hasta', 'To')}</span>
+            <DatePicker
+              label={tx('Hasta', 'To')}
               value={toDate}
               min={fromDate || undefined}
-              onChange={(e) => {
-                setToDate(e.target.value);
+              onChange={(value) => {
+                setToDate(value);
                 setCursors(['']);
               }}
             />
-          </label>
+          </div>
           <button
             type="button"
             className={styles.btnCompact}

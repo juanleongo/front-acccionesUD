@@ -608,6 +608,13 @@ export function Dashboard({
         onChangeKycStep={setKycModalStep}
         onClearKycError={() => setKycErr('')}
         onSubmitKyc={handleDashboardKycSubmit}
+        onPersonalProfileSaved={(profile) => {
+          if (user) {
+            const updated = { ...user, ...profile };
+            setLocalUser(updated);
+            queryClient.setQueryData(queryKeys.users.me(), updated);
+          }
+        }}
         onLogout={handleLogout}
       />
     </div>

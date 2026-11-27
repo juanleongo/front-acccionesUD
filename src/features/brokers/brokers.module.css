@@ -1244,7 +1244,7 @@
 }
 
 .emptyNotice {
-  background: var(--color-surface-raised);
+  background: var(--color-card-gradient);
   border: 1px dashed var(--color-border-strong);
   border-radius: var(--radius-xl);
   padding: clamp(1.25rem, 3vw, 1.85rem);
@@ -1469,15 +1469,14 @@
   max-height: 85dvh;
   overflow: auto;
   color: var(--color-text);
-  background: var(--color-surface-raised);
+  background: var(--color-modal-gradient);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-card);
+  box-shadow: var(--shadow-modal);
   padding: 1.5rem;
 }
 .confirmDialog::backdrop {
-  background: var(--color-background);
-  opacity: 0.85;
+  background: var(--color-backdrop-strong);
   backdrop-filter: blur(5px);
 }
 .confirmDialog form {
@@ -1489,6 +1488,19 @@
   align-items: flex-start;
   gap: 0.75rem;
   font-size: 0.9rem;
+  padding: 1rem;
+  line-height: 1.7;
+  border: 1px solid var(--color-primary-border);
+  border-radius: var(--radius-md);
+  background: var(--color-primary-soft);
+  color: var(--color-text);
+}
+.consentLabel input {
+  width: 1.2rem;
+  height: 1.2rem;
+  flex-shrink: 0;
+  margin-top: 0.25rem;
+  accent-color: var(--color-button);
 }
 .liveFields {
   border: 0;

@@ -93,8 +93,22 @@ const quoteSchema = z.object({
   source: z.string(),
   is_delayed: z.boolean(),
   is_stale: z.boolean(),
+  served_from_cache: z.boolean().optional(),
 });
 export type InstrumentQuote = z.infer<typeof quoteSchema>;
+export function getInstrumentDetails(symbol: string, signal: AbortSignal) {
+  return browserHttp.request({
+    path: `/api/v1/instruments/${encodeURIComponent(symbol)}`,
+    signal,
+    response: 'json',
+    parse: z.object({
+      symbol: z.string(),
+      tradable: z.boolean(),
+      fractionable: z.boolean(),
+      exchange: z.string().optional(),
+    }).parse,
+  });
+}
 export function getInstrumentQuote(symbol: string, signal: AbortSignal) {
   return browserHttp.request({
     path: `/api/v1/instruments/${encodeURIComponent(symbol)}/quote`,

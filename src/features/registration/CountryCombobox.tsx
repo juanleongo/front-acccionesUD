@@ -1,6 +1,7 @@
 'use client';
 import Image from 'next/image';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useState } from 'react';
+import { CustomSelect } from '@/components/ui/CustomSelect';
 import { useLocale } from '@/lib/i18n';
 import styles from './registration.module.css';
 
@@ -26,182 +27,41 @@ export function CountryCombobox({
 }: CountryComboboxProps) {
   const { tx } = useLocale();
   const [selectedCode, setSelectedCode] = useState(defaultValue);
-  const [query, setQuery] = useState(() => {
-    if (!defaultValue) return '';
-    return countries.find((c) => c.code === defaultValue)?.name ?? '';
-  });
-  const [open, setOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const listboxId = useId();
-
-  // Cerrar al hacer clic afuera
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
-      ) {
-        setOpen(false);
-        // Restaurar el texto del país seleccionado si el usuario no eligió
-        const current = countries.find((c) => c.code === selectedCode);
-        setQuery(current ? current.name : '');
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [selectedCode, countries]);
-
-  const filtered = query.trim()
-    ? countries.filter(
-        (c) =>
-          c.name.toLowerCase().includes(query.toLowerCase()) ||
-          c.code.toLowerCase().includes(query.toLowerCase()),
-      )
-    : countries;
-
-  function selectCountry(c: Country) {
-    setSelectedCode(c.code);
-    onCountryChange?.(c.code);
-    setQuery(c.name);
-    setOpen(false);
-    inputRef.current?.focus();
-  }
-
   return (
-    <div className={styles.comboboxContainer} ref={containerRef}>
-      {/* Select nativo accesible para sincronización con pruebas y formData */}
-      <select
-        name="country"
-        aria-label={tx('País', 'Country')}
-        value={selectedCode}
-        disabled={disabled}
-        required
-        tabIndex={-1}
-        className={styles.hiddenNativeSelect}
-        onChange={(e) => {
-          const val = e.target.value;
-          setSelectedCode(val);
-          onCountryChange?.(val);
-          const match = countries.find((c) => c.code === val);
-          if (match) setQuery(match.name);
-        }}
-      >
-        <option value="" disabled>
-          {tx('Selecciona tu país', 'Select your country')}
-        </option>
-        {countries.map((c) => (
-          <option key={c.code} value={c.code}>
-            {c.name}
-          </option>
-        ))}
-      </select>
-
-      {/* Input de búsqueda visible */}
-      <div className={styles.comboboxInputWrapper}>
-        {selectedCode && (
+    <CustomSelect
+      id={id}
+      name="country"
+      className={styles.comboboxContainer ?? ''}
+      ariaLabel={tx('País', 'Country')}
+      value={selectedCode}
+      disabled={disabled}
+      required
+      searchable
+      placeholder={tx('Selecciona tu país', 'Select your country')}
+      searchPlaceholder={tx('Buscar país o código…', 'Search country or code…')}
+      options={countries.map((country) => ({
+        value: country.code,
+        label: country.name,
+        leading: (
           <Image
-            src={`https://flagcdn.com/w40/${selectedCode.toLowerCase()}.png`}
-            width={22}
-            height={15}
+            key={country.code}
+            src={`https://flagcdn.com/w40/${country.code.toLowerCase()}.png`}
+            width={24}
+            height={16}
             alt=""
             unoptimized
-            className={styles.selectedFlagIcon}
+            loading="lazy"
+            className={styles.countryFlag}
+            onError={(event) => {
+              event.currentTarget.style.visibility = 'hidden';
+            }}
           />
-        )}
-        <input
-          ref={inputRef}
-          id={id}
-          type="text"
-          role="combobox"
-          aria-expanded={open}
-          aria-autocomplete="list"
-          aria-controls={listboxId}
-          placeholder={tx(
-            'Escribe o selecciona tu país...',
-            'Type or select your country...',
-          )}
-          value={query}
-          disabled={disabled}
-          autoComplete="off"
-          className={`${styles.comboboxInput} ${selectedCode ? styles.comboboxInputWithFlag : ''}`}
-          onFocus={() => setOpen(true)}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            if (!open) setOpen(true);
-            // Si borra el texto, resetear código
-            if (!e.target.value.trim()) {
-              setSelectedCode('');
-              onCountryChange?.('');
-            }
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Escape') {
-              setOpen(false);
-            } else if (e.key === 'ArrowDown' && !open) {
-              setOpen(true);
-            }
-          }}
-        />
-        <button
-          type="button"
-          tabIndex={-1}
-          className={styles.comboboxToggle}
-          aria-label={tx('Abrir listado de países', 'Open country list')}
-          onClick={() => {
-            setOpen((prev) => !prev);
-            inputRef.current?.focus();
-          }}
-        >
-          <span className={open ? styles.chevronOpen : styles.chevronClosed}>
-            ▼
-          </span>
-        </button>
-      </div>
-
-      {/* Menú desplegable acotado en altura */}
-      {open && (
-        <ul
-          id={listboxId}
-          role="listbox"
-          className={styles.comboboxMenu}
-          aria-label={tx('Países disponibles', 'Available countries')}
-        >
-          {filtered.length === 0 ? (
-            <li className={styles.comboboxEmpty}>
-              {tx(
-                `No se encontraron países que coincidan con “${query}”`,
-                `No countries found matching “${query}”`,
-              )}
-            </li>
-          ) : (
-            filtered.map((c) => {
-              const isSelected = c.code === selectedCode;
-              return (
-                <li
-                  key={c.code}
-                  role="option"
-                  aria-selected={isSelected}
-                  className={`${styles.comboboxOption} ${isSelected ? styles.selectedOption : ''}`}
-                  onClick={() => selectCountry(c)}
-                >
-                  <Image
-                    src={`https://flagcdn.com/w40/${c.code.toLowerCase()}.png`}
-                    width={24}
-                    height={16}
-                    alt=""
-                    unoptimized
-                    loading="lazy"
-                    className={styles.countryFlag}
-                  />
-                  <span className={styles.countryName}>{c.name}</span>
-                  {isSelected && <span className={styles.countryCheck}>✓</span>}
-                </li>
-              );
-            })
-          )}
-        </ul>
-      )}
-    </div>
+        ),
+      }))}
+      onChange={(code) => {
+        setSelectedCode(code);
+        onCountryChange?.(code);
+      }}
+    />
   );
 }

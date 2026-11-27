@@ -95,6 +95,9 @@ dialog {
   background: var(--color-modal-gradient);
   color: var(--color-text);
   box-shadow: var(--shadow-modal);
+  max-height: calc(100dvh - 1.5rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 dialog::backdrop {
@@ -106,6 +109,14 @@ dialog::backdrop {
 :focus-visible {
   outline: var(--focus-width) solid var(--color-focus);
   outline-offset: var(--focus-offset);
+}
+
+@media (max-width: 48rem) {
+  /* A readable edit size also prevents automatic form zoom on iOS. */
+  :root input:not([type='checkbox']):not([type='radio']):not([type='hidden']),
+  :root textarea {
+    font-size: var(--font-size-base);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

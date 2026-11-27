@@ -3,7 +3,11 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { CustomSelect } from '@/components/ui/CustomSelect';
 import { useLocale } from '@/lib/i18n';
-import { formatUsd } from '@/lib/formatters';
+import { formatUsd, formatMarketDateTime } from '@/lib/formatters';
+import { AssetLogo } from '@/components/market/AssetLogo';
+import { LoadingState } from '@/components/ui/LoadingState';
+import { formatOrderStatus } from '@/features/trading';
+import ui from '../brokers-details.module.css';
 import { brokerRequest } from '../brokers-api';
 import { positionsSchema, pageSchema, orderSchema } from '../brokers-schemas';
 import type { BrokerClientItem } from '../brokers-types';
@@ -16,7 +20,7 @@ export function ClientInvestments({
   clients: BrokerClientItem[];
   userId: string;
 }) {
-  const { tx } = useLocale();
+  const { tx, locale } = useLocale();
   const [selected, setSelected] = useState('');
   const id = clients.some((c) => c.investor_id === selected) ? selected : '';
   const [cursors, setCursors] = useState(['']);
@@ -94,35 +98,132 @@ export function ClientInvestments({
             {tx('Posiciones', 'Positions')}
           </h4>
           {positions.isPending && (
-            <p className={styles.fieldHint}>{tx('Cargando…', 'Loading…')}</p>
+            <LoadingState
+              mode="compact"
+              label={tx('Consultando posiciones…', 'Loading positions…')}
+            />
           )}
           {positions.data?.positions.length === 0 && (
             <p className={styles.fieldHint}>
               {tx('Sin posiciones abiertas.', 'No open positions.')}
             </p>
           )}
-          {positions.data?.positions.map((p) => (
-            <p key={p.symbol} className={styles.controlHint}>
-              {p.symbol} · {tx('Cantidad', 'Quantity')}: {p.qty} ·{' '}
-              {tx('Valor', 'Value')}:{' '}
-              {formatUsd(p.market_value, { withCode: true })} · P&amp;L:{' '}
-              {formatUsd(p.unrealized_pnl, { withCode: true })}
-            </p>
-          ))}
+          {positions.data && positions.data.positions.length > 0 && (
+            <div
+              className={ui.tableWrap}
+              tabIndex={0}
+              role="region"
+              aria-label={tx('Posiciones del cliente', 'Client positions')}
+            >
+              <table className={ui.table}>
+                <thead>
+                  <tr>
+                    <th>{tx('Instrumento', 'Instrument')}</th>
+                    <th>{tx('Cantidad', 'Quantity')}</th>
+                    <th>{tx('Valor de mercado', 'Market value')}</th>
+                    <th>{tx('Ganancia / pérdida', 'Profit / loss')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {positions.data.positions.map((p) => (
+                    <tr key={p.symbol}>
+                      <td data-label={tx('Instrumento', 'Instrument')}>
+                        <span className={ui.asset}>
+                          <AssetLogo symbol={p.symbol} />
+                          <strong>{p.symbol}</strong>
+                        </span>
+                      </td>
+                      <td data-label={tx('Cantidad', 'Quantity')}>{p.qty}</td>
+                      <td data-label={tx('Valor de mercado', 'Market value')}>
+                        {formatUsd(p.market_value, { withCode: true })}
+                      </td>
+                      <td
+                        className={
+                          Number(p.unrealized_pnl) > 0
+                            ? ui.positive
+                            : Number(p.unrealized_pnl) < 0
+                              ? ui.negative
+                              : undefined
+                        }
+                        data-label={tx('Ganancia / pérdida', 'Profit / loss')}
+                      >
+                        {formatUsd(p.unrealized_pnl, { withCode: true })}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
           <h4 className={styles.controlTitle}>{tx('Órdenes', 'Orders')}</h4>
           {orders.isPending && (
-            <p className={styles.fieldHint}>{tx('Cargando…', 'Loading…')}</p>
+            <LoadingState
+              mode="compact"
+              label={tx('Consultando órdenes…', 'Loading orders…')}
+            />
           )}
           {orders.data?.items.length === 0 && (
             <p className={styles.fieldHint}>
               {tx('Sin órdenes.', 'No orders.')}
             </p>
           )}
-          {orders.data?.items.map((o) => (
-            <p key={o.id} className={styles.controlHint}>
-              {o.symbol} · {o.side} · {o.qty} · {o.status} · {o.created_at}
-            </p>
-          ))}
+          {orders.data && orders.data.items.length > 0 && (
+            <div
+              className={ui.tableWrap}
+              tabIndex={0}
+              role="region"
+              aria-label={tx('Órdenes del cliente', 'Client orders')}
+            >
+              <table className={ui.table}>
+                <thead>
+                  <tr>
+                    <th>{tx('Instrumento', 'Instrument')}</th>
+                    <th>{tx('Operación', 'Side')}</th>
+                    <th>{tx('Cantidad', 'Quantity')}</th>
+                    <th>{tx('Estado', 'Status')}</th>
+                    <th>{tx('Fecha', 'Date')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {orders.data.items.map((o) => (
+                    <tr key={o.id}>
+                      <td data-label={tx('Instrumento', 'Instrument')}>
+                        <span className={ui.asset}>
+                          <AssetLogo symbol={o.symbol} />
+                          <strong>{o.symbol}</strong>
+                        </span>
+                      </td>
+                      <td data-label={tx('Operación', 'Side')}>
+                        <span
+                          className={
+                            o.side === 'buy'
+                              ? styles.badgeSuccess
+                              : styles.badgeWarning
+                          }
+                        >
+                          {o.side === 'buy'
+                            ? tx('Compra', 'Buy')
+                            : tx('Venta', 'Sell')}
+                        </span>
+                      </td>
+                      <td data-label={tx('Cantidad', 'Quantity')}>{o.qty}</td>
+                      <td data-label={tx('Estado', 'Status')}>
+                        <span className={ui.badge}>
+                          {formatOrderStatus(o.status, false, locale)}
+                        </span>
+                      </td>
+                      <td data-label={tx('Fecha', 'Date')}>
+                        {formatMarketDateTime(o.created_at, locale, {
+                          timeZone: 'America/New_York',
+                        })}{' '}
+                        ET
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
           <Pager
             index={cursors.length - 1}
             hasNext={Boolean(orders.data?.next_cursor)}

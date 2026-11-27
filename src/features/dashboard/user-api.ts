@@ -13,7 +13,18 @@ export const userProfileSchema = z.object({
   contracted_plan: z.string().nullable().optional(),
   is_premium: z.boolean(),
   broker_requested: z.boolean().optional(),
-  associated_broker: z.string().nullable().optional(),
+  associated_broker: z
+    .union([
+      z.string(),
+      z.object({
+        id: z.string(),
+        name: z.string(),
+        firm_name: z.string(),
+        since: z.string(),
+      }),
+    ])
+    .nullable()
+    .optional(),
   roles: z.array(z.string()),
   kyc_status: z.string().nullable(),
   kyc_status_unavailable: z.boolean(),
@@ -23,6 +34,34 @@ export const userProfileSchema = z.object({
 });
 
 export type UserProfile = z.infer<typeof userProfileSchema>;
+
+const personalProfileSchema = userProfileSchema.pick({
+  first_names: true,
+  last_names: true,
+  phone: true,
+  country: true,
+});
+export type PersonalProfile = z.infer<typeof personalProfileSchema>;
+export function updatePersonalProfile(body: Partial<PersonalProfile>) {
+  return browserHttp.request({
+    path: '/api/v1/users/me',
+    method: 'PATCH',
+    body,
+    response: 'json',
+    parse: personalProfileSchema.parse,
+  });
+}
+export function getInterestOptions(signal: AbortSignal) {
+  return browserHttp.request({
+    path: '/api/v1/auth/interest-options',
+    signal,
+    response: 'json',
+    parse: z.object({
+      markets: z.array(z.string()),
+      sectors: z.array(z.string()),
+    }).parse,
+  });
+}
 
 export function getCurrentUser(signal: AbortSignal) {
   return browserHttp.request({
