@@ -1,5 +1,11 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { browserHttp } from '@/lib/api/client';
 vi.mock('@/lib/api/client', () => ({ browserHttp: { request: vi.fn() } }));
@@ -33,6 +39,54 @@ beforeEach(() => {
     status: 'PENDING',
     created_at: '',
   });
+});
+
+it('muestra únicamente el detalle de la cuenta seleccionada y lo actualiza al cambiarla', async () => {
+  vi.mocked(fetchBanks).mockResolvedValue([
+    {
+      id: 'bank-1',
+      alpaca_relationship_id: 'alpaca-1',
+      owner_name: 'Ana Perez',
+      account_type: 'CHECKING',
+      account_last4: '1234',
+      status: 'APPROVED',
+      created_at: '2026-11-20T15:00:00Z',
+    },
+    {
+      id: 'bank-2',
+      alpaca_relationship_id: 'alpaca-2',
+      owner_name: 'Luis Gomez',
+      account_type: 'SAVINGS',
+      account_last4: '5678',
+      status: 'APPROVED',
+      created_at: '2026-11-21T15:00:00Z',
+    },
+  ]);
+  render(<FundingPanel onRefresh={vi.fn()} available={100} />);
+  const details = await screen.findByRole('region', {
+    name: 'Detalle de la cuenta seleccionada',
+  });
+  expect(within(details).getByText('Ana Perez')).toBeInTheDocument();
+  expect(within(details).getByText('Cuenta corriente')).toBeInTheDocument();
+  expect(within(details).queryByText('Luis Gomez')).not.toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Cuenta bancaria vinculada'), {
+    target: { value: 'bank-2' },
+  });
+  expect(within(details).getByText('Luis Gomez')).toBeInTheDocument();
+  expect(within(details).getByText('Cuenta de ahorros')).toBeInTheDocument();
+  expect(within(details).getByText('****5678')).toBeInTheDocument();
+  expect(within(details).queryByText('Ana Perez')).not.toBeInTheDocument();
+  expect(
+    screen.getAllByRole('region', {
+      name: 'Detalle de la cuenta seleccionada',
+    }),
+  ).toHaveLength(1);
+  fireEvent.change(screen.getByLabelText('Cuenta bancaria vinculada'), {
+    target: { value: '' },
+  });
+  expect(
+    screen.queryByRole('region', { name: 'Detalle de la cuenta seleccionada' }),
+  ).not.toBeInTheDocument();
 });
 
 it.each([

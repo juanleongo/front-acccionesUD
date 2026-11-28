@@ -23,6 +23,7 @@ import {
   isValidAchRoutingNumber,
 } from './bank-validation';
 import { LinkBankAccordion } from './components/LinkBankAccordion';
+import { BankAccountDetails } from './components/BankAccountDetails';
 import {
   createBank,
   fetchBanks,
@@ -76,6 +77,7 @@ export function FundingPanel({
   const [loadingBanks, setLoadingBanks] = useState(true);
   const approvedBanks = banks.filter((bank) => bank.status === 'APPROVED');
   const [bankId, setBankId] = useState('');
+  const selectedBank = approvedBanks.find((bank) => bank.id === bankId);
   const [amount, setAmount] = useState('');
   const [currency, setCurrency] = useState<DepositCurrency>('USD');
   const [rates, setRates] = useState<ExchangeRate[]>([]);
@@ -545,6 +547,9 @@ export function FundingPanel({
                   {tx('Actualizar cuentas', 'Refresh accounts')}
                 </button>
               </div>
+              {!loadingBanks && selectedBank && (
+                <BankAccountDetails bank={selectedBank} />
+              )}
             </div>
 
             {direction === 'deposit' && (

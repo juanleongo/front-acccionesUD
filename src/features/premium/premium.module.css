@@ -1,0 +1,119 @@
+.card {
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: clamp(1rem, 2.5vw, 1.75rem);
+  min-width: 0;
+  display: grid;
+  gap: 1rem;
+}
+.container {
+  width: min(100%, 96rem);
+  margin-inline: auto;
+  display: grid;
+  gap: 1.5rem;
+  min-width: 0;
+  color: var(--color-text);
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  gap: 1rem;
+  min-width: 0;
+}
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  min-width: 0;
+}
+.title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+.note {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--color-text-muted);
+  overflow-wrap: anywhere;
+}
+.price {
+  font-size: 2rem;
+  font-weight: 800;
+}
+.button {
+  background: var(--color-button);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 0.8rem 1rem;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.button:focus-visible,
+.input:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+.input {
+  width: 100%;
+  min-width: 0;
+  background: var(--color-control);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 0.8rem;
+  font: inherit;
+}
+.field {
+  display: grid;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.error {
+  color: var(--color-error);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.badge {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+  padding: 0.4rem 0.8rem;
+  border-radius: 2rem;
+  font-weight: 700;
+}
+.tableWrap {
+  overflow-x: auto;
+  min-width: 0;
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+.table th,
+.table td {
+  text-align: left;
+  padding: 0.8rem;
+  border-bottom: 1px solid var(--color-border);
+}
+.fields {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+  display: grid;
+  gap: 1rem;
+}

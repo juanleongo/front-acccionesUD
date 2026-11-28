@@ -85,6 +85,11 @@ const DynamicWalletDashboard = dynamic(
   { loading: () => <DashboardTabLoading /> },
 );
 
+const DynamicPremiumPanel = dynamic(
+  () => import('@/features/premium').then((mod) => mod.PremiumPanel),
+  { loading: () => <DashboardTabLoading /> },
+);
+
 const DynamicBrokersHub = dynamic(
   () => import('@/features/brokers').then((mod) => mod.BrokersHub),
   { loading: () => <DashboardTabLoading /> },
@@ -567,6 +572,7 @@ export function Dashboard({
             />
           )}
 
+          {activeSection === 'premium' && <DynamicPremiumPanel />}
           {activeSection === 'funds' && <DynamicWalletDashboard />}
 
           {activeSection === 'advisors' && (

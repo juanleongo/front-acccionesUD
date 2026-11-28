@@ -35,6 +35,9 @@ beforeEach(() => {
   });
   window.scrollTo = vi.fn();
   mockServer.use(
+    http.post('*/api/v1/auth/refresh', () =>
+      HttpResponse.json({ code: 'REFRESH_INVALID' }, { status: 401 }),
+    ),
     http.get('*/api/v1/portfolio/positions', () =>
       HttpResponse.json({
         positions: [],

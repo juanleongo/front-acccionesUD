@@ -16,6 +16,7 @@ import { notifySessionExpired } from './session-events';
 interface TransportOptions {
   origin?: string;
   credentials: 'same-origin' | 'omit';
+  notifyUnauthorized?: boolean;
 }
 
 function requestPath(options: RequestOptions): string {
@@ -27,9 +28,15 @@ function requestPath(options: RequestOptions): string {
     /^\/api\/v1\/instruments\/[a-z0-9.-]+(?:\/[a-z0-9.-]+)*(?:\/(?:candles|quote|depth))?$/i.test(
       options.path,
     );
+  const watchlistSymbolEndpoint =
+    !hasDotTraversal &&
+    /^\/api\/v1\/watchlists\/[a-z0-9-]+\/items\/[a-z0-9][a-z0-9.-]*(?:\/[a-z0-9][a-z0-9.-]*)*$/i.test(
+      options.path,
+    );
   const candles = instrumentEndpoint && /\/candles$/i.test(options.path);
   if (
     !instrumentEndpoint &&
+    !watchlistSymbolEndpoint &&
     !/^\/api\/(?:[A-Za-z0-9_-]+\/?)*$/.test(options.path)
   ) {
     throw new ApiError(
@@ -188,6 +195,7 @@ export function createFetchTransport(config: TransportOptions): HttpPort {
           response.headers.get('Retry-After'),
         );
         if (
+          config.notifyUnauthorized !== false &&
           response.status === 401 &&
           !options.path.startsWith('/api/v1/auth/')
         ) {

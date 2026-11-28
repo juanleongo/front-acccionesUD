@@ -4,7 +4,13 @@ import type { IconName } from '@/components/ui/Icon';
 import type { Locale } from '@/lib/i18n/locale';
 
 export type DashboardSection =
-  'dashboard' | 'markets' | 'orders' | 'portfolio' | 'funds' | 'advisors';
+  | 'dashboard'
+  | 'markets'
+  | 'orders'
+  | 'portfolio'
+  | 'funds'
+  | 'advisors'
+  | 'premium';
 
 export const navItems: ReadonlyArray<{
   id: DashboardSection;
@@ -32,6 +38,7 @@ export const navItems: ReadonlyArray<{
     labelEn: 'Deposits & Withdrawals',
     icon: 'wallet',
   },
+  { id: 'premium', label: 'Premium', labelEn: 'Premium', icon: 'shield' },
   { id: 'advisors', label: 'Comisionistas', labelEn: 'Brokers', icon: 'users' },
 ];
 
@@ -41,6 +48,7 @@ export const sectionTitles: Record<DashboardSection, string> = {
   orders: 'Terminal de Órdenes · Ejecución en NYSE & NASDAQ',
   portfolio: 'Portafolio de Inversión · Posiciones Activas',
   funds: 'Depósitos & Retiros · Gestión de Fondos Simulados (USD)',
+  premium: 'Premium · Suscripción y herramientas',
   advisors: 'Comisionistas Bursátiles · Directorio de Asesores',
 };
 
@@ -50,6 +58,7 @@ const sectionTitlesEn: Record<DashboardSection, string> = {
   orders: 'Order Terminal · NYSE & NASDAQ Execution',
   portfolio: 'Investment Portfolio · Active Positions',
   funds: 'Deposits & Withdrawals · Simulated Funds (USD)',
+  premium: 'Premium · Subscription and tools',
   advisors: 'Licensed Brokers · Advisor Directory',
 };
 

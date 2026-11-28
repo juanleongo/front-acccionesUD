@@ -237,6 +237,9 @@ it('alterna tema con @/lib/theme y valida formularios noValidate en Mercados y A
 
 it('muestra SessionClosedOverlay cuando la sesión admin expira con 401', async () => {
   mockServer.use(
+    http.post('*/api/v1/auth/refresh', () =>
+      HttpResponse.json({ code: 'REFRESH_INVALID' }, { status: 401 }),
+    ),
     http.get('*/api/v1/admin/users', () =>
       HttpResponse.json({ code: 'NOT_AUTHENTICATED' }, { status: 401 }),
     ),
